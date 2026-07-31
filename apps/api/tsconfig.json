@@ -15,6 +15,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["src/**/*", "models/**/*", "lib/**/*"],
+  "include": ["src/**/*", "models/**/*", "lib/**/*", "scripts/**/*"],
   "exclude": ["node_modules", "dist"]
 }

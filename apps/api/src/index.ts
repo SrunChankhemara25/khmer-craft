@@ -1,33 +1,65 @@
-import express from 'express';
-import cors from 'cors';
+import fs from 'node:fs';
+import path from 'node:path';
 import dotenv from 'dotenv';
 import dbConnect from '../lib/mongodb';
-import productRoutes from './routes/products';
+import { createApp } from './app';
+import { assertEnv } from './config/env';
 
-// Load environment variables from .env.local
-dotenv.config({ path: '.env.local' });
+/**
+ * Locate .env.local by walking up from this file rather than resolving it
+ * against the current working directory. Starting the server from the repo
+ * root would otherwise load nothing at all and fail on the JWT_SECRET
+ * assertion with no hint that the environment file was simply never found.
+ *
+ * Walking up also covers both layouts this file runs in: src/ under ts-node,
+ * and dist/src/ after a build.
+ */
+const findEnvFile = () => {
+  let directory = __dirname;
 
-const app = express();
+  while (true) {
+    const candidate = path.join(directory, '.env.local');
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+
+    const parent = path.dirname(directory);
+    if (parent === directory) {
+      return undefined;
+    }
+    directory = parent;
+  }
+};
+
+const envFile = findEnvFile();
+if (!envFile) {
+  console.error(
+    'Configuration error: no .env.local found. Copy apps/api/.env.example to apps/api/.env.local.',
+  );
+  process.exit(1);
+}
+
+dotenv.config({ path: envFile });
+
+// Fail fast: a missing JWT_SECRET must stop the process here, not surface as a
+// confusing 500 on the first login attempt.
+try {
+  assertEnv();
+} catch (error) {
+  console.error(`Configuration error: ${(error as Error).message}`);
+  process.exit(1);
+}
+
 const port = process.env.PORT || 3001;
+const app = createApp();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Connect to MongoDB
-dbConnect().then(() => {
-  console.log('Connected to MongoDB');
-}).catch((err) => {
-  console.error('Failed to connect to MongoDB', err);
-});
-
-// Routes
-app.get('/', (req, res) => {
-  res.send('Welcome to the Express API! Try visiting /api/products');
-});
-app.use('/api/products', productRoutes);
-
-// Start server
-app.listen(port, () => {
-  console.log(`Express API running at http://localhost:${port}`);
-});
+dbConnect()
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`KhmerCraft API running at http://localhost:${port}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to connect to MongoDB', err);
+    process.exitCode = 1;
+  });
