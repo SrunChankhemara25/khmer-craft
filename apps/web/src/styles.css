@@ -43,16 +43,16 @@ input {
 
 .auth-form {
   display: grid;
-  gap: 1.25rem;
+  gap: 1.05rem;
 }
 
 .auth-form.compact {
-  gap: 0.95rem;
+  gap: 0.8rem;
 }
 
 .auth-form label {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.4rem;
   color: #403a35;
   font-size: 0.85rem;
   font-weight: 700;
@@ -90,7 +90,7 @@ input {
 
 .auth-form input {
   width: 100%;
-  height: 3.25rem;
+  height: 3rem;
   padding: 0 1rem;
   color: var(--ink);
   background: rgba(255, 253, 248, 0.78);
@@ -125,11 +125,11 @@ input {
 
 .primary-button {
   width: 100%;
-  min-height: 3.35rem;
+  min-height: 3.1rem;
   display: inline-grid;
   place-items: center;
   margin-top: 0.25rem;
-  padding: 0.85rem 1.25rem;
+  padding: 0.75rem 1.25rem;
   color: #fffaf0;
   background: var(--red);
   border: 0;
@@ -182,7 +182,7 @@ input {
 }
 
 .auth-switch {
-  margin: 1.6rem 0 0;
+  margin: 1.15rem 0 0;
   color: var(--muted);
   font-size: 0.88rem;
   text-align: center;
@@ -197,8 +197,8 @@ input {
 }
 
 .notice {
-  margin-bottom: 1.25rem;
-  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
   border: 1px solid;
   border-radius: 0.65rem;
   font-size: 0.82rem;
@@ -220,6 +220,6 @@ input {
 
 @media (max-width: 480px) {
   .auth-form input {
-    height: 3.1rem;
+    height: 2.85rem;
   }
 }

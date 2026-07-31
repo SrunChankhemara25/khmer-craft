@@ -139,7 +139,9 @@
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: clamp(2rem, 6vw, 6rem);
+  /* Vertical padding tracks viewport height so the tallest form (register)
+     still fits on a short laptop screen without the page scrolling. */
+  padding: clamp(1.25rem, 4vh, 3rem) clamp(1.5rem, 5vw, 5rem);
 }
 
 .form-wrap {
@@ -147,22 +149,27 @@
 }
 
 .heading {
-  margin-bottom: 2rem;
+  margin-bottom: clamp(1rem, 2.4vh, 1.6rem);
 }
 
 .heading h1 {
-  margin: 0.65rem 0 0.7rem;
+  margin: 0.45rem 0 0.55rem;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(2.1rem, 4vw, 3.25rem);
+  font-size: clamp(1.85rem, 2.5vw, 2.4rem);
   font-weight: 650;
-  line-height: 1.05;
+  line-height: 1.08;
   letter-spacing: -0.04em;
 }
 
 .heading p {
+  /* Reserve two lines on every screen. Login's subtitle wraps to one line and
+     register's to two, so without this the form below them starts at a
+     different height and the page appears to jump when switching. */
+  min-height: 3.2em;
   margin: 0;
   color: var(--muted);
+  font-size: 0.95rem;
   line-height: 1.6;
 }
 
@@ -181,6 +188,23 @@
   color: #8a5a3c;
 }
 
+/* Short windows — a small laptop, or a browser with several toolbars open.
+   Trade some of the heading's presence for fit, so the longest form still
+   never scrolls. */
+@media (max-height: 700px) {
+  .form-panel {
+    padding-block: 1rem;
+  }
+
+  .heading h1 {
+    font-size: clamp(1.55rem, 2vw, 1.85rem);
+  }
+
+  .heading p {
+    font-size: 0.9rem;
+  }
+}
+
 @media (max-width: 800px) {
   .auth-page {
     grid-template-columns: 1fr;
@@ -197,7 +221,7 @@
 
   .mobile-brand {
     display: inline-flex;
-    margin-bottom: 3.5rem;
+    margin-bottom: clamp(1.25rem, 4vh, 2.25rem);
   }
 
   .mobile-brand .brand-mark {
