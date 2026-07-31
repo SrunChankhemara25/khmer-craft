@@ -1,0 +1,48 @@
+<main class="auth-page" [class.admin-theme]="admin()">
+  <section class="story-panel" aria-label="About KhmerCraft">
+    <a class="brand" routerLink="/login" aria-label="KhmerCraft home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" role="img">
+          <path d="M24 4 42 14v20L24 44 6 34V14L24 4Z" />
+          <path d="m15 17 9 14 9-14M24 31v8" />
+        </svg>
+      </span>
+      <span>KhmerCraft</span>
+    </a>
+
+    <div class="story-copy">
+      <span class="story-kicker">Made by hand. Kept by heart.</span>
+      <h2>Discover the soul of Cambodian craft.</h2>
+      <p>
+        A marketplace connecting thoughtful buyers with the makers preserving
+        Cambodia's living traditions.
+      </p>
+    </div>
+
+    <div class="weave" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <p class="story-footer">Supporting local artisans across Cambodia</p>
+  </section>
+
+  <section class="form-panel">
+    <div class="mobile-brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48">
+          <path d="M24 4 42 14v20L24 44 6 34V14L24 4Z" />
+          <path d="m15 17 9 14 9-14M24 31v8" />
+        </svg>
+      </span>
+      KhmerCraft
+    </div>
+
+    <div class="form-wrap">
+      <div class="heading">
+        <span class="eyebrow">{{ eyebrow() }}</span>
+        <h1>{{ title() }}</h1>
+        <p>{{ subtitle() }}</p>
+      </div>
+      <ng-content />
+    </div>
+  </section>
+</main>

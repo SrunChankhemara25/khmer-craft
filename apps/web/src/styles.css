@@ -1,3 +1,225 @@
-/* You can add global styles to this file, and also import other style files */
-
 @import 'tailwindcss';
+
+:root {
+  --red: #7b2a1b;
+  --red-dark: #5f1f15;
+  --gold: #e0b269;
+  --paper: #fbf8f1;
+  --surface: #fffdf8;
+  --ink: #28231f;
+  --muted: #756d64;
+  --line: #ded7ca;
+  --success: #2f694b;
+  --error: #a12f2f;
+  --font-display: Georgia, 'Times New Roman', serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+  color: var(--ink);
+  font-family: var(--font-body);
+  background: var(--paper);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 320px;
+  background: var(--paper);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.auth-form.compact {
+  gap: 0.95rem;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 0.55rem;
+  color: #403a35;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.auth-form label em {
+  margin-left: 0.35rem;
+  color: #928a81;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.auth-form a,
+.auth-switch a,
+.admin-link {
+  color: var(--red);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-form a:hover,
+.auth-switch a:hover,
+.admin-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.22rem;
+}
+
+.auth-form input {
+  width: 100%;
+  height: 3.25rem;
+  padding: 0 1rem;
+  color: var(--ink);
+  background: rgba(255, 253, 248, 0.78);
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.auth-form input::placeholder {
+  color: #a29a90;
+}
+
+.auth-form input:focus {
+  background: #fff;
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(123, 42, 27, 0.1);
+}
+
+.auth-form label:has(input.ng-invalid.ng-touched) input {
+  border-color: var(--error);
+}
+
+.auth-form small {
+  color: var(--error);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.primary-button {
+  width: 100%;
+  min-height: 3.35rem;
+  display: inline-grid;
+  place-items: center;
+  margin-top: 0.25rem;
+  padding: 0.85rem 1.25rem;
+  color: #fffaf0;
+  background: var(--red);
+  border: 0;
+  border-radius: 0.65rem;
+  box-shadow: 0 0.7rem 1.5rem rgba(91, 31, 20, 0.14);
+  cursor: pointer;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--red-dark);
+  box-shadow: 0 0.9rem 1.8rem rgba(91, 31, 20, 0.2);
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.primary-button.admin-button {
+  background: #263238;
+}
+
+.primary-button.admin-button:hover:not(:disabled) {
+  background: #172126;
+}
+
+.button-link {
+  margin-top: 1.25rem;
+}
+
+.text-button {
+  padding: 0.4rem;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.text-button:hover {
+  color: var(--red);
+}
+
+.auth-switch {
+  margin: 1.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.admin-link {
+  display: block;
+  margin-top: 1rem;
+  color: #797169;
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+.notice {
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid;
+  border-radius: 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.notice.success {
+  color: var(--success);
+  background: #eff7f1;
+  border-color: #bcd7c5;
+}
+
+.notice.error {
+  color: var(--error);
+  background: #fff2f0;
+  border-color: #ebc0bb;
+}
+
+@media (max-width: 480px) {
+  .auth-form input {
+    height: 3.1rem;
+  }
+}
