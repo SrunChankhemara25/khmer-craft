@@ -8,7 +8,7 @@ import { WishlistService } from '../core/wishlist/wishlist.service';
 import { NavbarComponent } from '../shared/navbar.component';
 import { FooterComponent } from '../shared/footer.component';
 import { IconComponent } from '../shared/icon.component';
-import { ProductCardComponent } from '../shared/product-card.component';
+import { ProductRailComponent } from '../shared/product-rail.component';
 
 @Component({
   selector: 'app-product-detail',
@@ -17,7 +17,7 @@ import { ProductCardComponent } from '../shared/product-card.component';
     NavbarComponent,
     FooterComponent,
     IconComponent,
-    ProductCardComponent,
+    ProductRailComponent,
   ],
   template: `
     <app-navbar />
@@ -136,12 +136,12 @@ import { ProductCardComponent } from '../shared/product-card.component';
 
       @if (related().length) {
         <section class="container related-section">
-          <h2>More from {{ p.categoryName }}</h2>
-          <div class="product-grid">
-            @for (item of related(); track item.id) {
-              <app-product-card [product]="item" />
-            }
-          </div>
+          <app-product-rail
+            [title]="'More from ' + p.categoryName"
+            [products]="related()"
+            linkRoute="/products"
+            [linkParams]="{ category: p.categorySlug }"
+          />
         </section>
       }
     } @else {
@@ -374,7 +374,7 @@ export class ProductDetailComponent {
   protected readonly product = computed(() => this.catalog.productById(this.id()));
   protected readonly related = computed(() => {
     const current = this.product();
-    return current ? this.catalog.related(current) : [];
+    return current ? this.catalog.related(current, 8) : [];
   });
 
   protected readonly quantity = signal(1);

@@ -5,29 +5,20 @@ import { CatalogService } from '../core/catalog/catalog.service';
 import { NavbarComponent } from '../shared/navbar.component';
 import { FooterComponent } from '../shared/footer.component';
 import { IconComponent } from '../shared/icon.component';
-import { ProductCardComponent } from '../shared/product-card.component';
+import { ProductRailComponent } from '../shared/product-rail.component';
+import { HeroSliderComponent } from '../shared/hero-slider.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavbarComponent, FooterComponent, IconComponent, ProductCardComponent],
+  imports: [CommonModule, RouterLink, NavbarComponent, FooterComponent, IconComponent, ProductRailComponent, HeroSliderComponent],
   template: `
   <app-navbar></app-navbar>
 
+  <app-hero-slider />
+
   <section class="hero">
-    <div class="container hero-inner">
-      <div class="hero-copy animate-in">
-        <span class="badge badge-soft"><ui-icon name="sparkles" [size]="13"></ui-icon> Proudly Local, Authentically Cambodian</span>
-        <h1>Authentic Cambodian products, crafted with love</h1>
-        <p>Support local artisans and farmers. Discover handmade crafts, organic foods, and traditional products from across Cambodia.</p>
-        <div class="hero-actions">
-          <button class="btn btn-primary btn-lg" routerLink="/products">Shop Now <ui-icon name="arrow-right" [size]="16"></ui-icon></button>
-          <button class="btn btn-outline btn-lg" routerLink="/categories">Explore Categories</button>
-        </div>
-      </div>
-      <div class="hero-image img-placeholder dark animate-scale delay-1">Hero image</div>
-    </div>
-    <div class="container features-strip animate-in delay-2">
+    <div class="container features-strip animate-in">
       <div class="feature-item"><span class="f-icon"><ui-icon name="check-circle" [size]="16"></ui-icon></span> Authentic &amp; Local <small>100% Cambodian</small></div>
       <div class="feature-item"><span class="f-icon"><ui-icon name="lock" [size]="16"></ui-icon></span> Secure Payment <small>Safe &amp; Trusted</small></div>
       <div class="feature-item"><span class="f-icon"><ui-icon name="truck" [size]="16"></ui-icon></span> Fast Delivery <small>Across Cambodia</small></div>
@@ -60,39 +51,29 @@ import { ProductCardComponent } from '../shared/product-card.component';
   </section>
 
   <section class="container section">
-    <div class="section-head">
-      <h2>Top picks for Cambodia</h2>
-      <a routerLink="/products" class="see-all">See all <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
-    </div>
-    <div class="product-grid">
-      @for (p of topPicks; track p.id) {
-        <app-product-card [product]="p" />
-      }
-    </div>
+    <app-product-rail
+      title="Top picks for Cambodia"
+      [products]="topPicks"
+      linkRoute="/products"
+    />
   </section>
 
   <section class="container section">
-    <div class="section-head">
-      <h2>Best sellers</h2>
-      <a routerLink="/products" [queryParams]="{ sort: 'featured' }" class="see-all">See all <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
-    </div>
-    <div class="product-grid">
-      @for (p of bestSellers; track p.id) {
-        <app-product-card [product]="p" />
-      }
-    </div>
+    <app-product-rail
+      title="Best sellers"
+      [products]="bestSellers"
+      linkRoute="/products"
+      [linkParams]="{ sort: 'featured' }"
+    />
   </section>
 
   <section class="container section">
-    <div class="section-head">
-      <h2>New arrivals</h2>
-      <a routerLink="/products" [queryParams]="{ sort: 'newest' }" class="see-all">See all <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
-    </div>
-    <div class="product-grid">
-      @for (p of newArrivals; track p.id) {
-        <app-product-card [product]="p" />
-      }
-    </div>
+    <app-product-rail
+      title="New arrivals"
+      [products]="newArrivals"
+      linkRoute="/products"
+      [linkParams]="{ sort: 'newest' }"
+    />
   </section>
 
   <section class="container section">
@@ -112,27 +93,23 @@ import { ProductCardComponent } from '../shared/product-card.component';
 
   <!-- Collection rows the spec calls for: agro-products and handmade crafts. -->
   <section class="container section">
-    <div class="section-head">
-      <h2>Local food &amp; agro products</h2>
-      <a routerLink="/products" [queryParams]="{ collection: 'agro-products' }" class="see-all">Explore agro products <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
-    </div>
-    <div class="product-grid">
-      @for (p of agroProducts; track p.id) {
-        <app-product-card [product]="p" />
-      }
-    </div>
+    <app-product-rail
+      title="Local food & agro products"
+      [products]="agroProducts"
+      linkRoute="/products"
+      linkLabel="Explore agro products"
+      [linkParams]="{ collection: 'agro-products' }"
+    />
   </section>
 
   <section class="container section">
-    <div class="section-head">
-      <h2>Handmade craft collection</h2>
-      <a routerLink="/products" [queryParams]="{ collection: 'handmade-crafts' }" class="see-all">Explore handmade crafts <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
-    </div>
-    <div class="product-grid">
-      @for (p of handmadeCrafts; track p.id) {
-        <app-product-card [product]="p" />
-      }
-    </div>
+    <app-product-rail
+      title="Handmade craft collection"
+      [products]="handmadeCrafts"
+      linkRoute="/products"
+      linkLabel="Explore handmade crafts"
+      [linkParams]="{ collection: 'handmade-crafts' }"
+    />
   </section>
 
   <section class="container section">
@@ -150,15 +127,11 @@ import { ProductCardComponent } from '../shared/product-card.component';
   </section>
 
   <section class="container section">
-    <div class="section-head">
-      <h2>Recommended for you</h2>
-      <a routerLink="/products" class="see-all">See all <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
-    </div>
-    <div class="product-grid">
-      @for (p of recommended; track p.id) {
-        <app-product-card [product]="p" />
-      }
-    </div>
+    <app-product-rail
+      title="Recommended for you"
+      [products]="recommended"
+      linkRoute="/products"
+    />
   </section>
 
   <section class="container section why-choose">
@@ -232,13 +205,15 @@ import { ProductCardComponent } from '../shared/product-card.component';
   <app-footer></app-footer>
   `,
   styles: [`
-    .hero { background: var(--color-bg-alt); padding: 56px 0 28px; }
+    /* The hero band now holds only the trust strip; the slider above owns the
+       headline space, so the old 56px top padding just left a gap. */
+    .hero { background: var(--color-bg-alt); padding: 20px 0 24px; border-top: 1px solid var(--color-border); }
     .hero-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
     .hero-copy h1 { font-size: 44px; line-height: 1.1; margin: 16px 0 18px; }
     .hero-copy p { color: var(--color-muted); font-size: 15.5px; margin-bottom: 26px; max-width: 460px; line-height: 1.6; }
     .hero-actions { display: flex; gap: 12px; }
     .hero-image { height: 340px; border-radius: var(--radius-lg); }
-    .features-strip { display: flex; justify-content: space-between; margin-top: 40px; flex-wrap: wrap; gap: 20px; }
+    .features-strip { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
     .feature-item { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 13.5px; }
     .feature-item small { display: block; font-weight: 400; color: var(--color-muted); font-size: 12px; }
     .f-icon { width: 32px; height: 32px; border-radius: 50%; background: #fff; border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-accent); flex-shrink: 0; }
@@ -330,12 +305,13 @@ export class HomeComponent {
   // same catalog as the products page instead of its own hardcoded copy.
   readonly categories = this.catalog.categories;
   readonly stores = this.catalog.stores;
-  readonly topPicks = this.catalog.collection('top-picks', 4);
-  readonly bestSellers = this.catalog.bestSellers(4);
-  readonly newArrivals = this.catalog.newArrivals(4);
-  readonly agroProducts = this.catalog.collection('agro-products', 4);
-  readonly handmadeCrafts = this.catalog.collection('handmade-crafts', 4);
-  readonly recommended = this.catalog.collection('recommended', 4);
+  // Rails scroll horizontally, so they take more than a grid row would.
+  readonly topPicks = this.catalog.collection('top-picks');
+  readonly bestSellers = this.catalog.bestSellers(8);
+  readonly newArrivals = this.catalog.newArrivals(8);
+  readonly agroProducts = this.catalog.collection('agro-products');
+  readonly handmadeCrafts = this.catalog.collection('handmade-crafts');
+  readonly recommended = this.catalog.collection('recommended');
 
   readonly collectionLinks = [
     { label: 'New Arrivals', params: { sort: 'newest' } },
