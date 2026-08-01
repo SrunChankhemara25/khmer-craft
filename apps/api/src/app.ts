@@ -17,7 +17,9 @@ import {
 } from './middleware/security';
 import { AppError } from './errors/app-error';
 import authRoutes from './modules/auth/auth.routes';
-import productRoutes from './routes/products';
+import cartRoutes from './modules/cart/cart.routes';
+import catalogRoutes from './modules/catalog/catalog.routes';
+import orderRoutes from './modules/orders/orders.routes';
 
 export const createApp = () => {
   const app = express();
@@ -60,8 +62,14 @@ export const createApp = () => {
   app.get('/', (_request, response) => {
     response.json({ name: 'KhmerCraft API', status: 'ok' });
   });
+  // Auth stays at /auth for backwards compatibility with the web client that
+  // is already deployed against it; commerce is namespaced under /api.
+  // TODO(api-prefix): fold /auth into /api/auth once the web client can be
+  // updated in the same release.
   app.use('/auth', authRoutes);
-  app.use('/api/products', productRoutes);
+  app.use('/api/products', catalogRoutes);
+  app.use('/api/cart', cartRoutes);
+  app.use('/api/orders', orderRoutes);
 
   // Interactive API docs. Disabled in production so the schema is not public.
   if (isDocsEnabled) {
