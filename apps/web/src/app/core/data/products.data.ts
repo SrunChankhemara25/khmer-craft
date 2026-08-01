@@ -1,0 +1,204 @@
+import { Product, StockStatus } from '../catalog/catalog.models';
+
+const stockStatus = (stock: number): StockStatus =>
+  stock === 0 ? 'out-of-stock' : stock <= 5 ? 'low-stock' : 'in-stock';
+
+interface Seed {
+  id: string;
+  name: string;
+  price: number;
+  compareAtPrice?: number;
+  categorySlug: string;
+  categoryName: string;
+  storeId: string;
+  sellerName: string;
+  rating: number;
+  reviewCount: number;
+  stock: number;
+  soldCount: number;
+  createdAt: string;
+  collections: string[];
+  description: string;
+}
+
+/**
+ * Mock catalog. Replace with `GET /api/products` when the endpoint exists —
+ * every consumer goes through CatalogService, so no component needs changing.
+ *
+ * Deliberately includes one out-of-stock and two low-stock items so the stock
+ * badges and the disabled Add-to-Cart path are exercised in the UI.
+ */
+const SEED: Seed[] = [
+  {
+    id: 'p001', name: 'Handmade Khmer Silk Scarf', price: 12.5, compareAtPrice: 16,
+    categorySlug: 'weaving', categoryName: 'Weaving',
+    storeId: 's001', sellerName: 'Srey Khmer Handmade Store',
+    rating: 4.8, reviewCount: 124, stock: 20, soldCount: 480,
+    createdAt: '2026-05-02', collections: ['top-picks', 'best-sellers', 'handmade-crafts'],
+    description:
+      'A hand-woven silk krama from Takeo province, dyed with natural indigo. Light enough for the dry season and soft enough to wear every day.',
+  },
+  {
+    id: 'p002', name: 'Kampong Speu Palm Sugar 500g', price: 3.5,
+    categorySlug: 'palm-sugar', categoryName: 'Palm Sugar',
+    storeId: 's002', sellerName: 'Kampong Speu Palm Sugar',
+    rating: 4.9, reviewCount: 208, stock: 60, soldCount: 940,
+    createdAt: '2026-04-18', collections: ['top-picks', 'best-sellers', 'agro-products'],
+    description:
+      'GI-certified palm sugar with a caramel, slightly smoky finish. Harvested at dawn and boiled the same morning in open pans.',
+  },
+  {
+    id: 'p003', name: 'Organic Jasmine Rice 5kg', price: 14,
+    categorySlug: 'rice-products', categoryName: 'Rice Products',
+    storeId: 's003', sellerName: 'Battambang Rice Farm',
+    rating: 4.7, reviewCount: 176, stock: 35, soldCount: 620,
+    createdAt: '2026-03-27', collections: ['top-picks', 'best-sellers', 'agro-products'],
+    description:
+      'Long-grain jasmine rice grown on the Sangke river plain without synthetic fertiliser. Milled to order and packed in breathable cotton.',
+  },
+  {
+    id: 'p004', name: 'Woven Bamboo Basket', price: 9.75,
+    categorySlug: 'bamboo-products', categoryName: 'Bamboo Products',
+    storeId: 's005', sellerName: 'Takeo Bamboo Craft',
+    rating: 4.6, reviewCount: 87, stock: 4, soldCount: 210,
+    createdAt: '2026-06-11', collections: ['top-picks', 'new-arrivals', 'handmade-crafts'],
+    description:
+      'A round market basket woven from locally cut bamboo, tight enough to hold rice and light enough to carry all morning.',
+  },
+  {
+    id: 'p005', name: 'Clay Pottery Cup Set of 4', price: 18,
+    categorySlug: 'pottery', categoryName: 'Pottery',
+    storeId: 's004', sellerName: 'Phnom Penh Pottery House',
+    rating: 4.5, reviewCount: 64, stock: 12, soldCount: 150,
+    createdAt: '2026-06-02', collections: ['top-picks', 'handmade-crafts'],
+    description:
+      'Four wheel-thrown cups in a matte celadon glaze drawn from Angkorian ceramics. Each one varies slightly — they are thrown by hand.',
+  },
+  {
+    id: 'p006', name: 'Dried Mango Slices 250g', price: 4.25,
+    categorySlug: 'dried-fruits', categoryName: 'Dried Fruits',
+    storeId: 's002', sellerName: 'Kampong Speu Palm Sugar',
+    rating: 4.7, reviewCount: 132, stock: 48, soldCount: 510,
+    createdAt: '2026-05-20', collections: ['top-picks', 'agro-products'],
+    description:
+      'Keo Romeat mango dried slowly in the sun with no added sugar or sulphites. Chewy, tart and intensely fragrant.',
+  },
+  {
+    id: 'p007', name: 'Khmer Ceramic Serving Bowl', price: 22,
+    categorySlug: 'pottery', categoryName: 'Pottery',
+    storeId: 's004', sellerName: 'Phnom Penh Pottery House',
+    rating: 4.8, reviewCount: 41, stock: 9, soldCount: 96,
+    createdAt: '2026-06-24', collections: ['new-arrivals', 'handmade-crafts', 'recommended'],
+    description:
+      'A wide stoneware bowl for samlor or salad, glazed in ash green with an unglazed foot that shows the raw clay.',
+  },
+  {
+    id: 'p008', name: 'Handmade Wooden Spoon Pair', price: 6.5,
+    categorySlug: 'handmade-crafts', categoryName: 'Handmade Crafts',
+    storeId: 's001', sellerName: 'Srey Khmer Handmade Store',
+    rating: 4.4, reviewCount: 58, stock: 26, soldCount: 187,
+    createdAt: '2026-04-05', collections: ['handmade-crafts', 'recommended'],
+    description:
+      'Two cooking spoons carved from offcut jackfruit wood and finished with food-safe oil. Light, warm and kind to a clay pot.',
+  },
+  {
+    id: 'p009', name: 'Cotton Krama Scarf — Classic Check', price: 8.9,
+    categorySlug: 'weaving', categoryName: 'Weaving',
+    storeId: 's001', sellerName: 'Srey Khmer Handmade Store',
+    rating: 4.6, reviewCount: 149, stock: 40, soldCount: 733,
+    createdAt: '2026-02-14', collections: ['best-sellers', 'handmade-crafts'],
+    description:
+      'The everyday Cambodian krama in red and white cotton — a scarf, a towel, a sunshade and a shopping bag, depending on the hour.',
+  },
+  {
+    id: 'p010', name: 'Organic Red Rice 2kg', price: 7.4,
+    categorySlug: 'rice-products', categoryName: 'Rice Products',
+    storeId: 's003', sellerName: 'Battambang Rice Farm',
+    rating: 4.5, reviewCount: 71, stock: 30, soldCount: 264,
+    createdAt: '2026-05-09', collections: ['agro-products', 'recommended'],
+    description:
+      'Unpolished red rice with a nutty bite and a long chew. Needs a little more water and about ten more minutes than white rice.',
+  },
+  {
+    id: 'p011', name: 'Palm Sugar Candy Box', price: 5.2,
+    categorySlug: 'local-food', categoryName: 'Local Food',
+    storeId: 's002', sellerName: 'Kampong Speu Palm Sugar',
+    rating: 4.8, reviewCount: 95, stock: 0, soldCount: 402,
+    createdAt: '2026-03-30', collections: ['agro-products', 'best-sellers'],
+    description:
+      'Soft palm sugar discs pressed into a gift box. Traditionally eaten with green tea — currently between harvests.',
+  },
+  {
+    id: 'p012', name: 'Bamboo Steamer Tray', price: 11.25,
+    categorySlug: 'bamboo-products', categoryName: 'Bamboo Products',
+    storeId: 's005', sellerName: 'Takeo Bamboo Craft',
+    rating: 4.5, reviewCount: 46, stock: 15, soldCount: 128,
+    createdAt: '2026-06-30', collections: ['new-arrivals', 'handmade-crafts'],
+    description:
+      'A two-tier steamer woven and pinned without glue, sized for a standard wok. Season it once and it will outlast the wok.',
+  },
+  {
+    id: 'p013', name: 'Dried Banana Chips 200g', price: 3.1,
+    categorySlug: 'dried-fruits', categoryName: 'Dried Fruits',
+    storeId: 's002', sellerName: 'Kampong Speu Palm Sugar',
+    rating: 4.3, reviewCount: 63, stock: 52, soldCount: 298,
+    createdAt: '2026-05-28', collections: ['agro-products'],
+    description:
+      'Thin-sliced chek namvar banana, sun-dried until crisp. Nothing added but a little palm sugar at the end.',
+  },
+  {
+    id: 'p014', name: 'Silk Table Runner', price: 26,
+    categorySlug: 'weaving', categoryName: 'Weaving',
+    storeId: 's001', sellerName: 'Srey Khmer Handmade Store',
+    rating: 4.9, reviewCount: 32, stock: 5, soldCount: 61,
+    createdAt: '2026-07-08', collections: ['new-arrivals', 'handmade-crafts', 'recommended'],
+    description:
+      'A hol-technique silk runner in gold and deep plum. Roughly forty hours on the loom, and it shows in the weight of the cloth.',
+  },
+  {
+    id: 'p015', name: 'Prahok Ceramic Storage Jar', price: 16.5,
+    categorySlug: 'pottery', categoryName: 'Pottery',
+    storeId: 's004', sellerName: 'Phnom Penh Pottery House',
+    rating: 4.4, reviewCount: 28, stock: 11, soldCount: 74,
+    createdAt: '2026-04-22', collections: ['handmade-crafts'],
+    description:
+      'A lidded stoneware jar in the old kitchen shape, glazed inside and left raw outside so it stays cool on a shelf.',
+  },
+  {
+    id: 'p016', name: 'Kampot Pepper 100g', price: 8.75,
+    categorySlug: 'local-food', categoryName: 'Local Food',
+    storeId: 's002', sellerName: 'Kampong Speu Palm Sugar',
+    rating: 4.9, reviewCount: 241, stock: 44, soldCount: 856,
+    createdAt: '2026-03-12', collections: ['best-sellers', 'agro-products', 'recommended'],
+    description:
+      'Whole black Kampot peppercorns, sun-dried and hand-sorted. Floral and hot at once — the reason the region has a GI mark.',
+  },
+  {
+    id: 'p017', name: 'Rattan Fruit Bowl', price: 13.9,
+    categorySlug: 'bamboo-products', categoryName: 'Bamboo Products',
+    storeId: 's005', sellerName: 'Takeo Bamboo Craft',
+    rating: 4.6, reviewCount: 39, stock: 18, soldCount: 112,
+    createdAt: '2026-06-17', collections: ['new-arrivals', 'handmade-crafts'],
+    description:
+      'An open rattan bowl with a rolled rim, wide enough for a hand of bananas and light enough to hang on a hook.',
+  },
+  {
+    id: 'p018', name: 'Coconut Shell Candle', price: 7.8,
+    categorySlug: 'handmade-crafts', categoryName: 'Handmade Crafts',
+    storeId: 's001', sellerName: 'Srey Khmer Handmade Store',
+    rating: 4.5, reviewCount: 54, stock: 22, soldCount: 203,
+    createdAt: '2026-05-15', collections: ['handmade-crafts', 'recommended'],
+    description:
+      'Soy wax poured into a polished half coconut shell, scented lightly with lemongrass. The shell makes a good tealight holder after.',
+  },
+];
+
+export const PRODUCTS: Product[] = SEED.map((seed) => ({
+  ...seed,
+  slug: seed.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, ''),
+  image: null,
+  status: stockStatus(seed.stock),
+}));

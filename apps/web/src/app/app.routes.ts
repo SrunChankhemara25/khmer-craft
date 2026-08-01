@@ -1,7 +1,146 @@
 import { Routes } from '@angular/router';
 import { buyerGuard } from './core/auth/auth.guard';
 
+/**
+ * Everything is lazy-loaded. The storefront branch imported all 19 page
+ * components eagerly, which put the whole site in the initial bundle.
+ */
 export const routes: Routes = [
+  // ---------------------------------------------------------------- storefront
+  {
+    path: '',
+    loadComponent: () =>
+      import('./pages/home.component').then((m) => m.HomeComponent),
+    title: 'KhmerCraft — Cambodian handmade crafts & local products',
+  },
+  {
+    path: 'products',
+    loadComponent: () =>
+      import('./pages/products.component').then((m) => m.ProductsComponent),
+    title: 'Products | KhmerCraft',
+  },
+  {
+    path: 'product/:id',
+    loadComponent: () =>
+      import('./pages/product-detail.component').then(
+        (m) => m.ProductDetailComponent,
+      ),
+  },
+  {
+    path: 'categories',
+    loadComponent: () =>
+      import('./pages/categories.component').then((m) => m.CategoriesComponent),
+    title: 'Categories | KhmerCraft',
+  },
+  {
+    path: 'stores',
+    loadComponent: () =>
+      import('./pages/stores.component').then((m) => m.StoresComponent),
+    title: 'Stores | KhmerCraft',
+  },
+  {
+    path: 'stores/:id',
+    loadComponent: () =>
+      import('./pages/store-detail.component').then(
+        (m) => m.StoreDetailComponent,
+      ),
+  },
+  {
+    path: 'cart',
+    loadComponent: () =>
+      import('./pages/cart.component').then((m) => m.CartComponent),
+    title: 'Your cart | KhmerCraft',
+  },
+  {
+    path: 'wishlist',
+    loadComponent: () =>
+      import('./pages/wishlist.component').then((m) => m.WishlistComponent),
+    title: 'Your wishlist | KhmerCraft',
+  },
+
+  // ------------------------------------------------------------------ checkout
+  // Guarded: an anonymous visitor is sent to /login with a returnUrl rather
+  // than filling in a delivery address they cannot submit.
+  {
+    path: 'checkout',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./pages/checkout-delivery.component').then(
+        (m) => m.CheckoutDeliveryComponent,
+      ),
+    title: 'Checkout | KhmerCraft',
+  },
+  {
+    path: 'checkout/shipping',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./pages/checkout-shipping.component').then(
+        (m) => m.CheckoutShippingComponent,
+      ),
+    title: 'Shipping | KhmerCraft',
+  },
+  {
+    path: 'checkout/payment',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./pages/checkout-payment.component').then(
+        (m) => m.CheckoutPaymentComponent,
+      ),
+    title: 'Payment | KhmerCraft',
+  },
+  {
+    path: 'checkout/review',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./pages/checkout-review.component').then(
+        (m) => m.CheckoutReviewComponent,
+      ),
+    title: 'Review order | KhmerCraft',
+  },
+  {
+    path: 'order-success',
+    loadComponent: () =>
+      import('./pages/order-success.component').then(
+        (m) => m.OrderSuccessComponent,
+      ),
+    title: 'Order confirmed | KhmerCraft',
+  },
+
+  // ----------------------------------------------------------------- marketing
+  {
+    path: 'about',
+    loadComponent: () =>
+      import('./pages/about.component').then((m) => m.AboutComponent),
+    title: 'About | KhmerCraft',
+  },
+  {
+    path: 'become-a-seller',
+    loadComponent: () =>
+      import('./pages/become-seller.component').then(
+        (m) => m.BecomeSellerComponent,
+      ),
+    title: 'Become a seller | KhmerCraft',
+  },
+  // The spec uses /become-seller; keep both spellings working.
+  { path: 'become-seller', pathMatch: 'full', redirectTo: 'become-a-seller' },
+
+  // ------------------------------------------------------------------- account
+  {
+    path: 'profile',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./features/account/profile/profile').then((m) => m.Profile),
+    title: 'My profile | KhmerCraft',
+  },
+  {
+    path: 'orders',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./features/account/orders/orders').then((m) => m.Orders),
+    title: 'My orders | KhmerCraft',
+  },
+
+  // ---------------------------------------------------------------------- auth
   {
     path: 'login',
     loadComponent: () =>
@@ -16,6 +155,8 @@ export const routes: Routes = [
       ),
     title: 'Create buyer account | KhmerCraft',
   },
+  // The storefront nav links to /signup; route it at the real register page.
+  { path: 'signup', pathMatch: 'full', redirectTo: 'register' },
   {
     path: 'forgot-password',
     loadComponent: () =>
@@ -49,6 +190,51 @@ export const routes: Routes = [
       ),
     title: 'Admin sign in | KhmerCraft',
   },
-  { path: '', pathMatch: 'full', redirectTo: 'login' },
-  { path: '**', redirectTo: 'login' },
+
+  // ------------------------------------------------------------- support pages
+  // One component driven by route data — these differ only in copy.
+  {
+    path: 'help',
+    loadComponent: () =>
+      import('./pages/info.component').then((m) => m.InfoComponent),
+    data: { page: 'help' },
+    title: 'Help centre | KhmerCraft',
+  },
+  {
+    path: 'contact',
+    loadComponent: () =>
+      import('./pages/info.component').then((m) => m.InfoComponent),
+    data: { page: 'contact' },
+    title: 'Contact us | KhmerCraft',
+  },
+  {
+    path: 'shipping',
+    loadComponent: () =>
+      import('./pages/info.component').then((m) => m.InfoComponent),
+    data: { page: 'shipping' },
+    title: 'Shipping information | KhmerCraft',
+  },
+  {
+    path: 'terms',
+    loadComponent: () =>
+      import('./pages/info.component').then((m) => m.InfoComponent),
+    data: { page: 'terms' },
+    title: 'Terms of service | KhmerCraft',
+  },
+  {
+    path: 'privacy',
+    loadComponent: () =>
+      import('./pages/info.component').then((m) => m.InfoComponent),
+    data: { page: 'privacy' },
+    title: 'Privacy policy | KhmerCraft',
+  },
+
+  // A real 404 rather than a silent redirect, so a broken link stays visible
+  // instead of quietly dumping the visitor on the homepage.
+  {
+    path: '**',
+    loadComponent: () =>
+      import('./pages/not-found.component').then((m) => m.NotFoundComponent),
+    title: 'Page not found | KhmerCraft',
+  },
 ];

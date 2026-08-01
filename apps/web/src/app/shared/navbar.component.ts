@@ -1,0 +1,463 @@
+import {
+  Component,
+  HostListener,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter } from 'rxjs';
+import { AuthService } from '../core/auth/auth.service';
+import { CartService } from '../core/cart/cart.service';
+import { WishlistService } from '../core/wishlist/wishlist.service';
+import { IconComponent } from './icon.component';
+
+@Component({
+  selector: 'app-navbar',
+  imports: [FormsModule, RouterLink, IconComponent],
+  template: `
+    <header class="navbar" [class.scrolled]="scrolled()">
+      <!-- Announcement bar: slim, and every claim here links somewhere real. -->
+      <div class="announce">
+        <div class="container announce-inner">
+          <span><ui-icon name="truck" [size]="13" /> Free delivery over $50 in Phnom Penh</span>
+          <span class="dot">·</span>
+          <span><ui-icon name="shield" [size]="13" /> Secure checkout</span>
+          <div class="announce-links">
+            <a routerLink="/orders">Track order</a>
+            <a routerLink="/help">Support</a>
+            <a routerLink="/become-a-seller">Seller portal</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="navbar-inner container">
+        <a routerLink="/" class="logo">
+          <span class="logo-mark"
+            ><ui-icon name="leaf" [size]="16" color="#fff"
+          /></span>
+          KhmerCraft
+        </a>
+
+        <form class="search-box" (ngSubmit)="submitSearch()">
+          <ui-icon name="search" [size]="16" />
+          <input
+            type="search"
+            name="q"
+            [(ngModel)]="term"
+            placeholder="Search handmade crafts, palm sugar, rice products..."
+            aria-label="Search products"
+          />
+          <button type="submit" class="search-go" aria-label="Search">
+            <ui-icon name="arrow-right" [size]="14" />
+          </button>
+        </form>
+
+        <nav class="nav-links">
+          <a routerLink="/" [class.active]="is('home')">Home</a>
+          <a routerLink="/products" [class.active]="is('products')">Products</a>
+          <a routerLink="/categories" [class.active]="is('categories')"
+            >Categories</a
+          >
+          <a routerLink="/stores" [class.active]="is('stores')">Stores</a>
+          <a routerLink="/about" [class.active]="is('about')">About</a>
+          <a routerLink="/become-a-seller" [class.active]="is('seller')"
+            >Become a Seller</a
+          >
+        </nav>
+
+        <div class="nav-actions">
+          <a class="icon-btn wishlist-btn" routerLink="/wishlist" aria-label="Wishlist">
+            <ui-icon
+              name="heart"
+              [size]="19"
+              [filled]="wishlistCount() > 0"
+              [color]="wishlistCount() > 0 ? '#d1453b' : undefined"
+            />
+            @if (wishlistCount()) {
+              <span class="wishlist-badge">{{ wishlistCount() }}</span>
+            }
+          </a>
+
+          <a class="icon-btn cart-btn" routerLink="/cart" aria-label="Cart">
+            <ui-icon name="cart" [size]="19" />
+            @if (cartCount()) {
+              <span class="cart-badge">{{ cartCount() }}</span>
+            }
+          </a>
+
+          @if (user(); as currentUser) {
+            <a class="signin-btn" routerLink="/profile">
+              <ui-icon name="user" [size]="15" />
+              <span class="signin-label">{{ firstName(currentUser.name) }}</span>
+            </a>
+          } @else {
+            <a class="signin-btn" routerLink="/login">
+              <ui-icon name="user" [size]="15" />
+              <span class="signin-label">Sign In</span>
+            </a>
+          }
+
+          <button
+            type="button"
+            class="menu-btn"
+            aria-label="Menu"
+            [attr.aria-expanded]="menuOpen()"
+            (click)="menuOpen.set(!menuOpen())"
+          >
+            <ui-icon [name]="menuOpen() ? 'x' : 'menu'" [size]="20" />
+          </button>
+        </div>
+      </div>
+
+      @if (menuOpen()) {
+        <nav class="mobile-menu">
+          <a routerLink="/" (click)="menuOpen.set(false)">Home</a>
+          <a routerLink="/products" (click)="menuOpen.set(false)">Products</a>
+          <a routerLink="/categories" (click)="menuOpen.set(false)">Categories</a>
+          <a routerLink="/stores" (click)="menuOpen.set(false)">Stores</a>
+          <a routerLink="/about" (click)="menuOpen.set(false)">About</a>
+          <a routerLink="/become-a-seller" (click)="menuOpen.set(false)"
+            >Become a Seller</a
+          >
+        </nav>
+      }
+    </header>
+  `,
+  styles: [
+    `
+      .navbar {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(14px) saturate(1.6);
+        -webkit-backdrop-filter: blur(14px) saturate(1.6);
+        border-bottom: 1px solid transparent;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        transition:
+          border-color var(--dur-base) var(--ease-standard),
+          box-shadow var(--dur-base) var(--ease-standard);
+      }
+      .navbar.scrolled {
+        border-bottom-color: var(--color-border);
+        box-shadow: var(--shadow-xs);
+      }
+      .announce {
+        background: var(--color-accent);
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 12px;
+      }
+      .announce-inner {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 34px;
+      }
+      .announce-inner span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .announce .dot {
+        opacity: 0.5;
+      }
+      .announce-links {
+        display: flex;
+        gap: 16px;
+        margin-left: auto;
+      }
+      .announce-links a:hover {
+        text-decoration: underline;
+      }
+      .navbar-inner {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        padding-top: 14px;
+        padding-bottom: 14px;
+        height: var(--header-h);
+      }
+      .logo {
+        font-family: var(--font-heading);
+        font-weight: 800;
+        font-size: 18px;
+        color: var(--color-text);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        letter-spacing: -0.02em;
+      }
+      .logo-mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--color-accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .search-box {
+        flex: 1;
+        max-width: 420px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        background: var(--color-bg-alt);
+        border: 1px solid transparent;
+        border-radius: var(--radius-md);
+        padding: 9px 14px;
+        color: var(--color-muted);
+        transition: all var(--dur-base) var(--ease-standard);
+      }
+      .search-box:focus-within {
+        border-color: var(--color-border-strong);
+        background: #fff;
+        box-shadow: var(--shadow-xs);
+      }
+      .search-box input {
+        border: none;
+        background: transparent;
+        outline: none;
+        width: 100%;
+        font-size: 13.5px;
+        color: var(--color-text);
+      }
+      .search-box input:focus {
+        box-shadow: none !important;
+        border-color: transparent !important;
+      }
+      .search-go {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+        border: 0;
+        border-radius: var(--radius-xs);
+        background: transparent;
+        color: var(--color-muted);
+      }
+      .search-go:hover {
+        background: var(--color-bg-hover);
+        color: var(--color-text);
+      }
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        font-size: 13.5px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        margin-left: auto;
+      }
+      .nav-links a {
+        padding: 6px 0;
+        border-bottom: 2px solid transparent;
+        white-space: nowrap;
+      }
+      .nav-links a:hover {
+        color: var(--color-text);
+      }
+      .nav-links a.active {
+        color: var(--color-text);
+        font-weight: 600;
+        border-bottom-color: var(--color-accent);
+      }
+      .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .icon-btn {
+        background: none;
+        border: none;
+        position: relative;
+        color: var(--color-text-secondary);
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .icon-btn:hover {
+        background: var(--color-bg-alt);
+        color: var(--color-text);
+      }
+      .wishlist-btn:hover {
+        color: var(--color-danger);
+      }
+      .wishlist-badge,
+      .cart-badge {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        color: #fff;
+        font-size: 9.5px;
+        font-weight: 700;
+        border-radius: 50%;
+        min-width: 15px;
+        height: 15px;
+        padding: 0 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1.5px solid #fff;
+      }
+      .wishlist-badge {
+        background: var(--color-danger);
+      }
+      .cart-badge {
+        background: var(--color-accent);
+      }
+      .signin-btn {
+        background: var(--color-accent);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-full);
+        padding: 9px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-left: 6px;
+        white-space: nowrap;
+      }
+      .signin-btn:hover {
+        background: var(--color-accent-hover);
+      }
+      .menu-btn {
+        display: none;
+        background: none;
+        border: none;
+        color: var(--color-text);
+        width: 36px;
+        height: 36px;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-sm);
+      }
+      .menu-btn:hover {
+        background: var(--color-bg-alt);
+      }
+      .mobile-menu {
+        display: none;
+        flex-direction: column;
+        gap: 2px;
+        padding: 8px 20px 16px;
+        border-top: 1px solid var(--color-border);
+        background: #fff;
+      }
+      .mobile-menu a {
+        padding: 11px 4px;
+        font-size: 14px;
+        font-weight: 550;
+        border-bottom: 1px solid var(--color-border);
+      }
+      .mobile-menu a:last-child {
+        border-bottom: 0;
+      }
+      @media (max-width: 980px) {
+        .nav-links {
+          display: none;
+        }
+        .menu-btn {
+          display: flex;
+        }
+        .mobile-menu {
+          display: flex;
+        }
+        .navbar-inner {
+          gap: 14px;
+        }
+        .announce-links {
+          display: none;
+        }
+      }
+      @media (max-width: 700px) {
+        .search-box {
+          display: none;
+        }
+      }
+      /* Below ~420px the icon row plus a labelled Sign In button overflows the
+         viewport, so the button collapses to its icon. */
+      @media (max-width: 430px) {
+        .signin-label {
+          display: none;
+        }
+        .signin-btn {
+          padding: 9px 11px;
+          margin-left: 0;
+        }
+        .nav-actions {
+          gap: 2px;
+        }
+      }
+    `,
+  ],
+})
+export class NavbarComponent {
+  private readonly router = inject(Router);
+  private readonly cart = inject(CartService);
+  private readonly wishlist = inject(WishlistService);
+  private readonly auth = inject(AuthService);
+
+  protected readonly term = signal('');
+  protected readonly menuOpen = signal(false);
+  protected readonly scrolled = signal(false);
+
+  protected readonly cartCount = this.cart.count;
+  protected readonly wishlistCount = this.wishlist.count;
+  protected readonly user = this.auth.user;
+
+  /** Active nav item, derived from the URL rather than passed in by each page. */
+  private readonly url = signal(this.router.url);
+  private readonly section = computed(() => {
+    const path = this.url().split('?')[0];
+    if (path === '/') return 'home';
+    if (path.startsWith('/products') || path.startsWith('/product/'))
+      return 'products';
+    if (path.startsWith('/categories')) return 'categories';
+    if (path.startsWith('/stores')) return 'stores';
+    if (path.startsWith('/about')) return 'about';
+    if (path.startsWith('/become-a-seller')) return 'seller';
+    return '';
+  });
+
+  constructor() {
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((event) => {
+        this.url.set(event.urlAfterRedirects);
+        this.menuOpen.set(false);
+      });
+
+    // Resolve the session once so the header can show a profile link instead
+    // of "Sign In" for a user who is already authenticated.
+    this.auth.loadCurrentUser().subscribe();
+  }
+
+  protected is(name: string): boolean {
+    return this.section() === name;
+  }
+
+  protected firstName(name: string): string {
+    return name.split(' ')[0];
+  }
+
+  protected submitSearch(): void {
+    const search = this.term().trim();
+    this.router.navigate(['/products'], {
+      queryParams: search ? { search } : {},
+    });
+  }
+
+  @HostListener('window:scroll')
+  onScroll() {
+    this.scrolled.set((window.scrollY || 0) > 4);
+  }
+}

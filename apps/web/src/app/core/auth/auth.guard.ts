@@ -3,7 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from './auth.service';
 
-export const buyerGuard: CanActivateFn = () => {
+export const buyerGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
@@ -12,7 +12,10 @@ export const buyerGuard: CanActivateFn = () => {
       user?.role === 'BUYER'
         ? true
         : router.createUrlTree(['/login'], {
-            queryParams: { returnUrl: '/account/change-password' },
+            // Send them back to whatever they were actually trying to reach.
+            // This used to be hardcoded to the change-password page, which
+            // was wrong for every other guarded route (checkout, profile...).
+            queryParams: { returnUrl: state.url },
           }),
     ),
   );
