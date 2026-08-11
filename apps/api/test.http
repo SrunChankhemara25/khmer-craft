@@ -1,0 +1,71 @@
+### -------------------------------------------
+### KHMCRAFT API TESTING FILE
+### You can use the "REST Client" extension in VS Code to click "Send Request" directly from this file!
+### -------------------------------------------
+
+### 1. Submit a Seller Application
+POST http://localhost:3001/api/sellers/apply
+Content-Type: application/json
+
+{
+  "firstName": "Sokha",
+  "lastName": "Lim",
+  "phoneNumber": "+85512345678",
+  "province": "Phnom Penh",
+  "primaryCategory": "Weaving"
+}
+
+###
+
+### 2. Get All Seller Applications
+GET http://localhost:3001/api/sellers/apply
+
+###
+
+### 3. Register an Approved Seller
+POST http://localhost:3001/api/sellers/register
+Content-Type: application/json
+
+{
+  "name": "Sokha Lim",
+  "email": "sokha@khmercraft.com",
+  "password": "mysecurepassword123",
+  "storeName": "Sokha's Traditional Weaving",
+  "storeDescription": "Preserving the art of Cambodian silk."
+}
+
+###
+
+### 4. Login as Seller (Gets JWT Token)
+POST http://localhost:3001/api/sellers/login
+Content-Type: application/json
+
+{
+  "email": "sokha@khmercraft.com",
+  "password": "mysecurepassword123"
+}
+
+###
+
+### 5. Get all Approved Sellers (Stores)
+GET http://localhost:3001/api/sellers/stores
+
+###
+
+### 6. Create a Product (PROTECTED - Requires Token from step 4)
+# Copy the token string from the login response and replace <PASTE_TOKEN_HERE>
+POST http://localhost:3001/api/products
+Content-Type: application/json
+Authorization: Bearer <PASTE_TOKEN_HERE>
+
+{
+  "title": "Beautiful Silk Scarf",
+  "price": 45.00,
+  "category": "Weaving",
+  "images": ["https://example.com/scarf.jpg"]
+}
+
+###
+
+### 7. Fetch all Products
+GET http://localhost:3001/api/products
