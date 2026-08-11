@@ -99,7 +99,7 @@ import { IconComponent } from '../shared/icon.component';
     .hero-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
     .hero-copy h1 { font-size: 38px; line-height: 1.15; margin: 16px 0 18px; }
     .hero-copy p { color: var(--color-muted); font-size: 15px; max-width: 480px; line-height: 1.65; }
-    .hero-image { height: 320px; border-radius: var(--radius-lg); }
+    .hero-image { height: 320px; border-radius: var(--radius-lg); justify-self: center; }
 
     .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; padding: 44px 32px; text-align: center; }
     .stat { display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -135,8 +135,17 @@ import { IconComponent } from '../shared/icon.component';
     .value-card small { color: var(--color-muted); font-size: 12.5px; line-height: 1.5; }
 
     .cta-banner {
-      margin: 0 32px 56px; background: linear-gradient(135deg, #3a5a45, #1c261f); border-radius: var(--radius-lg);
-      padding: 44px; display: flex; justify-content: space-between; align-items: center; gap: 28px; flex-wrap: wrap;
+      width: min(100%, 1200px);
+      max-width: 1200px;
+      margin: 0 auto 56px;
+      background: linear-gradient(135deg, #3a5a45, #1c261f);
+      border-radius: var(--radius-lg);
+      padding: 44px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 28px;
+      flex-wrap: wrap;
     }
     .cta-banner h2 { color: #fff; font-size: 24px; margin-bottom: 8px; }
     .cta-banner p { color: rgba(255,255,255,0.75); font-size: 14px; max-width: 420px; }
@@ -147,6 +156,14 @@ import { IconComponent } from '../shared/icon.component';
     @media (max-width: 980px) {
       .hero-inner, .mission-grid, .timeline-section .timeline { grid-template-columns: 1fr; }
       .stats-row, .values-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 620px) {
+      .hero { padding: 40px 0; }
+      .hero-copy h1 { font-size: 31px; }
+      .stats-row, .values-grid { grid-template-columns: 1fr; }
+      .cta-banner { padding: 30px 22px; margin-left: 20px; margin-right: 20px; }
+      .cta-actions { width: 100%; flex-direction: column; }
+      .cta-actions .btn { width: 100%; }
     }
   `]
 })

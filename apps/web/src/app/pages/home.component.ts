@@ -185,6 +185,25 @@ import { HeroSliderComponent } from '../shared/hero-slider.component';
 
   <section class="container section testimonials">
     <h2 class="center">Loved by thousands of customers</h2>
+    <div class="stores-row testimonial-stores" aria-label="Featured shops">
+      @for (s of stores; track s.id) {
+        <a class="store-chip" [routerLink]="['/stores', s.id]">
+          <div class="store-logo img-placeholder">{{ initials(s.name) }}</div>
+          <div>
+            <strong>{{ s.name }}</strong>
+            <div class="rating-row">
+              <ui-icon
+                name="star"
+                [size]="12"
+                [filled]="true"
+                color="var(--color-gold)"
+              ></ui-icon>
+              {{ s.rating }} · {{ s.location }}
+            </div>
+          </div>
+        </a>
+      }
+    </div>
     <div class="rating-row center-row">
       <span class="stars"><ui-icon *ngFor="let s of [1,2,3,4,5]" name="star" [size]="15" [filled]="true"></ui-icon></span>
       4.8 &middot; From 2,500+ reviews
@@ -285,6 +304,9 @@ import { HeroSliderComponent } from '../shared/hero-slider.component';
 
     .testimonials { text-align: center; }
     .center-row { justify-content: center; margin-bottom: 28px; gap: 8px; }
+    .testimonial-stores { justify-content: center; margin: -8px 0 26px; }
+    .testimonial-stores .store-chip { border: 1px solid var(--color-border); background: #fff; padding: 8px 10px; }
+    .testimonial-stores .store-chip:hover { border-color: var(--color-border-strong); box-shadow: var(--shadow-sm); }
     .testimonial-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
     .testimonial-card { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 20px; text-align: left; background: #fff; }
     .testimonial-card p { font-size: 13.5px; margin-bottom: 12px; line-height: 1.5; }
@@ -295,6 +317,14 @@ import { HeroSliderComponent } from '../shared/hero-slider.component';
       .hero-inner, .three-banners, .why-grid, .blog-grid, .testimonial-row { grid-template-columns: 1fr; }
       .category-strip { grid-template-columns: repeat(3, 1fr); }
       .collection-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 620px) {
+      .section { padding: 34px 20px; }
+      .features-strip, .stores-row, .trust-row { justify-content: flex-start; }
+      .feature-item, .store-chip { width: 100%; }
+      .category-strip, .collection-grid { grid-template-columns: repeat(2, 1fr); }
+      .section-head { align-items: flex-start; gap: 12px; flex-direction: column; }
+      .center-row, .trust-row { flex-wrap: wrap; }
     }
   `]
 })

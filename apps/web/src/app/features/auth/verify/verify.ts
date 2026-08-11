@@ -2,14 +2,13 @@ import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { apiErrorMessage, AuthService } from '../../../core/auth/auth.service';
 import { AuthLayout } from '../../../shared/auth-layout/auth-layout';
 import { IconComponent } from '../../../shared/icon.component';
 
 @Component({
-  selector: 'app-forgot-password',
+  selector: 'app-verify',
   imports: [ReactiveFormsModule, RouterLink, AuthLayout, IconComponent],
-  templateUrl: './forgot-password.html',
+  templateUrl: './verify.html',
   styles: [
     `
     .input-icon-wrap { display: block; position: relative; width: 100%; }
@@ -20,16 +19,15 @@ import { IconComponent } from '../../../shared/icon.component';
     `,
   ],
 })
-export class ForgotPassword {
-  private readonly auth = inject(AuthService);
+export class Verify {
   private readonly router = inject(Router);
   protected readonly loading = signal(false);
+  protected readonly success = signal(false);
   protected readonly error = signal('');
-  protected readonly sent = signal(false);
   protected readonly form = new FormGroup({
-    email: new FormControl('', {
+    code: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.email],
+      validators: [Validators.required, Validators.minLength(4)],
     }),
   });
 
@@ -38,20 +36,13 @@ export class ForgotPassword {
       this.form.markAllAsTouched();
       return;
     }
+
     this.loading.set(true);
     this.error.set('');
-    this.auth
-      .forgotPassword(this.form.getRawValue().email)
-      .pipe(finalize(() => this.loading.set(false)))
-      .subscribe({
-        next: () => {
-          this.sent.set(true);
-          void this.router.navigateByUrl('/verify');
-        },
-        error: () => {
-          this.sent.set(true);
-          void this.router.navigateByUrl('/verify');
-        },
-      });
+    setTimeout(() => {
+      this.loading.set(false);
+      this.success.set(true);
+      void this.router.navigateByUrl('/reset-password');
+    }, 500);
   }
 }

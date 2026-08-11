@@ -1,16 +1,28 @@
-import { Component, computed, inject } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { ApiOrder } from '../core/api/api.models';
+import { CommerceApiService } from '../core/api/commerce-api.service';
 import { AuthService } from '../core/auth/auth.service';
-import { CartService } from '../core/cart/cart.service';
+import { CartService, cartErrorMessage } from '../core/cart/cart.service';
 import { WishlistService } from '../core/wishlist/wishlist.service';
 import { CartLine } from '../core/catalog/catalog.models';
 import { NavbarComponent } from '../shared/navbar.component';
 import { FooterComponent } from '../shared/footer.component';
 import { IconComponent } from '../shared/icon.component';
+import { OrderStatusBadgeComponent } from '../shared/order-status-badge.component';
 
 @Component({
   selector: 'app-cart',
-  imports: [RouterLink, NavbarComponent, FooterComponent, IconComponent],
+  imports: [
+    DatePipe,
+    RouterLink,
+    NavbarComponent,
+    FooterComponent,
+    IconComponent,
+    OrderStatusBadgeComponent,
+  ],
   template: `
     <app-navbar />
 
@@ -172,6 +184,150 @@ import { IconComponent } from '../shared/icon.component';
             </button>
           }
         </div>
+      </section>
+    }
+
+    @if (showOrderHistory()) {
+      <section class="container cart-history">
+        <div class="history-head">
+          <div>
+            <h2>Purchase history</h2>
+            <p>Recent orders from this buyer account.</p>
+          </div>
+          @if (orderHistory().length) {
+            <a class="see-orders" routerLink="/orders">
+              View all <ui-icon name="arrow-right" [size]="13" />
+            </a>
+          }
+        </div>
+
+        @if (historyLoading()) {
+          <p class="history-muted">Loading your purchase history...</p>
+        } @else if (historyError(); as message) {
+          <p class="history-error" role="alert">
+            <ui-icon name="alert-circle" [size]="14" /> {{ message }}
+          </p>
+        } @else if (orderHistory().length === 0) {
+          <div class="history-empty card">
+            <ui-icon name="package" [size]="28" />
+            <div>
+              <strong>No purchase history yet</strong>
+              <span>Your completed checkout orders will appear here.</span>
+            </div>
+          </div>
+        } @else {
+          <div class="history-list">
+            @for (order of orderHistory(); track order.id) {
+              <article class="history-order card">
+                <header>
+                  <div>
+                    <strong>{{ order.orderNumber }}</strong>
+                    <span>{{ order.createdAt | date: 'd MMM y, HH:mm' }}</span>
+                  </div>
+                  <div class="history-badges">
+                    <app-order-status [status]="order.orderStatus" />
+                    <app-order-status [status]="order.paymentStatus" />
+                  </div>
+                </header>
+
+                <div class="history-summary">
+                  <span>
+                    {{ order.items.length }}
+                    {{ order.items.length === 1 ? 'item' : 'items' }}
+                  </span>
+                  <strong>\${{ order.totalAmount.toFixed(2) }}</strong>
+                </div>
+
+                <div class="history-preview">
+                  @for (item of order.items.slice(0, 2); track item.productId) {
+                    <a [routerLink]="['/product', item.productId]">
+                      {{ item.productName }}
+                      <small>{{ item.quantity }} x \${{ item.price.toFixed(2) }}</small>
+                    </a>
+                  }
+                  @if (order.items.length > 2) {
+                    <span class="more-items">
+                      +{{ order.items.length - 2 }} more
+                    </span>
+                  }
+                </div>
+
+                <button
+                  type="button"
+                  class="btn btn-outline btn-sm detail-toggle"
+                  (click)="toggleOrderDetail(order)"
+                >
+                  {{ expandedOrderId() === order.id ? 'Hide detail' : 'View detail' }}
+                  <ui-icon
+                    [name]="expandedOrderId() === order.id ? 'chevron-up' : 'chevron-down'"
+                    [size]="13"
+                  />
+                </button>
+
+                @if (expandedOrderId() === order.id) {
+                  <div class="history-detail">
+                    <div class="detail-grid">
+                      <div>
+                        <small>Delivery to</small>
+                        <strong>{{ order.deliveryInfo.fullName }}</strong>
+                        <span>
+                          {{ order.deliveryInfo.city }},
+                          {{ order.deliveryInfo.province }}
+                        </span>
+                      </div>
+                      <div>
+                        <small>Payment</small>
+                        <strong>{{ order.paymentMethod }}</strong>
+                        <span>
+                          Delivery
+                          {{
+                            order.deliveryFee === 0
+                              ? 'free'
+                              : '$' + order.deliveryFee.toFixed(2)
+                          }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="detail-items">
+                      @for (item of order.items; track item.productId) {
+                        <div class="detail-item">
+                          <a
+                            class="detail-thumb img-placeholder"
+                            [routerLink]="['/product', item.productId]"
+                          >
+                            {{ item.productName }}
+                          </a>
+                          <div>
+                            <a
+                              class="detail-name"
+                              [routerLink]="['/product', item.productId]"
+                            >
+                              {{ item.productName }}
+                            </a>
+                            <span>{{ item.sellerName }}</span>
+                          </div>
+                          <strong>\${{ item.subtotal.toFixed(2) }}</strong>
+                        </div>
+                      }
+                    </div>
+
+                    @if (order.statusHistory.length) {
+                      <div class="detail-timeline">
+                        @for (event of order.statusHistory; track $index) {
+                          <span>
+                            {{ event.status }}
+                            <small>{{ event.at | date: 'd MMM HH:mm' }}</small>
+                          </span>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </article>
+            }
+          </div>
+        }
       </section>
     }
 
@@ -398,6 +554,197 @@ import { IconComponent } from '../shared/icon.component';
         flex-wrap: wrap;
         justify-content: center;
       }
+      .cart-history {
+        padding: 0 32px 26px;
+      }
+      .history-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 18px;
+        margin-bottom: 16px;
+      }
+      .history-head h2 {
+        font-size: 21px;
+        margin-bottom: 5px;
+      }
+      .history-head p,
+      .history-muted {
+        color: var(--color-muted);
+        font-size: 13px;
+      }
+      .see-orders {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--color-text-secondary);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .see-orders:hover {
+        color: var(--color-accent);
+      }
+      .history-error {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--color-danger);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .history-empty {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 20px;
+        color: var(--color-muted);
+      }
+      .history-empty strong {
+        display: block;
+        color: var(--color-text);
+        margin-bottom: 3px;
+      }
+      .history-empty span {
+        font-size: 13px;
+      }
+      .history-list {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .history-order {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 13px;
+      }
+      .history-order header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .history-order header strong {
+        display: block;
+        font-size: 14px;
+      }
+      .history-order header span {
+        color: var(--color-muted);
+        font-size: 12px;
+      }
+      .history-badges {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+      .history-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding-top: 12px;
+        border-top: 1px solid var(--color-border);
+        font-size: 13px;
+        color: var(--color-muted);
+      }
+      .history-summary strong {
+        color: var(--color-text);
+        font-size: 16px;
+      }
+      .history-preview {
+        display: grid;
+        gap: 8px;
+      }
+      .history-preview a,
+      .more-items {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--color-text-secondary);
+        font-size: 12.5px;
+      }
+      .history-preview a:hover,
+      .detail-name:hover {
+        color: var(--color-accent);
+      }
+      .history-preview small,
+      .more-items {
+        color: var(--color-muted);
+      }
+      .detail-toggle {
+        align-self: flex-start;
+      }
+      .history-detail {
+        display: grid;
+        gap: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--color-border);
+      }
+      .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .detail-grid div {
+        display: grid;
+        gap: 3px;
+      }
+      .detail-grid small {
+        color: var(--color-muted);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      .detail-grid strong {
+        font-size: 13px;
+      }
+      .detail-grid span {
+        color: var(--color-muted);
+        font-size: 12px;
+      }
+      .detail-items {
+        display: grid;
+        gap: 10px;
+      }
+      .detail-item {
+        display: grid;
+        grid-template-columns: 44px 1fr auto;
+        align-items: center;
+        gap: 10px;
+      }
+      .detail-thumb {
+        width: 44px;
+        height: 44px;
+        border-radius: var(--radius-xs);
+        font-size: 7px;
+      }
+      .detail-item div {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+      }
+      .detail-name {
+        font-size: 12.5px;
+        font-weight: 700;
+      }
+      .detail-item span {
+        color: var(--color-muted);
+        font-size: 11.5px;
+      }
+      .detail-item strong {
+        font-size: 12.5px;
+      }
+      .detail-timeline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        color: var(--color-muted);
+        font-size: 11px;
+      }
+      .detail-timeline span {
+        display: inline-flex;
+        gap: 4px;
+      }
       @media (max-width: 900px) {
         .cart-layout {
           grid-template-columns: 1fr;
@@ -405,8 +752,16 @@ import { IconComponent } from '../shared/icon.component';
         .summary {
           position: static;
         }
+        .history-list {
+          grid-template-columns: 1fr;
+        }
       }
       @media (max-width: 560px) {
+        .cart-layout,
+        .cart-history {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
         .item-row {
           flex-wrap: wrap;
         }
@@ -416,6 +771,25 @@ import { IconComponent } from '../shared/icon.component';
           gap: 14px;
           width: 100%;
         }
+        .history-head,
+        .history-order header,
+        .history-preview a,
+        .more-items {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .history-badges {
+          justify-content: flex-start;
+        }
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
+        .detail-item {
+          grid-template-columns: 40px 1fr;
+        }
+        .detail-item strong {
+          grid-column: 2;
+        }
       }
     `,
   ],
@@ -424,9 +798,25 @@ export class CartComponent {
   protected readonly cart = inject(CartService);
   protected readonly wishlist = inject(WishlistService);
   private readonly auth = inject(AuthService);
+  private readonly api = inject(CommerceApiService);
   private readonly router = inject(Router);
 
   protected readonly isAuthenticated = this.auth.isAuthenticated;
+  protected readonly showOrderHistory = computed(
+    () => this.auth.user()?.role === 'BUYER',
+  );
+  protected readonly orderHistory = signal<ApiOrder[]>([]);
+  protected readonly historyLoading = signal(false);
+  protected readonly historyError = signal('');
+  protected readonly expandedOrderId = signal('');
+
+  constructor() {
+    this.auth.loadCurrentUser().subscribe((user) => {
+      if (user?.role === 'BUYER') {
+        void this.loadOrderHistory();
+      }
+    });
+  }
 
   /** Cart lines bucketed by seller, preserving first-seen store order. */
   protected readonly groups = computed(() => {
@@ -465,5 +855,26 @@ export class CartComponent {
     // The route guard also enforces this, but redirecting here keeps the
     // returnUrl pointing at checkout rather than the cart.
     this.router.navigate(['/checkout']);
+  }
+
+  protected toggleOrderDetail(order: ApiOrder): void {
+    this.expandedOrderId.update((id) => (id === order.id ? '' : order.id));
+  }
+
+  private async loadOrderHistory(): Promise<void> {
+    if (this.historyLoading()) {
+      return;
+    }
+
+    this.historyLoading.set(true);
+    this.historyError.set('');
+    try {
+      const response = await firstValueFrom(this.api.myOrders(1, 3));
+      this.orderHistory.set(response.orders);
+    } catch (error: unknown) {
+      this.historyError.set(cartErrorMessage(error));
+    } finally {
+      this.historyLoading.set(false);
+    }
   }
 }

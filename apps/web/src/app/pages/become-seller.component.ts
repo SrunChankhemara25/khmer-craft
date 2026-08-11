@@ -1,5 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { NavbarComponent } from '../shared/navbar.component';
 import { FooterComponent } from '../shared/footer.component';
 import { IconComponent } from '../shared/icon.component';
@@ -7,7 +9,7 @@ import { IconComponent } from '../shared/icon.component';
 @Component({
   selector: 'app-become-seller',
   standalone: true,
-  imports: [CommonModule, NavbarComponent, FooterComponent, IconComponent],
+  imports: [CommonModule, NavbarComponent, FooterComponent, IconComponent, FormsModule],
   template: `
   <app-navbar></app-navbar>
 
@@ -104,36 +106,61 @@ import { IconComponent } from '../shared/icon.component';
         <h2>Apply to become a seller</h2>
         <p>Tell us a bit about your craft — we'll be in touch within 2 business days.</p>
       </div>
-      <form class="apply-form">
+      <form class="apply-form" (ngSubmit)="onSubmit($event)" #sellerForm="ngForm">
         <div class="form-grid">
           <div class="field">
-            <label>Full Name</label>
-            <input type="text" placeholder="Your name">
+            <label>Full Name <span class="required">*</span></label>
+            <span class="input-icon-wrap">
+              <ui-icon name="user" [size]="16"></ui-icon>
+              <input name="fullName" required type="text" placeholder="Your name" ngModel>
+            </span>
           </div>
           <div class="field">
-            <label>Phone Number</label>
-            <input type="text" placeholder="+855 00 000 000">
+            <label>Phone Number <span class="required">*</span></label>
+            <span class="input-icon-wrap">
+              <ui-icon name="phone" [size]="16"></ui-icon>
+              <input name="phone" required type="text" placeholder="+855 00 000 000" ngModel>
+            </span>
           </div>
           <div class="field span-2">
-            <label>Email Address</label>
+            <label>Email Address <span class="required">*</span></label>
             <div class="input-icon-wrap">
               <ui-icon name="mail" [size]="16"></ui-icon>
-              <input type="email" placeholder="you@example.com">
+              <input name="email" required type="email" placeholder="you@example.com" ngModel>
             </div>
           </div>
           <div class="field">
-            <label>Business / Shop Name</label>
-            <input type="text" placeholder="E.g. Srey Khmer Handmade">
+            <label>Business / Shop Name <span class="required">*</span></label>
+            <span class="input-icon-wrap">
+              <ui-icon name="store" [size]="16"></ui-icon>
+              <input name="shopName" required type="text" placeholder="E.g. Srey Khmer Handmade" ngModel>
+            </span>
           </div>
           <div class="field">
             <label>Product Category</label>
-            <select>
-              <option>Handmade Crafts</option>
-              <option>Pottery</option>
-              <option>Weaving</option>
-              <option>Local Food</option>
-              <option>Other</option>
-            </select>
+            <span class="input-icon-wrap">
+              <ui-icon name="tag" [size]="16"></ui-icon>
+              <input name="category" list="categories" placeholder="Select a category" ngModel>
+            </span>
+            <datalist id="categories">
+              <option value="Handmade Crafts"></option>
+              <option value="Pottery"></option>
+              <option value="Weaving"></option>
+              <option value="Local Food"></option>
+              <option value="Other"></option>
+            </datalist>
+          </div>
+          <div class="field span-2">
+            <label>Password <span class="required">*</span></label>
+            <div class="password-wrap">
+              <span class="input-icon-wrap">
+                <ui-icon name="lock" [size]="16"></ui-icon>
+                <input name="password" required [type]="passwordVisible ? 'text' : 'password'" placeholder="Create a password" ngModel>
+              </span>
+              <button type="button" class="password-toggle" (click)="togglePassword()" aria-label="Toggle password visibility">
+                <ui-icon [name]="passwordVisible ? 'eye' : 'eye-off'" [size]="16"></ui-icon>
+              </button>
+            </div>
           </div>
           <div class="field span-2">
             <label>Tell us about your products <span class="optional">(optional)</span></label>
@@ -156,7 +183,7 @@ import { IconComponent } from '../shared/icon.component';
     .hero-actions { display: flex; gap: 12px; margin-bottom: 22px; }
     .hero-trust { display: flex; gap: 20px; font-size: 12.5px; color: var(--color-muted); font-weight: 600; flex-wrap: wrap; }
     .hero-trust span { display: flex; align-items: center; gap: 6px; }
-    .hero-image { height: 320px; border-radius: var(--radius-lg); }
+    .hero-image { height: 320px; border-radius: var(--radius-lg); justify-self: center; }
 
     .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; padding: 44px 32px; text-align: center; }
     .stat strong { font-size: 28px; font-family: var(--font-heading); display: block; color: var(--color-accent); }
@@ -174,9 +201,9 @@ import { IconComponent } from '../shared/icon.component';
     .why-card strong { display: block; font-size: 14.5px; margin-bottom: 6px; }
     .why-card small { color: var(--color-muted); font-size: 12.5px; line-height: 1.5; }
 
-    .steps-section { padding: 20px 32px 56px; background: var(--color-bg-alt); border-radius: var(--radius-lg); margin: 0 32px 56px; padding-top: 44px; padding-bottom: 44px; }
-    .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-    .step-card { background: #fff; border-radius: var(--radius-md); padding: 22px; position: relative; }
+    .steps-section { padding: 20px 32px 56px; background: var(--color-bg-alt); border-radius: var(--radius-lg); max-width: 1200px; margin: 0 auto 56px; padding-top: 44px; padding-bottom: 44px; }
+    .steps-grid { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 20px; justify-content: center; }
+    .step-card { background: #fff; border-radius: var(--radius-md); padding: 22px; position: relative; text-align: center; display: flex; flex-direction: column; align-items: center; }
     .step-num { position: absolute; top: 16px; right: 16px; font-size: 12px; font-weight: 700; color: var(--color-muted-2); }
     .step-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--color-accent-soft); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
     .step-card strong { display: block; font-size: 14px; margin-bottom: 6px; }
@@ -198,6 +225,27 @@ import { IconComponent } from '../shared/icon.component';
     .span-2 { grid-column: span 2; }
     .optional { font-weight: 400; color: var(--color-muted); }
     .apply-form textarea { width: 100%; padding: 11px 14px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); font-size: 14px; resize: vertical; font-family: var(--font-body); }
+    .required { color: var(--color-danger, #b92a2a); margin-left: 6px; }
+    .input-icon-wrap { display: block; position: relative; width: 100%; }
+    .input-icon-wrap ui-icon { color: var(--color-muted); position: absolute; left: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 2; width: 20px; height: 20px; display: inline-grid; place-items: center; line-height: 0; }
+    .input-icon-wrap ui-icon svg { display: block; width: 18px; height: 18px; }
+    .input-icon-wrap input,
+    .apply-form .form-grid .field input,
+    .apply-form .form-grid .field select,
+    .apply-form .form-grid .field textarea {
+      flex: 1;
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      box-sizing: border-box;
+      background: #fff;
+    }
+      .input-icon-wrap input { padding-left: 40px !important; display: block; width: 100%; }
+    .password-wrap { position: relative; display: block; width: 100%; }
+    .password-wrap input { padding-right: 48px; display: block; width: 100%; box-sizing: border-box; }
+    .password-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: none; background: transparent; cursor: pointer; padding: 6px; display: inline-grid; place-items: center; color: var(--color-muted); }
     .form-note { text-align: center; font-size: 12px; color: var(--color-muted); margin-top: 14px; }
 
     @media (max-width: 980px) {
@@ -206,9 +254,19 @@ import { IconComponent } from '../shared/icon.component';
       .apply-form .form-grid { grid-template-columns: 1fr; }
       .span-2 { grid-column: span 1; }
     }
+    @media (max-width: 620px) {
+      .hero { padding: 40px 0; }
+      .hero-copy h1 { font-size: 31px; }
+      .hero-actions, .cta-actions { flex-direction: column; }
+      .stats-row, .why-grid, .steps-grid { grid-template-columns: 1fr; }
+      .steps-section { margin-left: 20px; margin-right: 20px; }
+      .form-card { padding: 28px 20px; }
+    }
   `]
 })
 export class BecomeSellerComponent {
+  passwordVisible = false;
+  constructor(private router: Router) {}
   stats = [
     { value: '1,200+', label: 'Active sellers' },
     { value: '$2.4M', label: 'Paid to artisans' },
@@ -229,4 +287,27 @@ export class BecomeSellerComponent {
     { icon: 'upload', title: 'List your products', desc: 'Add photos, pricing, and descriptions using our seller tools.' },
     { icon: 'trending-up', title: 'Start selling', desc: 'Go live and start reaching customers right away.' }
   ];
+
+  togglePassword() {
+    this.passwordVisible = !this.passwordVisible;
+  }
+
+  onSubmit(event: Event) {
+    event.preventDefault();
+    // Minimal client-side validation: ensure required inputs have values
+    const form = (event.target as HTMLFormElement);
+    const fullName = (form.querySelector('input[name="fullName"]') as HTMLInputElement)?.value?.trim();
+    const phone = (form.querySelector('input[name="phone"]') as HTMLInputElement)?.value?.trim();
+    const email = (form.querySelector('input[name="email"]') as HTMLInputElement)?.value?.trim();
+    const shopName = (form.querySelector('input[name="shopName"]') as HTMLInputElement)?.value?.trim();
+    const password = (form.querySelector('input[name="password"]') as HTMLInputElement)?.value?.trim();
+    if (!fullName || !phone || !email || !shopName || !password) {
+      // mark fields or show an alert – keep simple for now
+      alert('Please fill all required fields.');
+      return;
+    }
+
+    // Simulate successful application -> go to verification page
+    void this.router.navigateByUrl('/verify');
+  }
 }

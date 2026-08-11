@@ -12,8 +12,8 @@ export const sellerGuard: CanActivateFn = (_route, state) => {
     map((user) =>
       user?.role === 'SELLER' || user?.role === 'ADMIN'
         ? true
-        : router.createUrlTree(['/seller/login'], {
-            queryParams: { returnUrl: state.url },
+        : router.createUrlTree(['/login'], {
+            queryParams: { role: 'seller', returnUrl: state.url },
           }),
     ),
   );

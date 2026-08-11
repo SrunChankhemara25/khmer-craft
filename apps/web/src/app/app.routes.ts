@@ -121,11 +121,8 @@ export const routes: Routes = [
   // ------------------------------------------------------------------- seller
   {
     path: 'seller/login',
-    loadComponent: () =>
-      import('./features/auth/seller-login/seller-login').then(
-        (m) => m.SellerLogin,
-      ),
-    title: 'Seller sign in | KhmerCraft',
+    pathMatch: 'full',
+    redirectTo: '/login?role=seller',
   },
   {
     path: 'seller/orders',
@@ -163,6 +160,12 @@ export const routes: Routes = [
     title: 'Forgot password | KhmerCraft',
   },
   {
+    path: 'verify',
+    loadComponent: () =>
+      import('./features/auth/verify/verify').then((module) => module.Verify),
+    title: 'Verify code | KhmerCraft',
+  },
+  {
     path: 'reset-password',
     loadComponent: () =>
       import('./features/auth/reset-password/reset-password').then(
@@ -181,11 +184,8 @@ export const routes: Routes = [
   },
   {
     path: 'admin/login',
-    loadComponent: () =>
-      import('./features/auth/admin-login/admin-login').then(
-        (module) => module.AdminLogin,
-      ),
-    title: 'Admin sign in | KhmerCraft',
+    pathMatch: 'full',
+    redirectTo: '/login?role=admin',
   },
 
   // ------------------------------------------------------------- support pages

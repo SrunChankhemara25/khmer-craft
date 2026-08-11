@@ -423,11 +423,78 @@ input {
   border-color: var(--error);
 }
 
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  margin-bottom: 1.1rem;
+  padding: 0.3rem;
+  background: rgba(255, 253, 248, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+}
+
+.auth-tabs button {
+  min-width: 0;
+  min-height: 2.45rem;
+  padding: 0.55rem 0.65rem;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0.58rem;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.auth-tabs button.active {
+  color: var(--red);
+  background: #fff;
+  box-shadow: var(--shadow-xs);
+}
+
+.admin-theme .auth-tabs button.active {
+  color: #263238;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.58rem;
+  width: 2rem;
+  height: 2rem;
+  display: inline-grid;
+  place-items: center;
+  color: #8d857c;
+  background: transparent;
+  border: 0;
+  border-radius: 0.5rem;
+  transform: translateY(-50%);
+}
+
+.password-toggle:hover {
+  color: var(--ink);
+  background: rgba(123, 42, 27, 0.06);
+}
+
+.password-toggle:active {
+  transform: translateY(-50%) scale(0.97);
+}
+
 .auth-form small {
   color: var(--error);
   font-size: 0.74rem;
   font-weight: 600;
 }
+
+/* .required rule removed per user request */
 
 .primary-button {
   width: 100%;

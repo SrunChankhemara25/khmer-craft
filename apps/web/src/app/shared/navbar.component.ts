@@ -27,7 +27,9 @@ import { SearchOverlayComponent } from './search-overlay.component';
           <div class="announce-links">
             <a routerLink="/orders">Track order</a>
             <a routerLink="/help">Support</a>
-            <a routerLink="/seller/login">Seller portal</a>
+            <a routerLink="/login" [queryParams]="{ role: 'seller' }"
+              >Seller portal</a
+            >
           </div>
         </div>
       </div>
