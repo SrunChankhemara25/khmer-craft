@@ -101,14 +101,14 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
     .hero-copy p { color: var(--color-muted); font-size: 15px; max-width: 480px; line-height: 1.65; }
     .hero-image { height: 320px; border-radius: var(--radius-lg); }
 
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; padding: 44px 32px; text-align: center; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 20px; padding: 44px 32px; text-align: center; }
     .stat { display: flex; flex-direction: column; align-items: center; gap: 8px; }
     .stat-icon { width: 44px; height: 44px; border-radius: 50%; background: var(--color-accent-soft); display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
     .stat strong { font-size: 26px; font-family: var(--font-heading); }
     .stat small { color: var(--color-muted); font-size: 12.5px; }
 
     .mission-section { padding: 20px 32px 48px; }
-    .mission-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .mission-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
     .mission-card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 28px; background: #fff; }
     .mission-icon { width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--color-accent-soft); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
     .mission-card h3 { font-size: 17px; margin-bottom: 10px; }
@@ -128,7 +128,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
     .timeline-body p { font-size: 13.5px; color: var(--color-muted); line-height: 1.6; }
 
     .values-section { padding: 0 32px 56px; }
-    .values-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .values-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; }
     .value-card { text-align: center; padding: 24px 16px; }
     .value-icon { width: 46px; height: 46px; border-radius: 50%; background: var(--color-accent-soft); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
     .value-card strong { display: block; font-size: 14px; margin-bottom: 6px; }
@@ -146,7 +146,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
 
     @media (max-width: 980px) {
       .hero-inner, .mission-grid, .timeline-section .timeline { grid-template-columns: 1fr; }
-      .stats-row, .values-grid { grid-template-columns: repeat(2, 1fr); }
+      .stats-row, .values-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
     }
   `]
 })

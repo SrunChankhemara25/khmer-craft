@@ -422,7 +422,7 @@ const POPULAR_SEARCHES = [
 
       .category-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
         gap: 8px;
       }
       .category {

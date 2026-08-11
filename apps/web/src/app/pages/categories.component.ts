@@ -76,7 +76,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       }
       .category-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
         gap: 18px;
       }
       .category-card {
@@ -129,12 +129,12 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       }
       @media (max-width: 1100px) {
         .category-grid {
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
         }
       }
       @media (max-width: 820px) {
         .category-grid {
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
         }
       }
       @media (max-width: 520px) {

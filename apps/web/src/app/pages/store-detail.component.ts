@@ -138,7 +138,7 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
       }
       .product-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         gap: 18px;
       }
       .empty,
@@ -156,7 +156,7 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
       }
       @media (max-width: 1000px) {
         .product-grid {
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         }
         .head-card {
           flex-direction: column;

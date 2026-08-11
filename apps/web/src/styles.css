@@ -129,9 +129,13 @@ input:focus, select:focus, textarea:focus {
 ::placeholder { color: var(--color-muted-2); }
 
 .container {
-  max-width: 1240px;
+  /* 1240px left ~340px of dead margin either side on a 1920 screen. This
+     scales with the viewport instead, while still stopping text lines from
+     becoming uncomfortably long on very wide monitors. */
+  width: 100%;
+  max-width: 1560px;
   margin: 0 auto;
-  padding: 0 32px;
+  padding: 0 clamp(20px, 3vw, 48px);
 }
 
 @media (max-width: 900px) {

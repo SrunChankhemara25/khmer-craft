@@ -151,7 +151,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       }
       .store-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 18px;
       }
       .store-card {
@@ -220,7 +220,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       }
       @media (max-width: 1000px) {
         .store-grid {
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         }
       }
       @media (max-width: 620px) {

@@ -98,7 +98,7 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
       }
       .product-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         gap: 18px;
       }
       .feedback {
@@ -141,12 +141,12 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
       }
       @media (max-width: 1100px) {
         .product-grid {
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         }
       }
       @media (max-width: 820px) {
         .product-grid {
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         }
       }
       @media (max-width: 520px) {

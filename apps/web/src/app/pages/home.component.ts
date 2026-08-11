@@ -220,7 +220,7 @@ import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-sl
     .see-all { color: var(--color-text-secondary); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
     .see-all:hover { color: var(--color-accent); }
 
-    .category-strip { display: grid; grid-template-columns: repeat(9, 1fr); gap: 12px; }
+    .category-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
     .category-pill {
       border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 18px 8px;
       display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; background: #fff;
@@ -250,12 +250,12 @@ import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-sl
     .store-chip:hover { background: var(--color-bg-alt); }
     .store-logo { width: 44px; height: 44px; border-radius: 50%; font-size: 10px; }
 
-    .collection-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+    .collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
     .collection-card { height: 116px; border-radius: var(--radius-md); font-size: 12px; }
 
     .why-choose { text-align: center; }
     .center { text-align: center; margin-bottom: 28px; font-size: 24px; }
-    .why-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px; }
+    .why-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 24px; }
     .why-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
     .why-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--color-accent-soft); color: var(--color-accent); display: flex; align-items: center; justify-content: center; }
     .why-item small { color: var(--color-muted); font-size: 12px; }
@@ -273,7 +273,7 @@ import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-sl
     .subscribe .subscribe-box { display: flex; }
     .subscribe input { padding: 11px 12px; border-radius: var(--radius-sm); border: none; font-size: 13px; width: 100%; }
 
-    .blog-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+    .blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
     .blog-card { display: flex; flex-direction: column; gap: 7px; }
     .blog-thumb { height: 130px; border-radius: var(--radius-md); font-size: 11px; }
     .blog-card h4 { font-size: 14px; }
@@ -289,8 +289,8 @@ import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-sl
 
     @media (max-width: 980px) {
       .hero-inner, .three-banners, .why-grid, .blog-grid, .testimonial-row { grid-template-columns: 1fr; }
-      .category-strip { grid-template-columns: repeat(3, 1fr); }
-      .collection-grid { grid-template-columns: repeat(2, 1fr); }
+      .category-strip { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+      .collection-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
     }
   `]
 })

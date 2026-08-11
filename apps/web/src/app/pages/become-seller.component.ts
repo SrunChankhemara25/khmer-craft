@@ -158,7 +158,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
     .hero-trust span { display: flex; align-items: center; gap: 6px; }
     .hero-image { height: 320px; border-radius: var(--radius-lg); }
 
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; padding: 44px 32px; text-align: center; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 20px; padding: 44px 32px; text-align: center; }
     .stat strong { font-size: 28px; font-family: var(--font-heading); display: block; color: var(--color-accent); }
     .stat small { color: var(--color-muted); font-size: 12.5px; }
 
@@ -167,7 +167,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
     .section-head-center p { color: var(--color-muted); font-size: 14px; }
 
     .why-section { padding: 20px 32px 56px; }
-    .why-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .why-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 20px; }
     .why-card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 24px; text-align: center; background: #fff; transition: all var(--dur-base) var(--ease-standard); }
     .why-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); }
     .why-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--color-accent-soft); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
@@ -175,7 +175,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
     .why-card small { color: var(--color-muted); font-size: 12.5px; line-height: 1.5; }
 
     .steps-section { padding: 20px 32px 56px; background: var(--color-bg-alt); border-radius: var(--radius-lg); margin: 0 32px 56px; padding-top: 44px; padding-bottom: 44px; }
-    .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .steps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; }
     .step-card { background: #fff; border-radius: var(--radius-md); padding: 22px; position: relative; }
     .step-num { position: absolute; top: 16px; right: 16px; font-size: 12px; font-weight: 700; color: var(--color-muted-2); }
     .step-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--color-accent-soft); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
@@ -202,7 +202,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
 
     @media (max-width: 980px) {
       .hero-inner, .pricing-grid { grid-template-columns: 1fr; }
-      .stats-row, .why-grid, .steps-grid { grid-template-columns: repeat(2, 1fr); }
+      .stats-row, .why-grid, .steps-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
       .apply-form .form-grid { grid-template-columns: 1fr; }
       .span-2 { grid-column: span 1; }
     }

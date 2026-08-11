@@ -329,7 +329,7 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
       }
       .product-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         gap: 18px;
       }
       .missing {
@@ -349,7 +349,7 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
           height: 320px;
         }
         .product-grid {
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         }
       }
       @media (max-width: 520px) {

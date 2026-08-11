@@ -7,6 +7,7 @@ import { NavbarComponent } from '../components/shared/layout/navbar/navbar.compo
 import { FooterComponent } from '../components/shared/layout/footer/footer.component';
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
 import { ProductCardComponent } from '../components/user/catalog/product-card/product-card.component';
+import { ProductRailComponent } from '../components/user/catalog/product-rail/product-rail.component';
 
 interface PriceBand {
   label: string;
@@ -50,6 +51,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
     FooterComponent,
     IconComponent,
     ProductCardComponent,
+    ProductRailComponent,
   ],
   template: `
     <app-navbar />
@@ -314,6 +316,20 @@ const SORTS: { value: ProductSort; label: string }[] = [
           }
         </div>
       </section>
+
+      <!-- A category with only a handful of products leaves a lot of empty
+           canvas on a wide screen. Rather than stretch the cards to fill it,
+           offer somewhere else to go — which is what the space is actually
+           good for. -->
+      @if (results().length > 0 && results().length < 4 && suggestions().length) {
+        <section class="container suggestions">
+          <app-product-rail
+            title="More from KhmerCraft"
+            [products]="suggestions()"
+            linkRoute="/products"
+          />
+        </section>
+      }
     } @else {
       <section class="container missing">
         <h1>Category not found</h1>
@@ -594,7 +610,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
 
       .product-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         gap: 18px;
       }
       /* List view: the card keeps its markup, the row just goes full width. */
@@ -636,6 +652,12 @@ const SORTS: { value: ProductSort; label: string }[] = [
         justify-content: center;
         margin-top: 6px;
       }
+      .suggestions {
+        padding-top: 8px;
+        padding-bottom: 56px;
+        border-top: 1px solid var(--color-border);
+        margin-top: 12px;
+      }
       .missing {
         padding: 70px 32px 90px;
         text-align: center;
@@ -659,7 +681,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
           position: static;
         }
         .product-grid {
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         }
       }
       @media (max-width: 560px) {
@@ -830,6 +852,15 @@ export class CategoryDetailComponent {
       sale: null,
     });
   }
+
+  /** Popular items from other categories, to fill out a sparse page. */
+  protected readonly suggestions = computed(() => {
+    const slug = this.category()?.slug;
+    return this.catalog
+      .search({ sort: 'rating' })
+      .filter((product) => product.categorySlug !== slug)
+      .slice(0, 10);
+  });
 
   protected setSub(slug: string | null): void {
     this.merge({ sub: slug });
