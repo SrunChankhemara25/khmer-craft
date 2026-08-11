@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 /* ============================================================
    KhmerCraft — Design System
@@ -8,26 +7,28 @@
 
 :root {
   /* Neutral surface scale (Notion-like warm grays) */
-  --color-bg: #ffffff;
-  --color-bg-alt: #f7f7f5;
-  --color-bg-hover: #efefec;
-  --color-surface: #ffffff;
+  --color-bg: #fffdf8;
+  --color-bg-alt: #f6f1e7;
+  --color-bg-hover: #eee7da;
+  --color-surface: #fffefa;
   --color-surface-raised: #ffffff;
 
   /* Ink scale */
-  --color-text: #191918;
-  --color-text-secondary: #37352f;
-  --color-muted: #8a8a86;
-  --color-muted-2: #b4b4ae;
-  --color-border: #e9e9e6;
-  --color-border-strong: #dcdcd8;
+  --color-text: #241f19;
+  --color-text-secondary: #514a41;
+  --color-muted: #81786d;
+  --color-muted-2: #aaa095;
+  --color-border: #e8dfd1;
+  --color-border-strong: #d8cdbd;
 
   /* Brand accent — restrained, used sparingly like a highlight not a wash */
-  --color-accent: #7b2a1b;
-  --color-accent-hover: #5f1f15;
-  --color-accent-soft: rgba(123, 42, 27, 0.07);
-  --color-accent-soft-strong: rgba(123, 42, 27, 0.14);
-  --color-gold: #b08430;
+  --color-accent: #8e3021;
+  --color-accent-hover: #6e2419;
+  --color-accent-soft: rgba(142, 48, 33, 0.08);
+  --color-accent-soft-strong: rgba(142, 48, 33, 0.16);
+  --color-gold: #a87522;
+  --color-forest: #263c31;
+  --color-sand: #d9bd8b;
 
   --color-danger: #d1453b;
   --color-danger-soft: rgba(209, 69, 59, 0.08);
@@ -38,20 +39,20 @@
   --radius-xs: 6px;
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-lg: 18px;
+  --radius-xl: 26px;
   --radius-full: 999px;
 
   /* Elevation */
   --shadow-xs: 0 1px 2px rgba(15, 15, 15, 0.04);
-  --shadow-sm: 0 2px 8px rgba(15, 15, 15, 0.06);
-  --shadow-md: 0 8px 24px rgba(15, 15, 15, 0.08);
-  --shadow-lg: 0 16px 48px rgba(15, 15, 15, 0.12);
+  --shadow-sm: 0 3px 12px rgba(51, 38, 24, 0.07);
+  --shadow-md: 0 14px 36px rgba(51, 38, 24, 0.10);
+  --shadow-lg: 0 28px 70px rgba(51, 38, 24, 0.14);
   --shadow-focus: 0 0 0 4px var(--color-accent-soft-strong);
 
   /* Typography */
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
-  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  --font-body: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  --font-heading: Georgia, 'Times New Roman', serif;
 
   /* Motion */
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -76,13 +77,16 @@
   --error: #a12f2f;
   --font-display: Georgia, 'Times New Roman', serif;
 
-  --header-h: 68px;
+  --header-h: 76px;
+  --content-max: none;
+  --page-gutter: clamp(16px, 2.4vw, 64px);
+  --section-space: clamp(58px, 7vw, 112px);
 }
 
 * { box-sizing: border-box; }
 *::selection { background: var(--color-accent-soft-strong); }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; min-width: 320px; }
 
 html, body {
   margin: 0;
@@ -93,17 +97,18 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  font-size: 15px;
+  font-size: clamp(15px, 0.22vw + 13px, 17px);
   letter-spacing: -0.006em;
+  overflow-x: clip;
 }
 
 h1, h2, h3, h4, h5 {
   font-family: var(--font-heading);
   margin: 0;
   color: var(--color-text);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 1.12;
 }
 
 p { margin: 0; color: var(--color-text-secondary); }
@@ -133,13 +138,13 @@ input:focus, select:focus, textarea:focus {
      scales with the viewport instead, while still stopping text lines from
      becoming uncomfortably long on very wide monitors. */
   width: 100%;
-  max-width: 1560px;
+  max-width: var(--content-max);
   margin: 0 auto;
-  padding: 0 clamp(20px, 3vw, 48px);
+  padding-inline: var(--page-gutter);
 }
 
 @media (max-width: 900px) {
-  .container { padding: 0 20px; }
+  .container { padding-inline: var(--page-gutter); }
 }
 
 /* ===== Buttons ===== */
@@ -148,8 +153,9 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 11px 20px;
-  border-radius: var(--radius-sm);
+  min-height: 44px;
+  padding: 11px 21px;
+  border-radius: var(--radius-md);
   font-weight: 600;
   font-size: 14px;
   border: 1px solid transparent;
@@ -169,7 +175,7 @@ input:focus, select:focus, textarea:focus {
 .btn-danger { background: var(--color-danger); color: #fff; }
 .btn-danger:hover { background: #b83a31; }
 .btn-block { width: 100%; }
-.btn-lg { padding: 14px 26px; font-size: 15px; border-radius: var(--radius-md); }
+.btn-lg { min-height: 52px; padding: 14px 27px; font-size: 15px; border-radius: 14px; }
 .btn-sm { padding: 7px 14px; font-size: 13px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn:disabled:active { transform: none; }
@@ -204,7 +210,7 @@ input:focus, select:focus, textarea:focus {
   overflow: hidden;
   transition: border-color var(--dur-base) var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
 }
-.card-hover:hover { border-color: var(--color-border-strong); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.card-hover:hover { border-color: var(--color-border-strong); box-shadow: var(--shadow-md); transform: translateY(-4px); }
 
 /* Placeholder image blocks */
 .img-placeholder {
@@ -212,8 +218,10 @@ input:focus, select:focus, textarea:focus {
   width: 100%;
   height: 100%;
   background:
-    linear-gradient(135deg, var(--color-bg-alt) 0%, #f0f0ec 100%),
-    repeating-linear-gradient(135deg, rgba(0,0,0,0.025) 0 1px, transparent 1px 14px);
+    radial-gradient(circle at 18% 24%, rgba(217, 189, 139, .35), transparent 25%),
+    radial-gradient(circle at 82% 72%, rgba(142, 48, 33, .12), transparent 30%),
+    repeating-linear-gradient(135deg, rgba(80, 60, 35, .028) 0 1px, transparent 1px 16px),
+    #f1ecdf;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -532,4 +540,184 @@ input {
   .auth-form input {
     height: 2.85rem;
   }
+}
+
+/* ============================================================
+   Responsive storefront composition
+   These host-level rules intentionally improve existing pages without
+   coupling presentation to catalog/API implementation details.
+   ============================================================ */
+app-home .hero {
+  padding-block: 0 !important;
+  background: #fffdf8 !important;
+}
+
+app-home .features-strip {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 !important;
+  padding-block: 18px !important;
+  border-bottom: 1px solid var(--color-border);
+}
+
+app-home .feature-item {
+  min-height: 48px;
+  justify-content: center;
+  padding-inline: 20px;
+  border-right: 1px solid var(--color-border);
+}
+
+app-home .feature-item:last-child { border-right: 0; }
+
+app-home .section {
+  padding-top: var(--section-space) !important;
+  padding-bottom: 0 !important;
+}
+
+/* The category discovery row belongs to the opening viewport, directly after
+   the trust strip, so it uses a tighter transition than later sections. */
+app-home .hero + .section {
+  padding-top: clamp(22px, 2.5vw, 38px) !important;
+}
+
+app-home .hero + .section + .section {
+  padding-top: clamp(32px, 3vw, 48px) !important;
+}
+
+app-home .section-head { margin-bottom: 26px !important; }
+app-home .section-head h2,
+app-home h2.center { font-size: clamp(26px, 2.3vw, 38px) !important; }
+
+app-home .category-strip {
+  grid-template-columns: repeat(9, minmax(92px, 1fr)) !important;
+  gap: clamp(8px, .9vw, 14px) !important;
+}
+
+app-home .category-pill {
+  min-height: 96px;
+  justify-content: center;
+  padding: 12px 8px !important;
+  border-radius: 15px !important;
+  background: var(--color-surface) !important;
+}
+
+app-home .category-pill span { font-size: 12px !important; }
+app-home .category-pill small { display: none; }
+app-home .category-pill.more { background: var(--color-accent) !important; }
+app-home .cat-icon { margin-bottom: 3px; transform: scale(1.08); }
+
+app-home .stores-row { gap: 14px !important; }
+app-home .store-chip {
+  flex: 1 1 260px;
+  min-height: 74px;
+  padding: 13px !important;
+  border: 1px solid var(--color-border);
+  border-radius: 16px !important;
+  background: var(--color-surface);
+}
+
+app-home .collection-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+}
+
+app-home .collection-card {
+  min-height: clamp(170px, 16vw, 270px);
+  border-radius: 24px !important;
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: clamp(22px, 2vw, 34px) !important;
+}
+
+app-home .why-choose {
+  margin-top: var(--section-space);
+  padding-block: clamp(54px, 6vw, 88px) !important;
+  border-radius: 28px;
+  background: var(--color-bg-alt);
+}
+
+app-home .why-grid { padding-inline: clamp(18px, 4vw, 64px); }
+app-home .why-item { gap: 11px !important; }
+app-home .why-icon { width: 58px !important; height: 58px !important; }
+
+app-home .three-banners { gap: 22px !important; }
+app-home .banner-card {
+  min-height: 260px !important;
+  padding: 34px !important;
+  border-radius: 26px !important;
+}
+app-home .banner-card h3 { font-size: clamp(25px, 2vw, 34px); }
+
+app-home .blog-grid { gap: 24px !important; }
+app-home .blog-thumb { height: clamp(190px, 17vw, 280px) !important; border-radius: 20px !important; }
+app-home .testimonial-card { padding: 26px !important; border-radius: 18px !important; }
+
+/* Sparse result pages stay balanced on ultrawide and zoomed-out screens. */
+app-category-detail .body {
+  grid-template-columns: minmax(240px, 290px) minmax(0, 1fr) !important;
+  gap: clamp(24px, 3vw, 52px) !important;
+}
+
+app-category-detail .product-grid,
+app-products .product-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)) !important;
+  gap: clamp(18px, 2vw, 30px) !important;
+}
+
+@media (min-width: 1500px) {
+  app-category-detail .product-grid > *,
+  app-products .product-grid > * { min-width: 0; }
+}
+
+/* Browsers expose a much larger CSS viewport when zoomed out. Keep the page
+   full-width and scale discovery content up so it remains comfortable to scan. */
+@media (min-width: 1900px) {
+  :root {
+    --page-gutter: clamp(36px, 2.5vw, 78px);
+  }
+
+  app-home .category-strip {
+    grid-template-columns: repeat(9, minmax(120px, 1fr)) !important;
+  }
+
+  app-home .category-pill {
+    min-height: 108px;
+  }
+
+  app-category-detail .body {
+    grid-template-columns: 310px minmax(0, 1fr) !important;
+  }
+
+  app-category-detail .product-grid,
+  app-products .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  app-home .features-strip { grid-template-columns: 1fr 1fr; }
+  app-home .feature-item:nth-child(2) { border-right: 0; }
+  app-home .feature-item:nth-child(-n + 2) { border-bottom: 1px solid var(--color-border); }
+  app-home .collection-grid { grid-template-columns: 1fr 1fr !important; }
+  app-home .category-strip {
+    display: flex !important;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding-bottom: 8px;
+  }
+  app-home .category-pill {
+    flex: 0 0 112px;
+    scroll-snap-align: start;
+  }
+  app-category-detail .body { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 600px) {
+  app-home .features-strip { grid-template-columns: 1fr; }
+  app-home .feature-item { justify-content: flex-start; border-right: 0; border-bottom: 1px solid var(--color-border); }
+  app-home .feature-item:last-child { border-bottom: 0; }
+  app-home .collection-grid { grid-template-columns: 1fr !important; }
+  app-home .three-banners { grid-template-columns: 1fr !important; }
+  app-home .trust-row { align-items: center; flex-direction: column; gap: 12px !important; }
+  app-category-detail .body { padding-top: 24px !important; }
 }

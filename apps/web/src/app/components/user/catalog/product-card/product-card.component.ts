@@ -25,7 +25,10 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       [attr.aria-label]="product().name"
     >
       <div class="thumb-wrap">
-        <div class="product-thumb img-placeholder">{{ product().name }}</div>
+        <div class="product-thumb img-placeholder" aria-hidden="true">
+          <span class="craft-mark">{{ product().name.charAt(0) }}</span>
+          <span class="thumb-label">{{ product().name }}</span>
+        </div>
 
         @if (product().status === 'out-of-stock') {
           <span class="stock-badge badge badge-neutral">Out of stock</span>
@@ -105,6 +108,8 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       .product-card {
         display: flex;
         flex-direction: column;
+        min-width: 0;
+        height: 100%;
         cursor: pointer;
         outline: none;
       }
@@ -114,9 +119,40 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       }
       .thumb-wrap {
         position: relative;
+        overflow: hidden;
       }
       .product-thumb {
-        height: 178px;
+        aspect-ratio: 4 / 3.45;
+        min-height: clamp(205px, 16vw, 285px);
+        flex-direction: column;
+        gap: 12px;
+        transition: transform 500ms var(--ease-out);
+      }
+      .product-card:hover .product-thumb {
+        transform: scale(1.025);
+      }
+      .craft-mark {
+        display: grid;
+        place-items: center;
+        width: clamp(54px, 5vw, 72px);
+        aspect-ratio: 1;
+        border: 1px solid rgba(142, 48, 33, .18);
+        border-radius: 50% 50% 46% 54%;
+        background: rgba(255, 253, 248, .7);
+        color: var(--color-accent);
+        font-family: var(--font-heading);
+        font-size: clamp(26px, 3vw, 38px);
+        box-shadow: 0 12px 32px rgba(82, 59, 34, .08);
+      }
+      .thumb-label {
+        max-width: 76%;
+        color: var(--color-text-secondary);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .09em;
+        line-height: 1.4;
+        text-align: center;
+        text-transform: uppercase;
       }
       .stock-badge {
         position: absolute;
@@ -132,8 +168,8 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         position: absolute;
         top: 8px;
         right: 8px;
-        width: 30px;
-        height: 30px;
+        width: 36px;
+        height: 36px;
         display: grid;
         place-items: center;
         border: 1px solid var(--color-border);
@@ -152,19 +188,22 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       .product-body {
         display: flex;
         flex-direction: column;
-        gap: 5px;
-        padding: 12px 13px 14px;
+        flex: 1;
+        gap: 7px;
+        padding: 17px 17px 18px;
       }
       .tag {
         color: var(--color-muted);
-        font-size: 10.5px;
+        font-size: 11px;
         font-weight: 600;
         letter-spacing: 0.04em;
         text-transform: uppercase;
       }
       .name {
-        font-size: 14px;
-        font-weight: 650;
+        min-height: 2.65em;
+        font-family: var(--font-body);
+        font-size: clamp(15px, .3vw + 13px, 17px);
+        font-weight: 700;
         line-height: 1.35;
         /* Two-line clamp keeps every card in a row the same height. */
         display: -webkit-box;
@@ -174,7 +213,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       }
       .seller {
         color: var(--color-muted);
-        font-size: 12px;
+        font-size: 12.5px;
       }
       .seller:hover {
         color: var(--color-accent);
@@ -184,7 +223,8 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-top: 6px;
+        margin-top: auto;
+        padding-top: 8px;
       }
       .prices {
         display: flex;
@@ -192,8 +232,8 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         gap: 7px;
       }
       .price {
-        font-size: 16px;
-        font-weight: 700;
+        font-size: 18px;
+        font-weight: 750;
       }
       .was {
         color: var(--color-muted);
@@ -201,12 +241,12 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         text-decoration: line-through;
       }
       .cart-add {
-        width: 34px;
-        height: 34px;
+        width: 40px;
+        height: 40px;
         display: grid;
         place-items: center;
         border: 0;
-        border-radius: var(--radius-sm);
+        border-radius: 12px;
         background: var(--color-accent);
       }
       .cart-add:hover:not(:disabled) {
@@ -221,6 +261,10 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         color: var(--color-success);
         font-size: 11.5px;
         font-weight: 650;
+      }
+      @media (max-width: 520px) {
+        .product-thumb { min-height: 190px; }
+        .product-body { padding: 15px; }
       }
     `,
   ],

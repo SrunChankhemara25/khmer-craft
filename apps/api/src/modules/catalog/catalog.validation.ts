@@ -68,6 +68,15 @@ export const listProductsQuerySchema = z
 
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;
 
+/**
+ * Note what is absent: `sellerName` and `sellerUserId`.
+ *
+ * They used to be accepted from the request body, which meant any signed-in
+ * seller could publish a product attributed to someone else's store — and
+ * because `sellerUserId` was never set, the listing reached nobody's order
+ * desk. Both are now taken from the authenticated seller, and `.strict()`
+ * rejects an attempt to send them rather than silently ignoring it.
+ */
 export const createProductSchema = z
   .object({
     name: z.string().trim().min(2).max(200),
@@ -76,7 +85,6 @@ export const createProductSchema = z
     compareAtPrice: z.number().positive().max(1_000_000).optional(),
     category: z.string().trim().min(2).max(80),
     subcategory: z.string().trim().max(80).optional(),
-    sellerName: z.string().trim().min(2).max(120),
     storeName: z.string().trim().max(120).optional(),
     location: z.string().trim().max(80).optional(),
     image: z.string().trim().url().max(2048).optional(),
@@ -87,3 +95,30 @@ export const createProductSchema = z
   .strict();
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
+
+/**
+ * Every field optional — a seller fixing a typo should not have to resend the
+ * whole listing. Ownership fields are absent for the same reason as above: a
+ * product cannot be reassigned to another seller through an edit.
+ */
+export const updateProductSchema = z
+  .object({
+    name: z.string().trim().min(2).max(200).optional(),
+    description: z.string().trim().max(4000).optional(),
+    price: z.number().positive().max(1_000_000).optional(),
+    compareAtPrice: z.number().positive().max(1_000_000).nullable().optional(),
+    category: z.string().trim().min(2).max(80).optional(),
+    subcategory: z.string().trim().max(80).nullable().optional(),
+    storeName: z.string().trim().max(120).optional(),
+    location: z.string().trim().max(80).optional(),
+    image: z.string().trim().url().max(2048).nullable().optional(),
+    images: z.array(z.string().trim().url().max(2048)).max(10).optional(),
+    stock: z.number().int().min(0).max(1_000_000).optional(),
+    status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).optional(),
+  })
+  .strict()
+  .refine((body) => Object.keys(body).length > 0, {
+    message: 'Provide at least one field to update',
+  });
+
+export type UpdateProductInput = z.infer<typeof updateProductSchema>;

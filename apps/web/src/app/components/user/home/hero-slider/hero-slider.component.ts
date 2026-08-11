@@ -103,6 +103,7 @@ const AUTOPLAY_MS = 6000;
       }
       .slider {
         position: relative;
+        overflow: hidden;
       }
       .track {
         display: flex;
@@ -124,17 +125,17 @@ const AUTOPLAY_MS = 6000;
       .slide-inner {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 48px;
+        gap: clamp(28px, 4vw, 72px);
         align-items: center;
-        padding-top: 52px;
-        padding-bottom: 52px;
-        min-height: 420px;
+        padding-top: clamp(22px, 2.5vw, 38px);
+        padding-bottom: clamp(34px, 3vw, 48px);
+        min-height: clamp(320px, 38vh, 410px);
       }
       .copy {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        gap: 14px;
+        gap: 12px;
       }
       .eyebrow {
         display: inline-flex;
@@ -146,15 +147,15 @@ const AUTOPLAY_MS = 6000;
         font-weight: 650;
       }
       h1 {
-        font-size: clamp(30px, 3.4vw, 46px);
-        line-height: 1.1;
-        letter-spacing: -0.03em;
-        max-width: 12em;
+        font-size: clamp(36px, 3.5vw, 54px);
+        line-height: .98;
+        letter-spacing: -0.045em;
+        max-width: 10.5em;
       }
       .copy p {
-        font-size: 15px;
-        line-height: 1.65;
-        max-width: 34em;
+        font-size: clamp(14px, .4vw + 12px, 17px);
+        line-height: 1.55;
+        max-width: 38em;
       }
       .actions {
         display: flex;
@@ -164,14 +165,14 @@ const AUTOPLAY_MS = 6000;
       }
       .visual {
         position: relative;
-        height: 320px;
-        border-radius: var(--radius-lg);
+        height: clamp(235px, 20vw, 310px);
+        border-radius: 26px 26px 76px 26px;
         display: grid;
         place-items: center;
       }
       .visual-caption {
         font-size: 12px;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
         opacity: 0.55;
       }
@@ -190,7 +191,7 @@ const AUTOPLAY_MS = 6000;
 
       /* ---- themes ---- */
       .theme-brand {
-        background: var(--color-bg-alt);
+        background: linear-gradient(120deg, #fffaf1, #f3eadc);
       }
       .theme-brand .eyebrow {
         background: var(--color-accent-soft);
@@ -303,7 +304,7 @@ const AUTOPLAY_MS = 6000;
       .dots {
         position: absolute;
         left: 50%;
-        bottom: 18px;
+        bottom: 12px;
         transform: translateX(-50%);
         display: flex;
         gap: 8px;
@@ -333,18 +334,25 @@ const AUTOPLAY_MS = 6000;
       @media (max-width: 900px) {
         .slide-inner {
           grid-template-columns: 1fr;
-          gap: 26px;
-          padding-top: 34px;
-          padding-bottom: 46px;
+          gap: 30px;
+          padding-top: 22px;
+          padding-bottom: 48px;
           min-height: 0;
         }
         .visual {
-          height: 190px;
+          height: clamp(190px, 44vw, 270px);
           order: -1;
+          border-radius: 22px 22px 70px 22px;
         }
         h1 {
           max-width: none;
         }
+      }
+
+      @media (max-width: 560px) {
+        h1 { font-size: clamp(38px, 12vw, 54px); }
+        .actions { width: 100%; }
+        .actions .btn { flex: 1 1 150px; }
       }
 
       @media (prefers-reduced-motion: reduce) {

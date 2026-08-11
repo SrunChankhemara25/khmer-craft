@@ -1,11 +1,13 @@
 import mongoose, { QueryFilter } from 'mongoose';
 import Product, { IProduct, slugify } from '../../../models/Product';
+import { IUser } from '../../../models/User';
 import { AppError } from '../../errors/app-error';
 import {
   COLLECTION_CATEGORIES,
   CreateProductInput,
   ListProductsQuery,
   ProductSort,
+  UpdateProductInput,
 } from './catalog.validation';
 
 /** Public shape of a product. Never return raw Mongoose documents. */
@@ -198,24 +200,28 @@ export const getProductDetail = async (idOrSlug: string) => {
   };
 };
 
-export const createProduct = async (input: CreateProductInput) => {
-  // Slugs must stay unique; suffix on collision rather than rejecting, so a
-  // seller listing a second "Silk Scarf" is not blocked by the first.
-  const base = slugify(input.name);
+/** Unique slug; suffix on collision so a second "Silk Scarf" is not blocked. */
+const uniqueSlug = async (name: string): Promise<string> => {
+  const base = slugify(name);
   let slug = base;
   for (let attempt = 2; await Product.exists({ slug }); attempt += 1) {
     slug = `${base}-${attempt}`;
   }
+  return slug;
+};
 
+export const createProduct = async (seller: IUser, input: CreateProductInput) => {
   const product = await Product.create({
     name: input.name,
-    slug,
+    slug: await uniqueSlug(input.name),
     description: input.description ?? '',
     price: input.price,
     compareAtPrice: input.compareAtPrice,
     category: input.category,
     subcategory: input.subcategory,
-    sellerName: input.sellerName,
+    // Identity comes from the session, never the payload.
+    sellerUserId: seller._id,
+    sellerName: seller.name,
     storeName: input.storeName,
     location: input.location ?? '',
     image: input.image,
@@ -225,4 +231,102 @@ export const createProduct = async (input: CreateProductInput) => {
   });
 
   return toProductResponse(product);
+};
+
+/**
+ * Load a product the caller is allowed to modify.
+ *
+ * A product owned by someone else returns 404 rather than 403, so a seller
+ * cannot enumerate the catalogue to discover which ids exist. Admins bypass
+ * the ownership check for support work.
+ */
+const loadOwned = async (actor: IUser, id: string) => {
+  if (!mongoose.isValidObjectId(id)) {
+    throw new AppError(404, 'Product not found', 'PRODUCT_NOT_FOUND');
+  }
+
+  const product = await Product.findById(id);
+  if (!product) {
+    throw new AppError(404, 'Product not found', 'PRODUCT_NOT_FOUND');
+  }
+
+  const isOwner =
+    product.sellerUserId && String(product.sellerUserId) === String(actor._id);
+  if (!isOwner && actor.role !== 'ADMIN') {
+    throw new AppError(404, 'Product not found', 'PRODUCT_NOT_FOUND');
+  }
+
+  return product;
+};
+
+export const updateProduct = async (
+  actor: IUser,
+  id: string,
+  input: UpdateProductInput,
+) => {
+  const product = await loadOwned(actor, id);
+
+  // Renaming re-slugs, but only if the name actually changed — otherwise a
+  // no-op save would push the slug to "silk-scarf-2" on every edit.
+  if (input.name !== undefined && input.name !== product.name) {
+    product.name = input.name;
+    product.slug = await uniqueSlug(input.name);
+  }
+
+  // Assigned field by field. Spreading the body would let a future schema
+  // field become writable the moment it is added.
+  if (input.description !== undefined) product.description = input.description;
+  if (input.price !== undefined) product.price = input.price;
+  if (input.compareAtPrice !== undefined)
+    product.compareAtPrice = input.compareAtPrice ?? undefined;
+  if (input.category !== undefined) product.category = input.category;
+  if (input.subcategory !== undefined)
+    product.subcategory = input.subcategory ?? undefined;
+  if (input.storeName !== undefined) product.storeName = input.storeName;
+  if (input.location !== undefined) product.location = input.location;
+  if (input.image !== undefined) product.image = input.image ?? undefined;
+  if (input.images !== undefined) product.images = input.images;
+  if (input.stock !== undefined) product.stock = input.stock;
+  if (input.status !== undefined) product.status = input.status;
+
+  await product.save();
+  return toProductResponse(product);
+};
+
+/**
+ * Delist rather than delete.
+ *
+ * Orders keep a productId, and the cart resolves products by id — hard
+ * deleting would leave past orders pointing at nothing. ARCHIVED disappears
+ * from the public catalogue while every existing reference still resolves.
+ */
+export const archiveProduct = async (actor: IUser, id: string) => {
+  const product = await loadOwned(actor, id);
+  product.status = 'ARCHIVED';
+  await product.save();
+  return toProductResponse(product);
+};
+
+/** A seller's own listings, drafts and archived included. */
+export const listSellerProducts = async (
+  sellerUserId: string,
+  page: number,
+  limit: number,
+) => {
+  const filter = { sellerUserId };
+  const [documents, total] = await Promise.all([
+    Product.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    Product.countDocuments(filter),
+  ]);
+
+  return {
+    products: documents.map(toProductResponse),
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  };
 };

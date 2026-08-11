@@ -129,7 +129,7 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
   styles: [
     `
       .navbar {
-        background: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 253, 248, 0.91);
         backdrop-filter: blur(14px) saturate(1.6);
         -webkit-backdrop-filter: blur(14px) saturate(1.6);
         border-bottom: 1px solid transparent;
@@ -145,7 +145,7 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         box-shadow: var(--shadow-xs);
       }
       .announce {
-        background: var(--color-accent);
+        background: #6f271c;
         color: rgba(255, 255, 255, 0.92);
         font-size: 12px;
       }
@@ -153,7 +153,7 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         display: flex;
         align-items: center;
         gap: 10px;
-        height: 34px;
+        height: 32px;
       }
       .announce-inner span {
         display: inline-flex;
@@ -178,15 +178,15 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         display: grid;
         grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        gap: 24px;
+        gap: clamp(18px, 2.4vw, 42px);
         padding-top: 14px;
         padding-bottom: 14px;
         height: var(--header-h);
       }
       .logo {
         font-family: var(--font-heading);
-        font-weight: 800;
-        font-size: 18px;
+        font-weight: 600;
+        font-size: 21px;
         color: var(--color-text);
         flex-shrink: 0;
         display: flex;
@@ -195,9 +195,9 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         letter-spacing: -0.02em;
       }
       .logo-mark {
-        width: 28px;
-        height: 28px;
-        border-radius: 8px;
+        width: 34px;
+        height: 34px;
+        border-radius: 11px 11px 17px 11px;
         background: var(--color-accent);
         display: flex;
         align-items: center;
@@ -207,14 +207,14 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 26px;
-        font-size: 13.5px;
-        font-weight: 500;
+        gap: clamp(17px, 1.65vw, 30px);
+        font-size: 14px;
+        font-weight: 600;
         color: var(--color-text-secondary);
         white-space: nowrap;
       }
       .nav-links a {
-        padding: 6px 0;
+        padding: 10px 0;
         border-bottom: 2px solid transparent;
         white-space: nowrap;
       }
@@ -236,12 +236,12 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        height: 36px;
+        height: 40px;
         padding: 0 14px 0 12px;
         margin-right: 4px;
         border: 1px solid var(--color-border-strong);
         border-radius: var(--radius-full);
-        background: var(--color-bg-alt);
+        background: rgba(255,255,255,.68);
         color: var(--color-muted);
         font-size: 13px;
         font-weight: 500;
@@ -257,8 +257,8 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         border: none;
         position: relative;
         color: var(--color-text-secondary);
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         border-radius: var(--radius-sm);
         display: flex;
         align-items: center;
@@ -299,8 +299,9 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         color: #fff;
         border: none;
         border-radius: var(--radius-full);
-        padding: 9px 16px;
-        font-size: 13px;
+        min-height: 40px;
+        padding: 9px 17px;
+        font-size: 13.5px;
         font-weight: 600;
         display: flex;
         align-items: center;
@@ -342,7 +343,7 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
       .mobile-menu a:last-child {
         border-bottom: 0;
       }
-      @media (max-width: 980px) {
+      @media (max-width: 1380px) {
         .nav-links {
           display: none;
         }
@@ -358,6 +359,11 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         .announce-links {
           display: none;
         }
+      }
+      @media (max-width: 1180px) {
+        .nav-links { gap: 16px; font-size: 13px; }
+        .search-label { display: none; }
+        .search-btn { width: 40px; padding: 0; justify-content: center; }
       }
       @media (max-width: 700px) {
         .search-label {
@@ -383,6 +389,17 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         .nav-actions {
           gap: 2px;
         }
+      }
+      @media (max-width: 560px) {
+        .announce-inner { justify-content: center; font-size: 10.5px; }
+        .announce .dot, .announce-inner > span:nth-of-type(2) { display: none; }
+        .navbar-inner { grid-template-columns: auto 1fr; }
+        .logo { font-size: 18px; }
+        .logo-mark { width: 32px; height: 32px; }
+        .signin-label { display: none; }
+        .signin-btn { padding-inline: 11px; margin-left: 0; }
+        .wishlist-btn { display: none; }
+        .menu-btn { width: 38px; }
       }
     `,
   ],

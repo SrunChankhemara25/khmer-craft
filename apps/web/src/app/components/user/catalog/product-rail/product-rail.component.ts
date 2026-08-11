@@ -42,17 +42,17 @@ import { ProductCardComponent } from '../product-card/product-card.component';
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        margin-bottom: 16px;
+        margin-bottom: 22px;
       }
       .section-head h2 {
-        font-size: 19px;
+        font-size: clamp(25px, 2vw, 34px);
       }
       .see-all {
         display: inline-flex;
         align-items: center;
         gap: 5px;
         color: var(--color-accent);
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 600;
         white-space: nowrap;
       }
@@ -62,13 +62,13 @@ import { ProductCardComponent } from '../product-card/product-card.component';
 
       .rail {
         display: flex;
-        gap: 16px;
+        gap: clamp(16px, 1.6vw, 26px);
         overflow-x: auto;
         overflow-y: hidden;
         scroll-snap-type: x proximity;
         /* Room for the card's hover lift and focus ring, which the scroll
            container would otherwise clip. */
-        padding: 4px 4px 12px;
+        padding: 5px 5px 18px;
         margin: -4px -4px 0;
         scrollbar-width: thin;
         scrollbar-color: var(--color-border-strong) transparent;
@@ -94,20 +94,20 @@ import { ProductCardComponent } from '../product-card/product-card.component';
         background: var(--color-muted-2);
       }
 
-      /* Each card keeps a fixed width so the row scrolls instead of squashing. */
+      /* Fluid cards remain comfortably readable at every zoom level. */
       .rail app-product-card {
-        flex: 0 0 224px;
+        flex: 0 0 clamp(270px, 19vw, 370px);
         scroll-snap-align: start;
       }
 
       @media (max-width: 700px) {
         .rail app-product-card {
-          flex-basis: 200px;
+          flex-basis: min(76vw, 300px);
         }
       }
       @media (max-width: 420px) {
         .rail app-product-card {
-          flex-basis: 168px;
+          flex-basis: min(82vw, 288px);
         }
       }
     `,

@@ -105,6 +105,18 @@ const SORTS: { value: ProductSort; label: string }[] = [
       <!-- Toolbar -->
       <section class="container toolbar">
         <div class="left">
+          <button
+            type="button"
+            class="filter-trigger"
+            (click)="filtersOpen.set(true)"
+            [attr.aria-expanded]="filtersOpen()"
+          >
+            <ui-icon name="filter" [size]="16" />
+            Filters
+            @if (activeCount()) {
+              <span>{{ activeCount() }}</span>
+            }
+          </button>
           <span class="showing">
             Showing {{ results().length }} of {{ totalInCategory() }}
           </span>
@@ -146,14 +158,20 @@ const SORTS: { value: ProductSort; label: string }[] = [
 
       <!-- Body -->
       <section class="container body">
-        <aside class="filters">
+        @if (filtersOpen()) {
+          <button
+            class="filter-backdrop"
+            type="button"
+            aria-label="Close filters"
+            (click)="filtersOpen.set(false)"
+          ></button>
+        }
+        <aside class="filters" [class.open]="filtersOpen()">
           <div class="filters-head">
-            <strong><ui-icon name="filter" [size]="14" /> Filters</strong>
-            @if (activeCount()) {
-              <button class="link" (click)="clearAll()">
-                Clear all ({{ activeCount() }})
-              </button>
-            }
+            <strong><ui-icon name="filter" [size]="17" /> Filters</strong>
+            <button class="hide-filters" type="button" (click)="filtersOpen.set(false)">
+              <ui-icon name="chevron-left" [size]="16" /> Hide
+            </button>
           </div>
 
           <div class="filter-group">
@@ -278,6 +296,19 @@ const SORTS: { value: ProductSort; label: string }[] = [
                 <span class="n">{{ catalog.countByCategory(other.slug) }}</span>
               </a>
             }
+          </div>
+
+          <div class="filter-actions">
+            <button type="button" class="clear-filters" (click)="clearAll()" [disabled]="!activeCount()">
+              <span class="reset-icon"><ui-icon name="rotate-ccw" [size]="17" /></span>
+              <span>
+                <strong>Clear all filters</strong>
+                <small>{{ activeCount() }} {{ activeCount() === 1 ? 'filter' : 'filters' }} applied</small>
+              </span>
+            </button>
+            <button type="button" class="apply-filters" (click)="filtersOpen.set(false)">
+              Show {{ results().length }} results
+            </button>
           </div>
         </aside>
 
@@ -441,6 +472,29 @@ const SORTS: { value: ProductSort; label: string }[] = [
         align-items: center;
         gap: 12px;
       }
+      .filter-trigger {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 0 13px;
+        border: 1px solid var(--color-border-strong);
+        border-radius: var(--radius-md);
+        background: #fff;
+        color: var(--color-text);
+        font-weight: 700;
+      }
+      .filter-trigger span {
+        display: grid;
+        place-items: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: var(--radius-full);
+        background: var(--color-accent);
+        color: #fff;
+        font-size: 11px;
+      }
       .showing {
         color: var(--color-muted);
         font-size: 13px;
@@ -519,8 +573,19 @@ const SORTS: { value: ProductSort; label: string }[] = [
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 14px;
-        font-size: 14px;
+        margin-bottom: 18px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--color-border);
+        font-size: 16px;
+      }
+      .hide-filters {
+        display: none;
+        align-items: center;
+        gap: 3px;
+        border: 0;
+        background: transparent;
+        color: var(--color-accent);
+        font-weight: 700;
       }
       .link {
         border: 0;
@@ -607,6 +672,9 @@ const SORTS: { value: ProductSort; label: string }[] = [
         max-height: calc(100vh - 130px);
         overflow-y: auto;
       }
+      .filter-actions {
+        display: none;
+      }
 
       .product-grid {
         display: grid;
@@ -678,7 +746,76 @@ const SORTS: { value: ProductSort; label: string }[] = [
           grid-template-columns: 1fr;
         }
         .filters {
-          position: static;
+          position: fixed;
+          inset: 0 auto 0 0;
+          z-index: 101;
+          width: min(390px, calc(100vw - 34px));
+          max-height: none;
+          padding: 24px 22px 116px;
+          border: 0;
+          border-radius: 0 22px 22px 0;
+          box-shadow: 24px 0 70px rgba(35, 28, 20, .2);
+          overflow-y: auto;
+          transform: translateX(-105%);
+          transition: transform 260ms var(--ease-out);
+        }
+        .filters.open {
+          transform: translateX(0);
+        }
+        .filter-trigger, .hide-filters {
+          display: inline-flex;
+        }
+        .filter-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 100;
+          border: 0;
+          background: rgba(24, 20, 16, .42);
+          backdrop-filter: blur(2px);
+        }
+        .filter-actions {
+          position: fixed;
+          left: 0;
+          bottom: 0;
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 9px;
+          width: min(390px, calc(100vw - 34px));
+          padding: 14px 20px 18px;
+          border-top: 1px solid var(--color-border);
+          background: rgba(255,255,255,.96);
+          backdrop-filter: blur(12px);
+        }
+        .clear-filters {
+          display: flex;
+          align-items: center;
+          gap: 11px;
+          min-height: 48px;
+          padding: 8px 12px;
+          border: 1px solid var(--color-border-strong);
+          border-radius: 14px;
+          background: #fff;
+          text-align: left;
+        }
+        .clear-filters:disabled { opacity: .48; cursor: default; }
+        .clear-filters > span:nth-child(2) { display: flex; flex-direction: column; gap: 2px; }
+        .clear-filters small { color: var(--color-success); font-size: 11px; font-weight: 700; }
+        .reset-icon {
+          display: grid;
+          place-items: center;
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          background: var(--color-success-soft);
+          color: var(--color-success);
+        }
+        .apply-filters {
+          min-height: 46px;
+          border: 0;
+          border-radius: 13px;
+          background: var(--color-accent);
+          color: #fff;
+          font-weight: 750;
         }
         .product-grid {
           grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -702,6 +839,7 @@ export class CategoryDetailComponent {
 
   protected readonly sorts = SORTS;
   protected readonly view = signal<'grid' | 'list'>('grid');
+  protected readonly filtersOpen = signal(false);
 
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
