@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PAYMENT_METHODS } from '../../../models/Order';
+import { ORDER_STATUSES, PAYMENT_METHODS } from '../../../models/Order';
 
 export const deliveryInfoSchema = z
   .object({
@@ -45,5 +45,22 @@ export const listOrdersQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(50).default(10),
+    status: z.enum(ORDER_STATUSES).optional(),
   })
   .strip();
+
+/**
+ * A status change carries only the target status and an optional note.
+ *
+ * Which moves are legal, and who may make them, is decided server-side in
+ * order-lifecycle.ts — the client cannot nominate itself as an admin, and
+ * cannot skip a step by asking for one.
+ */
+export const transitionOrderSchema = z
+  .object({
+    status: z.enum(ORDER_STATUSES),
+    note: z.string().trim().max(500).optional(),
+  })
+  .strict();
+
+export type TransitionOrderInput = z.infer<typeof transitionOrderSchema>;

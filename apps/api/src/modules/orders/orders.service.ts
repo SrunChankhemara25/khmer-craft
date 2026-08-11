@@ -3,6 +3,7 @@ import Cart from '../../../models/Cart';
 import Order, {
   IOrder,
   IOrderItem,
+  OrderStatus,
   PaymentMethod,
   PaymentStatus,
 } from '../../../models/Order';
@@ -10,6 +11,12 @@ import Product from '../../../models/Product';
 import { IUser } from '../../../models/User';
 import { AppError } from '../../errors/app-error';
 import { deliveryFeeFor, round } from '../cart/cart.service';
+import {
+  Actor,
+  RELEASES_STOCK,
+  allowedTransitions,
+  canTransition,
+} from './order-lifecycle';
 import { CreateOrderInput } from './orders.validation';
 
 /**
@@ -43,6 +50,7 @@ export const toOrderResponse = (order: IOrder) => ({
     productName: item.productName,
     productImage: item.productImage ?? null,
     sellerId: item.sellerId ? String(item.sellerId) : null,
+    sellerUserId: item.sellerUserId ? String(item.sellerUserId) : null,
     sellerName: item.sellerName,
     storeName: item.storeName ?? null,
     price: item.price,
@@ -56,6 +64,12 @@ export const toOrderResponse = (order: IOrder) => ({
   subtotal: order.subtotal,
   deliveryFee: order.deliveryFee,
   totalAmount: order.totalAmount,
+  statusHistory: order.statusHistory.map((event) => ({
+    status: event.status,
+    at: event.at,
+    by: event.by,
+    note: event.note ?? null,
+  })),
   createdAt: order.createdAt,
   updatedAt: order.updatedAt,
 });
@@ -150,6 +164,7 @@ export const createOrder = async (user: IUser, input: CreateOrderInput) => {
         productName: product.name,
         productImage: product.image ?? product.images[0],
         sellerId: product.sellerId,
+        sellerUserId: product.sellerUserId,
         sellerName: product.sellerName,
         storeName: product.storeName,
         price: product.price,
@@ -174,6 +189,9 @@ export const createOrder = async (user: IUser, input: CreateOrderInput) => {
       subtotal,
       deliveryFee,
       totalAmount: round(subtotal + deliveryFee),
+      statusHistory: [
+        { status: 'PENDING', at: new Date(), by: 'BUYER', byUserId: user._id },
+      ],
     });
 
     if (usingServerCart) {
@@ -216,6 +234,141 @@ export const listMyOrders = async (
     limit,
     totalPages: Math.max(1, Math.ceil(total / limit)),
   };
+};
+
+/**
+ * Orders containing at least one product belonging to this seller.
+ *
+ * An order can span several sellers, so this returns the whole order but marks
+ * which lines are the caller's — a seller must be able to see the delivery
+ * address and total, but should not be misled about which items are theirs.
+ */
+export const listSellerOrders = async (
+  sellerUserId: string,
+  page: number,
+  limit: number,
+  status?: OrderStatus,
+) => {
+  const filter: Record<string, unknown> = { 'items.sellerUserId': sellerUserId };
+  if (status) {
+    filter.orderStatus = status;
+  }
+
+  const [orders, total] = await Promise.all([
+    Order.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    Order.countDocuments(filter),
+  ]);
+
+  return {
+    orders: orders.map((order) => ({
+      ...toOrderResponse(order),
+      myItems: order.items
+        .filter((item) => String(item.sellerUserId) === String(sellerUserId))
+        .map((item) => ({
+          productId: String(item.productId),
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+          subtotal: item.subtotal,
+        })),
+      myTotal: round(
+        order.items
+          .filter((item) => String(item.sellerUserId) === String(sellerUserId))
+          .reduce((sum, item) => sum + item.subtotal, 0),
+      ),
+      availableActions: allowedTransitions(order.orderStatus, 'SELLER'),
+    })),
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  };
+};
+
+/**
+ * Move an order to a new status.
+ *
+ * The caller's relationship to the order decides what they may do: a buyer can
+ * only touch their own order, a seller only an order containing their product.
+ * Anything else is a 404 rather than a 403, so neither can probe for the
+ * existence of the other's orders.
+ */
+export const transitionOrder = async (
+  actor: Actor,
+  actorUserId: string,
+  orderId: string,
+  next: OrderStatus,
+  note?: string,
+) => {
+  const order = mongoose.isValidObjectId(orderId)
+    ? await Order.findById(orderId)
+    : await Order.findOne({ orderNumber: orderId.toUpperCase() });
+
+  if (!order) {
+    throw new AppError(404, 'Order not found', 'ORDER_NOT_FOUND');
+  }
+
+  const isBuyer = String(order.buyerId) === String(actorUserId);
+  const isSeller = order.items.some(
+    (item) => String(item.sellerUserId) === String(actorUserId),
+  );
+
+  if (actor === 'BUYER' && !isBuyer) {
+    throw new AppError(404, 'Order not found', 'ORDER_NOT_FOUND');
+  }
+  if (actor === 'SELLER' && !isSeller) {
+    throw new AppError(404, 'Order not found', 'ORDER_NOT_FOUND');
+  }
+
+  if (order.orderStatus === next) {
+    throw new AppError(
+      409,
+      `This order is already ${next.toLowerCase()}`,
+      'ALREADY_IN_STATUS',
+    );
+  }
+
+  if (!canTransition(order.orderStatus, next, actor)) {
+    throw new AppError(
+      409,
+      `Cannot move an order from ${order.orderStatus} to ${next}`,
+      'ILLEGAL_TRANSITION',
+      { from: order.orderStatus, to: next, allowed: allowedTransitions(order.orderStatus, actor) },
+    );
+  }
+
+  // Cancelling puts the stock back. Done before the save so a failure here
+  // does not leave an order marked cancelled with its stock still consumed.
+  if (RELEASES_STOCK.includes(next)) {
+    await Promise.all(
+      order.items.map((item) =>
+        releaseStock(item.productId, item.quantity),
+      ),
+    );
+  }
+
+  // Cash on delivery settles when it is delivered; nothing else changes here.
+  if (next === 'DELIVERED' && order.paymentMethod === 'COD') {
+    order.paymentStatus = 'PAID';
+  }
+  if (next === 'CANCELLED' && order.paymentStatus === 'PAID') {
+    order.paymentStatus = 'REFUNDED';
+  }
+
+  order.orderStatus = next;
+  order.statusHistory.push({
+    status: next,
+    at: new Date(),
+    by: actor,
+    byUserId: new mongoose.Types.ObjectId(actorUserId),
+    note,
+  });
+
+  await order.save();
+  return toOrderResponse(order);
 };
 
 export const getOrder = async (userId: string, orderId: string) => {

@@ -11,13 +11,23 @@ export interface IProduct extends Document {
   compareAtPrice?: number;
   category: string;
   /**
-   * TODO(seller-branch): `sellerId` is the real link and matches the Seller
-   * model on origin/prototype. It is optional until that branch merges, so
-   * seeded catalog data can exist without a Seller document. `sellerName` and
-   * `storeName` are denormalised copies kept for fast list rendering — once
-   * sellers merge, populate from the ref and treat these as a cache.
+   * TODO(seller-branch): `sellerId` matches the Seller model on
+   * origin/prototype and is left untouched for that developer. It stays
+   * optional and unused here.
    */
   sellerId?: mongoose.Types.ObjectId;
+  /**
+   * The seller account that owns this listing, as a User with role SELLER.
+   *
+   * This exists because seller identity currently lives in two places: the
+   * Seller collection on origin/prototype, which has no working login, and
+   * User(role=SELLER), which does. Order routing needs a seller who can
+   * actually authenticate, so it points here for now.
+   *
+   * TODO(seller-branch): collapse into a single link once the two branches
+   * agree on which collection owns a seller.
+   */
+  sellerUserId?: mongoose.Types.ObjectId;
   sellerName: string;
   storeName?: string;
   location: string;
@@ -42,6 +52,7 @@ const ProductSchema = new Schema<IProduct>(
     category: { type: String, required: true, trim: true, index: true },
 
     sellerId: { type: Schema.Types.ObjectId, ref: 'Seller' },
+    sellerUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     sellerName: { type: String, required: true, trim: true },
     storeName: { type: String, trim: true },
     location: { type: String, default: '', trim: true, index: true },

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CatalogService } from '../core/catalog/catalog.service';
@@ -53,7 +53,7 @@ import { HeroSliderComponent } from '../shared/hero-slider.component';
   <section class="container section">
     <app-product-rail
       title="Top picks for Cambodia"
-      [products]="topPicks"
+      [products]="topPicks()"
       linkRoute="/products"
     />
   </section>
@@ -61,7 +61,7 @@ import { HeroSliderComponent } from '../shared/hero-slider.component';
   <section class="container section">
     <app-product-rail
       title="Best sellers"
-      [products]="bestSellers"
+      [products]="bestSellers()"
       linkRoute="/products"
       [linkParams]="{ sort: 'featured' }"
     />
@@ -70,7 +70,7 @@ import { HeroSliderComponent } from '../shared/hero-slider.component';
   <section class="container section">
     <app-product-rail
       title="New arrivals"
-      [products]="newArrivals"
+      [products]="newArrivals()"
       linkRoute="/products"
       [linkParams]="{ sort: 'newest' }"
     />
@@ -95,7 +95,7 @@ import { HeroSliderComponent } from '../shared/hero-slider.component';
   <section class="container section">
     <app-product-rail
       title="Local food & agro products"
-      [products]="agroProducts"
+      [products]="agroProducts()"
       linkRoute="/products"
       linkLabel="Explore agro products"
       [linkParams]="{ collection: 'agro-products' }"
@@ -105,7 +105,7 @@ import { HeroSliderComponent } from '../shared/hero-slider.component';
   <section class="container section">
     <app-product-rail
       title="Handmade craft collection"
-      [products]="handmadeCrafts"
+      [products]="handmadeCrafts()"
       linkRoute="/products"
       linkLabel="Explore handmade crafts"
       [linkParams]="{ collection: 'handmade-crafts' }"
@@ -129,7 +129,7 @@ import { HeroSliderComponent } from '../shared/hero-slider.component';
   <section class="container section">
     <app-product-rail
       title="Recommended for you"
-      [products]="recommended"
+      [products]="recommended()"
       linkRoute="/products"
     />
   </section>
@@ -305,13 +305,16 @@ export class HomeComponent {
   // same catalog as the products page instead of its own hardcoded copy.
   readonly categories = this.catalog.categories;
   readonly stores = this.catalog.stores;
+
+  // Computed, not plain fields: the catalog arrives from the API after this
+  // component is constructed, so a snapshot taken here would stay empty.
   // Rails scroll horizontally, so they take more than a grid row would.
-  readonly topPicks = this.catalog.collection('top-picks');
-  readonly bestSellers = this.catalog.bestSellers(8);
-  readonly newArrivals = this.catalog.newArrivals(8);
-  readonly agroProducts = this.catalog.collection('agro-products');
-  readonly handmadeCrafts = this.catalog.collection('handmade-crafts');
-  readonly recommended = this.catalog.collection('recommended');
+  readonly topPicks = computed(() => this.catalog.collection('top-picks'));
+  readonly bestSellers = computed(() => this.catalog.bestSellers(8));
+  readonly newArrivals = computed(() => this.catalog.newArrivals(8));
+  readonly agroProducts = computed(() => this.catalog.collection('agro-products'));
+  readonly handmadeCrafts = computed(() => this.catalog.collection('handmade-crafts'));
+  readonly recommended = computed(() => this.catalog.collection('recommended'));
 
   readonly collectionLinks = [
     { label: 'New Arrivals', params: { sort: 'newest' } },

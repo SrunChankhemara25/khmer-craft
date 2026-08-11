@@ -163,13 +163,13 @@ export class WishlistComponent {
 
   protected readonly movedCount = signal(0);
 
-  protected moveAllToCart(): void {
+  protected async moveAllToCart(): Promise<void> {
     const saved: Product[] = [...this.wishlist.products()];
     let moved = 0;
 
     for (const product of saved) {
       // Sold-out items stay on the wishlist rather than vanishing silently.
-      if (this.cart.add(product)) {
+      if (await this.cart.add(product)) {
         this.wishlist.remove(product.id);
         moved += 1;
       }

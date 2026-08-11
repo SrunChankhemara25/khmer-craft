@@ -28,11 +28,23 @@ export interface IOrderItem {
   productName: string;
   productImage?: string;
   sellerId?: mongoose.Types.ObjectId;
+  /** Copied from Product.sellerUserId so orders can be routed to a seller. */
+  sellerUserId?: mongoose.Types.ObjectId;
   sellerName: string;
   storeName?: string;
   price: number;
   quantity: number;
   subtotal: number;
+}
+
+/** One entry per status change, so an order can explain its own history. */
+export interface IStatusEvent {
+  status: OrderStatus;
+  at: Date;
+  /** Who moved it: the buyer, a seller, or the system. */
+  by: 'BUYER' | 'SELLER' | 'ADMIN' | 'SYSTEM';
+  byUserId?: mongoose.Types.ObjectId;
+  note?: string;
 }
 
 export interface IDeliveryInfo {
@@ -57,6 +69,7 @@ export interface IOrder extends Document {
   subtotal: number;
   deliveryFee: number;
   totalAmount: number;
+  statusHistory: IStatusEvent[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,6 +81,7 @@ const OrderItemSchema = new Schema<IOrderItem>(
     productImage: { type: String },
     // TODO(seller-branch): populate from Product.sellerId once Seller merges.
     sellerId: { type: Schema.Types.ObjectId, ref: 'Seller' },
+    sellerUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     sellerName: { type: String, required: true },
     storeName: { type: String },
     price: { type: Number, required: true, min: 0 },
@@ -121,12 +135,34 @@ const OrderSchema = new Schema<IOrder>(
     subtotal: { type: Number, required: true, min: 0 },
     deliveryFee: { type: Number, required: true, min: 0 },
     totalAmount: { type: Number, required: true, min: 0 },
+
+    statusHistory: {
+      type: [
+        new Schema<IStatusEvent>(
+          {
+            status: { type: String, enum: ORDER_STATUSES, required: true },
+            at: { type: Date, required: true },
+            by: {
+              type: String,
+              enum: ['BUYER', 'SELLER', 'ADMIN', 'SYSTEM'],
+              required: true,
+            },
+            byUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+            note: { type: String, maxlength: 500 },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
   },
   { timestamps: true },
 );
 
 // "My orders", newest first.
 OrderSchema.index({ buyerId: 1, createdAt: -1 });
+// The seller order desk: orders containing one of my products, newest first.
+OrderSchema.index({ 'items.sellerUserId': 1, createdAt: -1 });
 
 const OrderModel: Model<IOrder> =
   (mongoose.models.Order as Model<IOrder>) ||

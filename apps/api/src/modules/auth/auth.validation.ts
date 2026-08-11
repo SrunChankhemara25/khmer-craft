@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { USER_ROLES } from '../../../models/User';
 
 const email = z
   .string()
@@ -28,7 +29,10 @@ export const loginSchema = z
   .object({
     email,
     password: z.string().min(1).max(72),
-    expectedRole: z.enum(['BUYER', 'ADMIN']).optional(),
+    // SELLER was missing, so a seller account could never sign in — the
+    // storefront login sends expectedRole and the request was rejected before
+    // credentials were even checked. Kept in step with USER_ROLES.
+    expectedRole: z.enum(USER_ROLES).optional(),
   })
   .strict();
 

@@ -27,7 +27,7 @@ import { IconComponent } from './icon.component';
           <div class="announce-links">
             <a routerLink="/orders">Track order</a>
             <a routerLink="/help">Support</a>
-            <a routerLink="/become-a-seller">Seller portal</a>
+            <a routerLink="/seller/login">Seller portal</a>
           </div>
         </div>
       </div>

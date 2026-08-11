@@ -412,12 +412,17 @@ export class ProductDetailComponent {
     );
   }
 
-  protected addToCart(): void {
+  protected async addToCart(): Promise<void> {
     const current = this.product();
-    if (!current || !this.cart.add(current, this.quantity())) {
+    if (!current) {
       return;
     }
     const units = this.quantity();
+    if (!(await this.cart.add(current, units))) {
+      // cart.error carries the server's reason, e.g. "Only 3 left in stock".
+      this.feedback.set('');
+      return;
+    }
     this.feedback.set(`${units} × ${current.name} added to your cart.`);
   }
 

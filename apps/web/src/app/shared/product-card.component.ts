@@ -255,9 +255,11 @@ export class ProductCardComponent {
     this.wishlist.toggle(this.product().id);
   }
 
-  protected addToCart(event: Event): void {
+  protected async addToCart(event: Event): Promise<void> {
     event.stopPropagation();
-    if (!this.cart.add(this.product())) {
+    // Adding is a server round-trip when signed in, so this awaits rather
+    // than flashing "Added" before the server has agreed.
+    if (!(await this.cart.add(this.product()))) {
       return;
     }
     this.justAdded.set(true);

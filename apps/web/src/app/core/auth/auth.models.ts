@@ -1,4 +1,6 @@
-export type UserRole = 'BUYER' | 'ADMIN';
+/** Mirrors USER_ROLES in the API's models/User.ts. SELLER was missing here,
+ *  so a seller signing in could not be represented at all. */
+export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN';
 
 export interface AuthUser {
   id: string;

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { buyerGuard } from './core/auth/auth.guard';
+import { sellerGuard } from './core/auth/seller.guard';
 
 /**
  * Everything is lazy-loaded. The storefront branch imported all 19 page
@@ -61,42 +62,19 @@ export const routes: Routes = [
   // ------------------------------------------------------------------ checkout
   // Guarded: an anonymous visitor is sent to /login with a returnUrl rather
   // than filling in a delivery address they cannot submit.
+  // One real checkout page replaces the four-step mock chain: the server
+  // prices the order, so there is no intermediate state worth three extra
+  // navigations. The old step URLs still resolve so no link breaks.
   {
     path: 'checkout',
     canActivate: [buyerGuard],
     loadComponent: () =>
-      import('./pages/checkout-delivery.component').then(
-        (m) => m.CheckoutDeliveryComponent,
-      ),
+      import('./pages/checkout.component').then((m) => m.CheckoutComponent),
     title: 'Checkout | KhmerCraft',
   },
-  {
-    path: 'checkout/shipping',
-    canActivate: [buyerGuard],
-    loadComponent: () =>
-      import('./pages/checkout-shipping.component').then(
-        (m) => m.CheckoutShippingComponent,
-      ),
-    title: 'Shipping | KhmerCraft',
-  },
-  {
-    path: 'checkout/payment',
-    canActivate: [buyerGuard],
-    loadComponent: () =>
-      import('./pages/checkout-payment.component').then(
-        (m) => m.CheckoutPaymentComponent,
-      ),
-    title: 'Payment | KhmerCraft',
-  },
-  {
-    path: 'checkout/review',
-    canActivate: [buyerGuard],
-    loadComponent: () =>
-      import('./pages/checkout-review.component').then(
-        (m) => m.CheckoutReviewComponent,
-      ),
-    title: 'Review order | KhmerCraft',
-  },
+  { path: 'checkout/shipping', pathMatch: 'full', redirectTo: 'checkout' },
+  { path: 'checkout/payment', pathMatch: 'full', redirectTo: 'checkout' },
+  { path: 'checkout/review', pathMatch: 'full', redirectTo: 'checkout' },
   {
     path: 'order-success',
     loadComponent: () =>
@@ -138,6 +116,25 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/account/orders/orders').then((m) => m.Orders),
     title: 'My orders | KhmerCraft',
+  },
+
+  // ------------------------------------------------------------------- seller
+  {
+    path: 'seller/login',
+    loadComponent: () =>
+      import('./features/auth/seller-login/seller-login').then(
+        (m) => m.SellerLogin,
+      ),
+    title: 'Seller sign in | KhmerCraft',
+  },
+  {
+    path: 'seller/orders',
+    canActivate: [sellerGuard],
+    loadComponent: () =>
+      import('./features/seller/orders/seller-orders').then(
+        (m) => m.SellerOrders,
+      ),
+    title: 'Incoming orders | KhmerCraft',
   },
 
   // ---------------------------------------------------------------------- auth

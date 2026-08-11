@@ -8,8 +8,7 @@ import {
   MessageResponse,
   UserRole,
 } from './auth.models';
-
-const API_URL = 'http://localhost:3001/auth';
+import { AUTH_URL as API_URL } from '../api/api.config';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {

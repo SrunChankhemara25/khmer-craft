@@ -41,7 +41,7 @@ import { IconComponent } from './icon.component';
       <div class="footer-col">
         <h4>Sell</h4>
         <a routerLink="/become-a-seller">Become a Seller</a>
-        <a routerLink="/admin/login">Seller login</a>
+        <a routerLink="/seller/login">Seller login</a>
       </div>
       <div class="footer-col">
         <h4>Assistance</h4>

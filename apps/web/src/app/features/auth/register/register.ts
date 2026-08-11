@@ -5,7 +5,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { apiErrorMessage, AuthService } from '../../../core/auth/auth.service';
 import { AuthLayout } from '../../../shared/auth-layout/auth-layout';
@@ -17,6 +17,8 @@ import { AuthLayout } from '../../../shared/auth-layout/auth-layout';
 })
 export class Register {
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly loading = signal(false);
   protected readonly error = signal('');
@@ -60,8 +62,13 @@ export class Register {
       })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: ({ user }) =>
-          this.success.set(`Welcome to KhmerCraft, ${user.name}.`),
+        next: ({ user }) => {
+          this.success.set(`Welcome to KhmerCraft, ${user.name}.`);
+          const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+          void this.router.navigateByUrl(
+            returnUrl && returnUrl.startsWith('/') ? returnUrl : '/',
+          );
+        },
         error: (error) => this.error.set(apiErrorMessage(error)),
       });
   }
