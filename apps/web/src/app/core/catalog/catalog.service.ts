@@ -2,7 +2,11 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CommerceApiService } from '../api/commerce-api.service';
 import { ApiProduct } from '../api/api.models';
-import { CATEGORIES, findCategory } from '../data/categories.data';
+import {
+  CATEGORIES,
+  findCategory,
+  subcategorySlug,
+} from '../data/categories.data';
 import { PRODUCTS as FALLBACK_PRODUCTS } from '../data/products.data';
 import { STORES, findStore } from '../data/stores.data';
 import { Category, Product, ProductQuery, Store } from './catalog.models';
@@ -83,6 +87,15 @@ export class CatalogService {
       .length;
   }
 
+  /** Product count for a sub-category, used by the chips and filter list. */
+  countBySubcategory(categorySlug: string, subSlug: string): number {
+    return this.products().filter(
+      (product) =>
+        product.categorySlug === categorySlug &&
+        product.subcategorySlug === subSlug,
+    ).length;
+  }
+
   countByStore(storeId: string): number {
     return this.products().filter((product) => product.storeId === storeId)
       .length;
@@ -131,6 +144,12 @@ export class CatalogService {
       );
     }
 
+    if (query.subcategory) {
+      results = results.filter(
+        (product) => product.subcategorySlug === query.subcategory,
+      );
+    }
+
     if (query.collection) {
       results = results.filter((product) =>
         product.collections.includes(query.collection!),
@@ -139,6 +158,30 @@ export class CatalogService {
 
     if (query.storeId) {
       results = results.filter((product) => product.storeId === query.storeId);
+    }
+
+    if (query.priceMin !== undefined) {
+      results = results.filter((product) => product.price >= query.priceMin!);
+    }
+
+    if (query.priceMax !== undefined) {
+      results = results.filter((product) => product.price <= query.priceMax!);
+    }
+
+    if (query.minRating !== undefined) {
+      results = results.filter((product) => product.rating >= query.minRating!);
+    }
+
+    if (query.inStockOnly) {
+      results = results.filter((product) => product.status !== 'out-of-stock');
+    }
+
+    if (query.onSaleOnly) {
+      results = results.filter(
+        (product) =>
+          product.compareAtPrice !== undefined &&
+          product.compareAtPrice > product.price,
+      );
     }
 
     switch (query.sort) {
@@ -163,6 +206,30 @@ export class CatalogService {
     }
 
     return results;
+  }
+
+  /**
+   * How many products a filter would return *given the rest of the filters*.
+   *
+   * Counting against the full catalogue would show a number the user cannot
+   * reach — clicking a "12" and landing on 3 results reads as a bug. This
+   * applies every other active filter first, so the count is what they will
+   * actually get.
+   */
+  countWith(base: ProductQuery, override: Partial<ProductQuery>): number {
+    return this.search({ ...base, ...override }).length;
+  }
+
+  /** Cheapest and dearest in a set, for the price slider bounds. */
+  priceRange(query: ProductQuery): { min: number; max: number } {
+    const prices = this.search(query).map((product) => product.price);
+    if (!prices.length) {
+      return { min: 0, max: 0 };
+    }
+    return {
+      min: Math.floor(Math.min(...prices)),
+      max: Math.ceil(Math.max(...prices)),
+    };
   }
 
   related(product: Product, limit = 4): Product[] {
@@ -199,6 +266,8 @@ const toProduct = (api: ApiProduct): Product => {
     compareAtPrice: api.compareAtPrice ?? undefined,
     categorySlug,
     categoryName: api.category,
+    subcategory: api.subcategory,
+    subcategorySlug: api.subcategory ? subcategorySlug(api.subcategory) : null,
     sellerName: api.sellerName,
     storeId: store?.id ?? api.sellerId ?? '',
     rating: api.rating,

@@ -17,6 +17,7 @@ export const toProductResponse = (product: IProduct) => ({
   price: product.price,
   compareAtPrice: product.compareAtPrice ?? null,
   category: product.category,
+  subcategory: product.subcategory ?? null,
   // TODO(seller-branch): expose the populated Seller once that branch merges.
   sellerId: product.sellerId ? String(product.sellerId) : null,
   sellerName: product.sellerName,
@@ -43,6 +44,24 @@ const SORT_ORDERS: Record<ProductSort, Record<string, 1 | -1>> = {
   popular: { soldCount: -1, rating: -1 },
 };
 
+/**
+ * Match a stored display name against either itself or its slug.
+ *
+ * "bowls-plates" has to find "Bowls & Plates", so each hyphen stands in for
+ * any run of non-alphanumeric characters rather than a literal space —
+ * ampersands, slashes and double spaces all appear in category names.
+ * Everything else is escaped, so a name can never act as a pattern.
+ */
+const nameOrSlug = (value: string): RegExp => {
+  const pattern = value
+    .trim()
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('[^a-zA-Z0-9]+');
+  return new RegExp(`^${pattern}$`, 'i');
+};
+
 const buildFilter = (query: ListProductsQuery): QueryFilter<IProduct> => {
   const filter: QueryFilter<IProduct> = {};
 
@@ -63,18 +82,15 @@ const buildFilter = (query: ListProductsQuery): QueryFilter<IProduct> => {
   }
 
   if (query.category) {
-    // Accept either the display name ("Palm Sugar") or a slug ("palm-sugar").
-    filter.category = new RegExp(
-      `^${query.category.replace(/-/g, '[ -]')}$`,
-      'i',
-    );
+    filter.category = nameOrSlug(query.category);
+  }
+
+  if (query.subcategory) {
+    filter.subcategory = nameOrSlug(query.subcategory);
   }
 
   if (query.location) {
-    filter.location = new RegExp(
-      `^${query.location.replace(/-/g, '[ -]')}$`,
-      'i',
-    );
+    filter.location = nameOrSlug(query.location);
   }
 
   // Built as one local object so the under-5 collection can tighten the same
@@ -142,6 +158,7 @@ export const listProducts = async (query: ListProductsQuery) => {
     appliedFilters: {
       search: query.search ?? null,
       category: query.category ?? null,
+      subcategory: query.subcategory ?? null,
       location: query.location ?? null,
       collection: query.collection ?? null,
       priceMin: query.priceMin ?? null,
@@ -197,6 +214,7 @@ export const createProduct = async (input: CreateProductInput) => {
     price: input.price,
     compareAtPrice: input.compareAtPrice,
     category: input.category,
+    subcategory: input.subcategory,
     sellerName: input.sellerName,
     storeName: input.storeName,
     location: input.location ?? '',

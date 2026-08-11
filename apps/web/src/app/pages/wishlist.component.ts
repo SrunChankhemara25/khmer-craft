@@ -3,10 +3,10 @@ import { RouterLink } from '@angular/router';
 import { CartService } from '../core/cart/cart.service';
 import { WishlistService } from '../core/wishlist/wishlist.service';
 import { Product } from '../core/catalog/catalog.models';
-import { NavbarComponent } from '../shared/navbar.component';
-import { FooterComponent } from '../shared/footer.component';
-import { IconComponent } from '../shared/icon.component';
-import { ProductCardComponent } from '../shared/product-card.component';
+import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
+import { FooterComponent } from '../components/shared/layout/footer/footer.component';
+import { IconComponent } from '../components/shared/ui/icon/icon.component';
+import { ProductCardComponent } from '../components/user/catalog/product-card/product-card.component';
 
 @Component({
   selector: 'app-wishlist',

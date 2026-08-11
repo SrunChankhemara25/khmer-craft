@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { IconComponent } from '../shared/icon.component';
+import { IconComponent } from '../components/shared/ui/icon/icon.component';
 
 @Component({
   selector: 'app-order-success',

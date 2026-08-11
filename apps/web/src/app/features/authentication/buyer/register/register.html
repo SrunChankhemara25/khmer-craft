@@ -1,0 +1,51 @@
+<!-- Authentication feature: buyer registration. -->
+<app-auth-layout
+  title="Create your account"
+  subtitle="Join a marketplace built around meaningful objects and the people who make them."
+>
+  @if (success()) {
+    <div class="notice success" role="status">{{ success() }}</div>
+  }
+  @if (error()) {
+    <div class="notice error" role="alert">{{ error() }}</div>
+  }
+
+  <form class="auth-form compact" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <label>
+      <span>Full name</span>
+      <input formControlName="name" autocomplete="name" placeholder="Your full name" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <small>Enter at least 2 characters.</small>
+      }
+    </label>
+
+    <label>
+      <span>Email address</span>
+      <input type="email" formControlName="email" autocomplete="email" placeholder="you@example.com" />
+      @if (form.controls.email.touched && form.controls.email.invalid) {
+        <small>Enter a valid email address.</small>
+      }
+    </label>
+
+    <label>
+      <span>Phone <em>Optional</em></span>
+      <input type="tel" formControlName="phone" autocomplete="tel" placeholder="+855 12 345 678" />
+    </label>
+
+    <label>
+      <span>Password</span>
+      <input type="password" formControlName="password" autocomplete="new-password" placeholder="Create a strong password" />
+      @if (form.controls.password.touched && form.controls.password.invalid) {
+        <small>Use 8+ characters with uppercase, lowercase and a number.</small>
+      }
+    </label>
+
+    <button class="primary-button" type="submit" [disabled]="loading()">
+      {{ loading() ? 'Creating account…' : 'Create buyer account' }}
+    </button>
+  </form>
+
+  <p class="auth-switch">
+    Already have an account? <a routerLink="/login">Sign in</a>
+  </p>
+</app-auth-layout>

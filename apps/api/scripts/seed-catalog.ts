@@ -19,6 +19,7 @@ interface Seed {
   price: number;
   compareAtPrice?: number;
   category: string;
+  subcategory: string;
   sellerName: string;
   storeName: string;
   location: string;
@@ -32,7 +33,7 @@ interface Seed {
 const SEEDS: Seed[] = [
   {
     name: 'Handmade Khmer Silk Scarf', price: 12.5, compareAtPrice: 16,
-    category: 'Weaving', sellerName: 'Srey Khmer Handmade Store',
+    category: 'Weaving', subcategory: 'Scarves', sellerName: 'Srey Khmer Handmade Store',
     storeName: 'Srey Khmer Handmade', location: 'Siem Reap',
     rating: 4.8, reviewCount: 124, stock: 20, soldCount: 480,
     description:
@@ -40,7 +41,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Kampong Speu Palm Sugar 500g', price: 3.5,
-    category: 'Palm Sugar', sellerName: 'Kampong Speu Palm Sugar',
+    category: 'Palm Sugar', subcategory: 'Blocks & Paste', sellerName: 'Kampong Speu Palm Sugar',
     storeName: 'Kampong Speu Palm Sugar', location: 'Kampong Speu',
     rating: 4.9, reviewCount: 208, stock: 60, soldCount: 940,
     description:
@@ -48,7 +49,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Organic Jasmine Rice 5kg', price: 14,
-    category: 'Rice Products', sellerName: 'Battambang Rice Farm',
+    category: 'Rice Products', subcategory: 'White Rice', sellerName: 'Battambang Rice Farm',
     storeName: 'Battambang Rice Farm', location: 'Battambang',
     rating: 4.7, reviewCount: 176, stock: 35, soldCount: 620,
     description:
@@ -56,7 +57,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Woven Bamboo Basket', price: 9.75,
-    category: 'Bamboo Products', sellerName: 'Takeo Bamboo Craft',
+    category: 'Bamboo Products', subcategory: 'Baskets', sellerName: 'Takeo Bamboo Craft',
     storeName: 'Takeo Bamboo Craft', location: 'Takeo',
     rating: 4.6, reviewCount: 87, stock: 4, soldCount: 210,
     description:
@@ -64,7 +65,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Clay Pottery Cup Set of 4', price: 18,
-    category: 'Pottery', sellerName: 'Phnom Penh Pottery House',
+    category: 'Pottery', subcategory: 'Cups & Mugs', sellerName: 'Phnom Penh Pottery House',
     storeName: 'Phnom Penh Pottery House', location: 'Phnom Penh',
     rating: 4.5, reviewCount: 64, stock: 12, soldCount: 150,
     description:
@@ -72,7 +73,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Dried Mango Slices 250g', price: 4.25,
-    category: 'Dried Fruits', sellerName: 'Kampong Speu Palm Sugar',
+    category: 'Dried Fruits', subcategory: 'Dried Mango', sellerName: 'Kampong Speu Palm Sugar',
     storeName: 'Kampong Speu Palm Sugar', location: 'Kampong Speu',
     rating: 4.7, reviewCount: 132, stock: 48, soldCount: 510,
     description:
@@ -80,7 +81,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Khmer Ceramic Serving Bowl', price: 22,
-    category: 'Pottery', sellerName: 'Phnom Penh Pottery House',
+    category: 'Pottery', subcategory: 'Bowls & Plates', sellerName: 'Phnom Penh Pottery House',
     storeName: 'Phnom Penh Pottery House', location: 'Phnom Penh',
     rating: 4.8, reviewCount: 41, stock: 9, soldCount: 96,
     description:
@@ -88,7 +89,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Handmade Wooden Spoon Pair', price: 6.5,
-    category: 'Handmade Crafts', sellerName: 'Srey Khmer Handmade Store',
+    category: 'Handmade Crafts', subcategory: 'Kitchen & Utensils', sellerName: 'Srey Khmer Handmade Store',
     storeName: 'Srey Khmer Handmade', location: 'Siem Reap',
     rating: 4.4, reviewCount: 58, stock: 26, soldCount: 187,
     description:
@@ -96,7 +97,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Cotton Krama Scarf — Classic Check', price: 8.9,
-    category: 'Weaving', sellerName: 'Srey Khmer Handmade Store',
+    category: 'Weaving', subcategory: 'Scarves', sellerName: 'Srey Khmer Handmade Store',
     storeName: 'Srey Khmer Handmade', location: 'Siem Reap',
     rating: 4.6, reviewCount: 149, stock: 40, soldCount: 733,
     description:
@@ -104,7 +105,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Organic Red Rice 2kg', price: 7.4,
-    category: 'Rice Products', sellerName: 'Battambang Rice Farm',
+    category: 'Rice Products', subcategory: 'Brown & Red Rice', sellerName: 'Battambang Rice Farm',
     storeName: 'Battambang Rice Farm', location: 'Battambang',
     rating: 4.5, reviewCount: 71, stock: 30, soldCount: 264,
     description:
@@ -112,7 +113,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Palm Sugar Candy Box', price: 5.2,
-    category: 'Local Food', sellerName: 'Kampong Speu Palm Sugar',
+    category: 'Local Food', subcategory: 'Sweets & Snacks', sellerName: 'Kampong Speu Palm Sugar',
     storeName: 'Kampong Speu Palm Sugar', location: 'Kampong Speu',
     rating: 4.8, reviewCount: 95, stock: 0, soldCount: 402,
     description:
@@ -120,7 +121,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Bamboo Steamer Tray', price: 11.25,
-    category: 'Bamboo Products', sellerName: 'Takeo Bamboo Craft',
+    category: 'Bamboo Products', subcategory: 'Kitchen & Steamers', sellerName: 'Takeo Bamboo Craft',
     storeName: 'Takeo Bamboo Craft', location: 'Takeo',
     rating: 4.5, reviewCount: 46, stock: 15, soldCount: 128,
     description:
@@ -128,7 +129,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Dried Banana Chips 200g', price: 3.1,
-    category: 'Dried Fruits', sellerName: 'Kampong Speu Palm Sugar',
+    category: 'Dried Fruits', subcategory: 'Chips & Crisps', sellerName: 'Kampong Speu Palm Sugar',
     storeName: 'Kampong Speu Palm Sugar', location: 'Kampong Speu',
     rating: 4.3, reviewCount: 63, stock: 52, soldCount: 298,
     description:
@@ -136,7 +137,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Silk Table Runner', price: 26,
-    category: 'Weaving', sellerName: 'Srey Khmer Handmade Store',
+    category: 'Weaving', subcategory: 'Table Linen', sellerName: 'Srey Khmer Handmade Store',
     storeName: 'Srey Khmer Handmade', location: 'Siem Reap',
     rating: 4.9, reviewCount: 32, stock: 5, soldCount: 61,
     description:
@@ -144,7 +145,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Prahok Ceramic Storage Jar', price: 16.5,
-    category: 'Pottery', sellerName: 'Phnom Penh Pottery House',
+    category: 'Pottery', subcategory: 'Storage Jars', sellerName: 'Phnom Penh Pottery House',
     storeName: 'Phnom Penh Pottery House', location: 'Phnom Penh',
     rating: 4.4, reviewCount: 28, stock: 11, soldCount: 74,
     description:
@@ -152,7 +153,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Kampot Pepper 100g', price: 8.75,
-    category: 'Local Food', sellerName: 'Kampong Speu Palm Sugar',
+    category: 'Local Food', subcategory: 'Spices & Pepper', sellerName: 'Kampong Speu Palm Sugar',
     storeName: 'Kampong Speu Palm Sugar', location: 'Kampot',
     rating: 4.9, reviewCount: 241, stock: 44, soldCount: 856,
     description:
@@ -160,7 +161,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Rattan Fruit Bowl', price: 13.9,
-    category: 'Bamboo Products', sellerName: 'Takeo Bamboo Craft',
+    category: 'Bamboo Products', subcategory: 'Bowls & Trays', sellerName: 'Takeo Bamboo Craft',
     storeName: 'Takeo Bamboo Craft', location: 'Takeo',
     rating: 4.6, reviewCount: 39, stock: 18, soldCount: 112,
     description:
@@ -168,7 +169,7 @@ const SEEDS: Seed[] = [
   },
   {
     name: 'Coconut Shell Candle', price: 7.8,
-    category: 'Handmade Crafts', sellerName: 'Srey Khmer Handmade Store',
+    category: 'Handmade Crafts', subcategory: 'Candles & Decor', sellerName: 'Srey Khmer Handmade Store',
     storeName: 'Srey Khmer Handmade', location: 'Siem Reap',
     rating: 4.5, reviewCount: 54, stock: 22, soldCount: 203,
     description:

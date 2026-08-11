@@ -1,9 +1,10 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CatalogService } from '../core/catalog/catalog.service';
-import { NavbarComponent } from '../shared/navbar.component';
-import { FooterComponent } from '../shared/footer.component';
-import { IconComponent } from '../shared/icon.component';
+import { Category } from '../core/catalog/catalog.models';
+import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
+import { FooterComponent } from '../components/shared/layout/footer/footer.component';
+import { IconComponent } from '../components/shared/ui/icon/icon.component';
 
 @Component({
   selector: 'app-categories',
@@ -26,8 +27,7 @@ import { IconComponent } from '../shared/icon.component';
         @for (category of categories; track category.slug) {
           <a
             class="category-card card card-hover"
-            [routerLink]="['/products']"
-            [queryParams]="{ category: category.slug }"
+            [routerLink]="['/categories', category.slug]"
           >
             <span class="icon-wrap">
               <ui-icon [name]="category.icon" [size]="22" />
@@ -37,6 +37,7 @@ import { IconComponent } from '../shared/icon.component';
             <span class="count"
               >{{ catalog.countByCategory(category.slug) }} products</span
             >
+            <span class="subs">{{ subLabel(category) }}</span>
             <span class="cta">
               View products <ui-icon name="arrow-right" [size]="13" />
             </span>
@@ -109,6 +110,11 @@ import { IconComponent } from '../shared/icon.component';
         font-size: 12.5px;
         font-weight: 600;
       }
+      .subs {
+        color: var(--color-muted);
+        font-size: 11.5px;
+        line-height: 1.5;
+      }
       .cta {
         display: inline-flex;
         align-items: center;
@@ -142,4 +148,12 @@ import { IconComponent } from '../shared/icon.component';
 export class CategoriesComponent {
   protected readonly catalog = inject(CatalogService);
   protected readonly categories = this.catalog.categories;
+
+  /** First few sub-categories, so the card previews what is inside. */
+  protected subLabel(category: Category): string {
+    const names = category.subcategories.map((sub) => sub.name);
+    return names.length > 3
+      ? `${names.slice(0, 3).join(' · ')} +${names.length - 3}`
+      : names.join(' · ');
+  }
 }

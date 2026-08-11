@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { CheckoutStepsComponent } from '../shared/checkout-steps.component';
-import { IconComponent } from '../shared/icon.component';
+import { CheckoutStepsComponent } from '../components/user/checkout/checkout-steps/checkout-steps.component';
+import { IconComponent } from '../components/shared/ui/icon/icon.component';
 
 interface PaymentMethod {
   id: string;

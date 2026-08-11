@@ -4,9 +4,9 @@ import { AuthService } from '../core/auth/auth.service';
 import { CartService } from '../core/cart/cart.service';
 import { WishlistService } from '../core/wishlist/wishlist.service';
 import { CartLine } from '../core/catalog/catalog.models';
-import { NavbarComponent } from '../shared/navbar.component';
-import { FooterComponent } from '../shared/footer.component';
-import { IconComponent } from '../shared/icon.component';
+import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
+import { FooterComponent } from '../components/shared/layout/footer/footer.component';
+import { IconComponent } from '../components/shared/ui/icon/icon.component';
 
 @Component({
   selector: 'app-cart',

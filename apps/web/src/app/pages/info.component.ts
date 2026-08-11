@@ -1,8 +1,8 @@
 import { Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NavbarComponent } from '../shared/navbar.component';
-import { FooterComponent } from '../shared/footer.component';
+import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
+import { FooterComponent } from '../components/shared/layout/footer/footer.component';
 
 interface InfoSection {
   heading: string;

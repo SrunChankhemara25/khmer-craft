@@ -34,6 +34,13 @@ export const routes: Routes = [
     title: 'Categories | KhmerCraft',
   },
   {
+    path: 'categories/:slug',
+    loadComponent: () =>
+      import('./pages/category-detail.component').then(
+        (m) => m.CategoryDetailComponent,
+      ),
+  },
+  {
     path: 'stores',
     loadComponent: () =>
       import('./pages/stores.component').then((m) => m.StoresComponent),
@@ -107,14 +114,14 @@ export const routes: Routes = [
     path: 'profile',
     canActivate: [buyerGuard],
     loadComponent: () =>
-      import('./features/account/profile/profile').then((m) => m.Profile),
+      import('./features/user/account/profile/profile').then((m) => m.Profile),
     title: 'My profile | KhmerCraft',
   },
   {
     path: 'orders',
     canActivate: [buyerGuard],
     loadComponent: () =>
-      import('./features/account/orders/orders').then((m) => m.Orders),
+      import('./features/user/account/orders/orders').then((m) => m.Orders),
     title: 'My orders | KhmerCraft',
   },
 
@@ -122,7 +129,7 @@ export const routes: Routes = [
   {
     path: 'seller/login',
     loadComponent: () =>
-      import('./features/auth/seller-login/seller-login').then(
+      import('./features/authentication/seller/login/seller-login').then(
         (m) => m.SellerLogin,
       ),
     title: 'Seller sign in | KhmerCraft',
@@ -141,13 +148,15 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () =>
-      import('./features/auth/login/login').then((module) => module.Login),
+      import('./features/authentication/buyer/login/login').then(
+        (module) => module.Login,
+      ),
     title: 'Sign in | KhmerCraft',
   },
   {
     path: 'register',
     loadComponent: () =>
-      import('./features/auth/register/register').then(
+      import('./features/authentication/buyer/register/register').then(
         (module) => module.Register,
       ),
     title: 'Create buyer account | KhmerCraft',
@@ -157,7 +166,9 @@ export const routes: Routes = [
   {
     path: 'forgot-password',
     loadComponent: () =>
-      import('./features/auth/forgot-password/forgot-password').then(
+      import(
+        './features/authentication/buyer/forgot-password/forgot-password'
+      ).then(
         (module) => module.ForgotPassword,
       ),
     title: 'Forgot password | KhmerCraft',
@@ -165,7 +176,7 @@ export const routes: Routes = [
   {
     path: 'reset-password',
     loadComponent: () =>
-      import('./features/auth/reset-password/reset-password').then(
+      import('./features/authentication/buyer/reset-password/reset-password').then(
         (module) => module.ResetPassword,
       ),
     title: 'Reset password | KhmerCraft',
@@ -174,7 +185,9 @@ export const routes: Routes = [
     path: 'account/change-password',
     canActivate: [buyerGuard],
     loadComponent: () =>
-      import('./features/auth/change-password/change-password').then(
+      import(
+        './features/authentication/buyer/change-password/change-password'
+      ).then(
         (module) => module.ChangePassword,
       ),
     title: 'Change password | KhmerCraft',
@@ -182,7 +195,7 @@ export const routes: Routes = [
   {
     path: 'admin/login',
     loadComponent: () =>
-      import('./features/auth/admin-login/admin-login').then(
+      import('./features/admin/authentication/login/admin-login').then(
         (module) => module.AdminLogin,
       ),
     title: 'Admin sign in | KhmerCraft',

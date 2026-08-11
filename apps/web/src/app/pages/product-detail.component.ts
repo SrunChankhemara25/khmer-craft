@@ -5,10 +5,10 @@ import { map } from 'rxjs';
 import { CartService } from '../core/cart/cart.service';
 import { CatalogService } from '../core/catalog/catalog.service';
 import { WishlistService } from '../core/wishlist/wishlist.service';
-import { NavbarComponent } from '../shared/navbar.component';
-import { FooterComponent } from '../shared/footer.component';
-import { IconComponent } from '../shared/icon.component';
-import { ProductRailComponent } from '../shared/product-rail.component';
+import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
+import { FooterComponent } from '../components/shared/layout/footer/footer.component';
+import { IconComponent } from '../components/shared/ui/icon/icon.component';
+import { ProductRailComponent } from '../components/user/catalog/product-rail/product-rail.component';
 
 @Component({
   selector: 'app-product-detail',

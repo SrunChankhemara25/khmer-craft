@@ -11,9 +11,9 @@ import { CommerceApiService } from '../core/api/commerce-api.service';
 import { PaymentMethod } from '../core/api/api.models';
 import { AuthService } from '../core/auth/auth.service';
 import { CartService, cartErrorMessage } from '../core/cart/cart.service';
-import { NavbarComponent } from '../shared/navbar.component';
-import { FooterComponent } from '../shared/footer.component';
-import { IconComponent } from '../shared/icon.component';
+import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
+import { FooterComponent } from '../components/shared/layout/footer/footer.component';
+import { IconComponent } from '../components/shared/ui/icon/icon.component';
 
 interface PaymentOption {
   value: PaymentMethod;

@@ -2,11 +2,11 @@ import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CatalogService } from '../core/catalog/catalog.service';
-import { NavbarComponent } from '../shared/navbar.component';
-import { FooterComponent } from '../shared/footer.component';
-import { IconComponent } from '../shared/icon.component';
-import { ProductRailComponent } from '../shared/product-rail.component';
-import { HeroSliderComponent } from '../shared/hero-slider.component';
+import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
+import { FooterComponent } from '../components/shared/layout/footer/footer.component';
+import { IconComponent } from '../components/shared/ui/icon/icon.component';
+import { ProductRailComponent } from '../components/user/catalog/product-rail/product-rail.component';
+import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-slider.component';
 
 @Component({
   selector: 'app-home',
@@ -33,11 +33,7 @@ import { HeroSliderComponent } from '../shared/hero-slider.component';
     </div>
     <div class="category-strip">
       @for (c of categories; track c.slug) {
-        <a
-          class="category-pill"
-          routerLink="/products"
-          [queryParams]="{ category: c.slug }"
-        >
+        <a class="category-pill" [routerLink]="['/categories', c.slug]">
           <div class="cat-icon"><ui-icon [name]="c.icon" [size]="20" [strokeWidth]="1.6"></ui-icon></div>
           <span>{{ c.name }}</span>
           <small>{{ catalog.countByCategory(c.slug) }} products</small>

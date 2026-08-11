@@ -47,6 +47,7 @@ export const listProductsQuerySchema = z
   .object({
     search: z.string().trim().max(120).optional(),
     category: z.string().trim().max(80).optional(),
+    subcategory: z.string().trim().max(80).optional(),
     location: z.string().trim().max(80).optional(),
     collection: z.enum(COLLECTIONS).optional(),
     priceMin: z.coerce.number().min(0).max(1_000_000).optional(),
@@ -74,6 +75,7 @@ export const createProductSchema = z
     price: z.number().positive().max(1_000_000),
     compareAtPrice: z.number().positive().max(1_000_000).optional(),
     category: z.string().trim().min(2).max(80),
+    subcategory: z.string().trim().max(80).optional(),
     sellerName: z.string().trim().min(2).max(120),
     storeName: z.string().trim().max(120).optional(),
     location: z.string().trim().max(80).optional(),

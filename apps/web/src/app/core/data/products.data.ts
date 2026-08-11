@@ -195,6 +195,10 @@ const SEED: Seed[] = [
 
 export const PRODUCTS: Product[] = SEED.map((seed) => ({
   ...seed,
+  // The bundled fallback predates the two-level tree; these fixtures only
+  // render when the API is unreachable, so they sit at the top level.
+  subcategory: null,
+  subcategorySlug: null,
   slug: seed.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')

@@ -10,6 +10,8 @@ export interface IProduct extends Document {
   price: number;
   compareAtPrice?: number;
   category: string;
+  /** Second level of the tree, e.g. Pottery > Bowls & Plates. */
+  subcategory?: string;
   /**
    * TODO(seller-branch): `sellerId` matches the Seller model on
    * origin/prototype and is left untouched for that developer. It stays
@@ -50,6 +52,7 @@ const ProductSchema = new Schema<IProduct>(
     price: { type: Number, required: true, min: 0 },
     compareAtPrice: { type: Number, min: 0 },
     category: { type: String, required: true, trim: true, index: true },
+    subcategory: { type: String, trim: true, index: true },
 
     sellerId: { type: Schema.Types.ObjectId, ref: 'Seller' },
     sellerUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
@@ -85,6 +88,8 @@ ProductSchema.index(
 
 // The list endpoint's common access pattern: active products, newest first.
 ProductSchema.index({ status: 1, createdAt: -1 });
+// Category landing pages filter on both levels at once.
+ProductSchema.index({ category: 1, subcategory: 1 });
 
 const ProductModel: Model<IProduct> =
   (mongoose.models.Product as Model<IProduct>) ||

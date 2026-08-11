@@ -3,10 +3,10 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CatalogService } from '../core/catalog/catalog.service';
 import { ProductSort } from '../core/catalog/catalog.models';
-import { NavbarComponent } from '../shared/navbar.component';
-import { FooterComponent } from '../shared/footer.component';
-import { IconComponent } from '../shared/icon.component';
-import { ProductCardComponent } from '../shared/product-card.component';
+import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
+import { FooterComponent } from '../components/shared/layout/footer/footer.component';
+import { IconComponent } from '../components/shared/ui/icon/icon.component';
+import { ProductCardComponent } from '../components/user/catalog/product-card/product-card.component';
 
 const SORTS: { value: ProductSort; label: string }[] = [
   { value: 'featured', label: 'Featured' },
