@@ -5,17 +5,17 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../core/auth/auth.service';
 import { CartService } from '../core/cart/cart.service';
 import { WishlistService } from '../core/wishlist/wishlist.service';
 import { IconComponent } from './icon.component';
+import { SearchOverlayComponent } from './search-overlay.component';
 
 @Component({
   selector: 'app-navbar',
-  imports: [FormsModule, RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, SearchOverlayComponent],
   template: `
     <header class="navbar" [class.scrolled]="scrolled()">
       <!-- Announcement bar: slim, and every claim here links somewhere real. -->
@@ -40,20 +40,6 @@ import { IconComponent } from './icon.component';
           KhmerCraft
         </a>
 
-        <form class="search-box" (ngSubmit)="submitSearch()">
-          <ui-icon name="search" [size]="16" />
-          <input
-            type="search"
-            name="q"
-            [(ngModel)]="term"
-            placeholder="Search handmade crafts, palm sugar, rice products..."
-            aria-label="Search products"
-          />
-          <button type="submit" class="search-go" aria-label="Search">
-            <ui-icon name="arrow-right" [size]="14" />
-          </button>
-        </form>
-
         <nav class="nav-links">
           <a routerLink="/" [class.active]="is('home')">Home</a>
           <a routerLink="/products" [class.active]="is('products')">Products</a>
@@ -68,6 +54,17 @@ import { IconComponent } from './icon.component';
         </nav>
 
         <div class="nav-actions">
+          <button
+            type="button"
+            class="search-btn"
+            (click)="searchOpen.set(true)"
+            aria-label="Search"
+            [attr.aria-expanded]="searchOpen()"
+          >
+            <ui-icon name="search" [size]="16" />
+            <span class="search-label">Search</span>
+          </button>
+
           <a class="icon-btn wishlist-btn" routerLink="/wishlist" aria-label="Wishlist">
             <ui-icon
               name="heart"
@@ -124,6 +121,10 @@ import { IconComponent } from './icon.component';
         </nav>
       }
     </header>
+
+    @if (searchOpen()) {
+      <app-search-overlay (close)="searchOpen.set(false)" />
+    }
   `,
   styles: [
     `
@@ -171,9 +172,13 @@ import { IconComponent } from './icon.component';
         text-decoration: underline;
       }
       .navbar-inner {
-        display: flex;
+        /* Three tracks so the nav sits dead centre regardless of how wide the
+           logo or the actions happen to be. A flex row would let a longer
+           store name shove the links off-centre. */
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        gap: 28px;
+        gap: 24px;
         padding-top: 14px;
         padding-bottom: 14px;
         height: var(--header-h);
@@ -198,59 +203,15 @@ import { IconComponent } from './icon.component';
         align-items: center;
         justify-content: center;
       }
-      .search-box {
-        flex: 1;
-        max-width: 420px;
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        background: var(--color-bg-alt);
-        border: 1px solid transparent;
-        border-radius: var(--radius-md);
-        padding: 9px 14px;
-        color: var(--color-muted);
-        transition: all var(--dur-base) var(--ease-standard);
-      }
-      .search-box:focus-within {
-        border-color: var(--color-border-strong);
-        background: #fff;
-        box-shadow: var(--shadow-xs);
-      }
-      .search-box input {
-        border: none;
-        background: transparent;
-        outline: none;
-        width: 100%;
-        font-size: 13.5px;
-        color: var(--color-text);
-      }
-      .search-box input:focus {
-        box-shadow: none !important;
-        border-color: transparent !important;
-      }
-      .search-go {
-        display: grid;
-        place-items: center;
-        width: 24px;
-        height: 24px;
-        flex-shrink: 0;
-        border: 0;
-        border-radius: var(--radius-xs);
-        background: transparent;
-        color: var(--color-muted);
-      }
-      .search-go:hover {
-        background: var(--color-bg-hover);
-        color: var(--color-text);
-      }
       .nav-links {
         display: flex;
         align-items: center;
-        gap: 24px;
+        justify-content: center;
+        gap: 26px;
         font-size: 13.5px;
         font-weight: 500;
         color: var(--color-text-secondary);
-        margin-left: auto;
+        white-space: nowrap;
       }
       .nav-links a {
         padding: 6px 0;
@@ -268,8 +229,28 @@ import { IconComponent } from './icon.component';
       .nav-actions {
         display: flex;
         align-items: center;
+        justify-content: flex-end;
         gap: 6px;
-        flex-shrink: 0;
+      }
+      .search-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 36px;
+        padding: 0 14px 0 12px;
+        margin-right: 4px;
+        border: 1px solid var(--color-border-strong);
+        border-radius: var(--radius-full);
+        background: var(--color-bg-alt);
+        color: var(--color-muted);
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .search-btn:hover {
+        background: #fff;
+        border-color: var(--color-muted);
+        color: var(--color-text);
+        box-shadow: var(--shadow-xs);
       }
       .icon-btn {
         background: none;
@@ -379,8 +360,14 @@ import { IconComponent } from './icon.component';
         }
       }
       @media (max-width: 700px) {
-        .search-box {
+        .search-label {
           display: none;
+        }
+        .search-btn {
+          width: 36px;
+          padding: 0;
+          justify-content: center;
+          border-radius: var(--radius-sm);
         }
       }
       /* Below ~420px the icon row plus a labelled Sign In button overflows the
@@ -406,8 +393,8 @@ export class NavbarComponent {
   private readonly wishlist = inject(WishlistService);
   private readonly auth = inject(AuthService);
 
-  protected readonly term = signal('');
   protected readonly menuOpen = signal(false);
+  protected readonly searchOpen = signal(false);
   protected readonly scrolled = signal(false);
 
   protected readonly cartCount = this.cart.count;
@@ -434,6 +421,7 @@ export class NavbarComponent {
       .subscribe((event) => {
         this.url.set(event.urlAfterRedirects);
         this.menuOpen.set(false);
+        this.searchOpen.set(false);
       });
 
     // Resolve the session once so the header can show a profile link instead
@@ -449,12 +437,6 @@ export class NavbarComponent {
     return name.split(' ')[0];
   }
 
-  protected submitSearch(): void {
-    const search = this.term().trim();
-    this.router.navigate(['/products'], {
-      queryParams: search ? { search } : {},
-    });
-  }
 
   @HostListener('window:scroll')
   onScroll() {
