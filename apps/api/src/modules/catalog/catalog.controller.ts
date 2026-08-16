@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import Seller from '../../../models/Seller';
 import { AppError } from '../../errors/app-error';
 import { param } from '../../utils/request-params';
 import {
@@ -31,5 +32,15 @@ export const detail = async (request: Request, response: Response) => {
 
 export const create = async (request: Request, response: Response) => {
   const input = request.body as ReturnType<typeof createProductSchema.parse>;
+  
+  if (request.auth?.userId) {
+    const seller = await Seller.findOne({ userId: request.auth.userId });
+    if (seller) {
+      input.sellerId = String(seller._id);
+      if (!input.storeName) input.storeName = seller.storeName;
+      if (!input.sellerName) input.sellerName = seller.sellerName || seller.storeName;
+    }
+  }
+
   response.status(201).json(await createProduct(input));
 };

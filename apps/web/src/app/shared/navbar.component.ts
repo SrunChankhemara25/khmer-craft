@@ -48,7 +48,7 @@ import { SearchOverlayComponent } from './search-overlay.component';
           >
           <a routerLink="/stores" [class.active]="is('stores')">Stores</a>
           <a routerLink="/about" [class.active]="is('about')">About</a>
-          <a routerLink="/become-a-seller" [class.active]="is('seller')"
+          <a routerLink="/seller" [class.active]="is('seller')"
             >Become a Seller</a
           >
         </nav>
@@ -115,7 +115,7 @@ import { SearchOverlayComponent } from './search-overlay.component';
           <a routerLink="/categories" (click)="menuOpen.set(false)">Categories</a>
           <a routerLink="/stores" (click)="menuOpen.set(false)">Stores</a>
           <a routerLink="/about" (click)="menuOpen.set(false)">About</a>
-          <a routerLink="/become-a-seller" (click)="menuOpen.set(false)"
+          <a routerLink="/seller" (click)="menuOpen.set(false)"
             >Become a Seller</a
           >
         </nav>

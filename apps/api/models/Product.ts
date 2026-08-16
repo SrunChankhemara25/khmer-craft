@@ -11,21 +11,12 @@ export interface IProduct extends Document {
   compareAtPrice?: number;
   category: string;
   /**
-   * TODO(seller-branch): `sellerId` matches the Seller model on
-   * origin/prototype and is left untouched for that developer. It stays
-   * optional and unused here.
+   * The store profile associated with this product.
    */
   sellerId?: mongoose.Types.ObjectId;
   /**
-   * The seller account that owns this listing, as a User with role SELLER.
-   *
-   * This exists because seller identity currently lives in two places: the
-   * Seller collection on origin/prototype, which has no working login, and
-   * User(role=SELLER), which does. Order routing needs a seller who can
-   * actually authenticate, so it points here for now.
-   *
-   * TODO(seller-branch): collapse into a single link once the two branches
-   * agree on which collection owns a seller.
+   * The identity of the seller who owns this listing (a User with role SELLER).
+   * This is used for authentication and order routing.
    */
   sellerUserId?: mongoose.Types.ObjectId;
   sellerName: string;

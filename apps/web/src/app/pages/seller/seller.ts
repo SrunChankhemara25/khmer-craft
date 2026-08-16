@@ -853,6 +853,6 @@ export class SellerPage {
   }
 
   protected startOnboarding(): void {
-    void this.router.navigateByUrl('/seller/onboarding');
+    void this.router.navigateByUrl('/seller/login?returnUrl=/seller/onboarding');
   }
 }

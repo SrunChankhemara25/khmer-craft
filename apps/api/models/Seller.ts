@@ -1,46 +1,51 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import bcrypt from 'bcryptjs';
 
 export interface ISeller extends Document {
-  name: string;
-  email: string;
-  password?: string;
+  userId: mongoose.Types.ObjectId;
   storeName: string;
   storeDescription?: string;
   storeAvatarUrl?: string;
   storeCoverImages?: string[];
-  comparePassword(candidatePassword: string): Promise<boolean>;
+  subscriptionPlan: 'STARTER' | 'STANDARD' | 'PREMIUM';
+  paymentMethod?: 'ABA' | 'STRIPE' | 'FREE';
+  onboardingStatus: 'PENDING' | 'COMPLETED';
+  location?: string;
+  phoneNumber?: string;
+  verificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
 }
 
 const SellerSchema: Schema = new Schema(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String }, 
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     storeName: { type: String, required: true },
     storeDescription: { type: String },
     storeAvatarUrl: { type: String },
     storeCoverImages: { type: [String], default: [] },
+    subscriptionPlan: {
+      type: String,
+      enum: ['STARTER', 'STANDARD', 'PREMIUM'],
+      required: true,
+      default: 'STARTER'
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['ABA', 'STRIPE', 'FREE']
+    },
+    onboardingStatus: {
+      type: String,
+      enum: ['PENDING', 'COMPLETED'],
+      required: true,
+      default: 'PENDING'
+    },
+    location: { type: String },
+    phoneNumber: { type: String },
+    verificationStatus: {
+      type: String,
+      enum: ['UNVERIFIED', 'PENDING', 'VERIFIED'],
+      default: 'UNVERIFIED'
+    }
   },
   { timestamps: true }
 );
-
-// Hash password before saving
-SellerSchema.pre('save', async function (next) {
-  if (!this.isModified('password') || !this.password) return next();
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error: any) {
-    next(error);
-  }
-});
-
-// Compare passwords
-SellerSchema.methods.comparePassword = async function (candidatePassword: string) {
-  if (!this.password) return false;
-  return await bcrypt.compare(candidatePassword, this.password);
-};
 
 export default mongoose.models.Seller || mongoose.model<ISeller>('Seller', SellerSchema);

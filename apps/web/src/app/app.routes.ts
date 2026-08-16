@@ -144,6 +144,11 @@ export const routes: Routes = [
     title: 'Seller Dashboard | KhmerCraft',
   },
   {
+    path: 'seller',
+    component: SellerPage,
+    title: 'Sell on KhmerCraft | KhmerCraft',
+  },
+  {
     path: 'seller/orders',
     canActivate: [sellerGuard],
     loadComponent: () =>

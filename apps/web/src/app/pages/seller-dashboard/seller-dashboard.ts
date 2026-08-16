@@ -1,5 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { environment } from '../../../environments/environment';
 import { KcIcon } from '../../components/ui/kc-icon';
+import { SellerService } from '../../core/api/seller.service';
 
 type DashboardView = 'dashboard' | 'products' | 'add' | 'orders' | 'profile' | 'sales' | 'reviews' | 'settings';
 type OrderStatusClass = 'pending' | 'shipped' | 'delivered';
@@ -29,7 +33,7 @@ interface DashboardMetric {
 
 @Component({
   selector: 'app-seller-dashboard',
-  imports: [KcIcon],
+  imports: [KcIcon, FormsModule],
   styles: [`
     :host {
       background: #f8f4ec;
@@ -1904,7 +1908,7 @@ interface DashboardMetric {
             <p class="muted">Manage your store, products, orders, and sales.</p>
 
             <section class="metrics" style="margin-top:28px;grid-template-columns:repeat(5,1fr)">
-              @for (metric of dashboardMetrics; track metric.label) {
+              @for (metric of dashboardMetrics(); track metric.label) {
                 <article class="metric" [class.warn]="metric.warn" [class.gold]="metric.gold">
                   <span class="metric-label" style="text-transform:uppercase">{{ metric.label }}</span>
                   <strong>{{ metric.value }}</strong>
@@ -1925,7 +1929,7 @@ interface DashboardMetric {
                       <tr><th>Order ID</th><th>Buyer</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th></tr>
                     </thead>
                     <tbody>
-                      @for (order of dashboardOrders; track order.id) {
+                      @for (order of dashboardOrders(); track order.id) {
                         <tr>
                           <td class="order-id">{{ order.id }}</td>
                           <td>{{ order.buyer }}</td>
@@ -1950,7 +1954,7 @@ interface DashboardMetric {
               <aside>
                 <article class="low-stock-card">
                   <h2>Low Stock Alert <span class="critical">3 Critical</span></h2>
-                  @for (stock of lowStock; track stock.name) {
+                  @for (stock of lowStock(); track stock.id) {
                     <div class="stock-item">
                       <img [src]="stock.image" [alt]="stock.name" />
                       <div>
@@ -1995,10 +1999,10 @@ interface DashboardMetric {
                   <tr><th>Image</th><th>Product Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
-                  @for (product of products; track product.sku) {
+                  @for (product of products(); track product.id) {
                     <tr>
                       <td><img class="product-thumb" [src]="product.image" [alt]="product.name" /></td>
-                      <td class="product-name"><strong>{{ product.name }}</strong><span>{{ product.sku }}</span></td>
+                      <td class="product-name"><strong>{{ product.name }}</strong><span>{{ product.sku || product.id }}</span></td>
                       <td><span class="pill blue">{{ product.category }}</span></td>
                       <td class="money">{{ product.price }}</td>
                       <td [style.color]="product.stock === 0 ? '#c73030' : '#26302c'">{{ product.stock }}</td>
@@ -2045,21 +2049,35 @@ interface DashboardMetric {
                 <article class="form-card">
                   <h2><kc-icon name="info" [size]="18" style="color:#146242" /> Basic Info</h2>
                   <form class="dash-form">
-                    <label>Product Name <span class="required">*</span><input class="dash-input" placeholder="e.g., Handwoven Silk Krama" /></label>
+                    <label>Product Name <span class="required">*</span><input class="dash-input" placeholder="e.g., Handwoven Silk Krama" [ngModel]="newProduct().name" (ngModelChange)="newProduct.set({...newProduct(), name: $event})" name="name" /></label>
                     <div class="two-cols">
-                      <label>Category <span class="required">*</span><select class="dash-input"><option>Select Category</option></select></label>
-                      <label>Material<input class="dash-input" placeholder="e.g., 100% Raw Silk" /></label>
+                      <label>Category <span class="required">*</span>
+                        <select class="dash-input" [ngModel]="newProduct().category" (ngModelChange)="newProduct.set({...newProduct(), category: $event})" name="category">
+                          <option value="">Select Category</option>
+                          <option value="Handmade Crafts">Handmade Crafts</option>
+                          <option value="Pottery">Pottery</option>
+                          <option value="Textiles">Textiles</option>
+                          <option value="Food & Drink">Food & Drink</option>
+                        </select>
+                      </label>
+                      <label>Material<input class="dash-input" placeholder="e.g., 100% Raw Silk" [ngModel]="newProduct().material" (ngModelChange)="newProduct.set({...newProduct(), material: $event})" name="material" /></label>
                     </div>
-                    <label>Description <span class="required">*</span><textarea class="dash-textarea" placeholder="Tell the story of your product, how it's made, and its unique features..."></textarea></label>
+                    <label>Description <span class="required">*</span><textarea class="dash-textarea" placeholder="Tell the story of your product..." [ngModel]="newProduct().description" (ngModelChange)="newProduct.set({...newProduct(), description: $event})" name="desc"></textarea></label>
                   </form>
                 </article>
 
                 <article class="form-card">
                   <h2><kc-icon name="wallet" [size]="18" style="color:#146242" /> Pricing & Stock</h2>
                   <div class="two-cols" style="grid-template-columns:1fr 1fr 1fr">
-                    <label>Price (USD) <span class="required">*</span><input class="dash-input" placeholder="$ 0.00" /></label>
-                    <label>Stock Quantity <span class="required">*</span><input class="dash-input" placeholder="1" /></label>
-                    <label>Location<select class="dash-input"><option>Phnom Penh</option></select></label>
+                    <label>Price (USD) <span class="required">*</span><input class="dash-input" type="number" placeholder="$ 0.00" [ngModel]="newProduct().price" (ngModelChange)="newProduct.set({...newProduct(), price: $event})" name="price" /></label>
+                    <label>Stock Quantity <span class="required">*</span><input class="dash-input" type="number" placeholder="1" [ngModel]="newProduct().stock" (ngModelChange)="newProduct.set({...newProduct(), stock: $event})" name="stock" /></label>
+                    <label>Location
+                      <select class="dash-input" [ngModel]="newProduct().location" (ngModelChange)="newProduct.set({...newProduct(), location: $event})" name="loc">
+                        <option value="Phnom Penh">Phnom Penh</option>
+                        <option value="Siem Reap">Siem Reap</option>
+                        <option value="Battambang">Battambang</option>
+                      </select>
+                    </label>
                   </div>
                 </article>
 
@@ -2085,9 +2103,9 @@ interface DashboardMetric {
                   <img src="https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=520&q=85" alt="Product preview" />
                   <div class="preview-body">
                     <small>Handicrafts <span style="float:right;color:#8b5f1a">★ 4.9</span></small>
-                    <h3>Product Name Preview</h3>
-                    <p>Store: Kosal's Khmer Creations</p>
-                    <div class="preview-price"><strong>$0.00 <span style="display:block;color:#6e7974;font-size:11px">Free Delivery</span></strong><span class="pill green">In Stock</span></div>
+                    <h3>{{ newProduct().name || 'Product Name Preview' }}</h3>
+                    <p>Store: {{ storeProfile().storeName || 'Your Store' }}</p>
+                    <div class="preview-price"><strong>${{ newProduct().price || '0.00' }} <span style="display:block;color:#6e7974;font-size:11px">Free Delivery</span></strong><span class="pill green">In Stock</span></div>
                   </div>
                 </article>
                 <article class="pro-tip">
@@ -2102,7 +2120,7 @@ interface DashboardMetric {
               <div class="actions">
                 <button class="btn btn-ghost" type="button">Cancel</button>
                 <button class="btn btn-ghost" type="button">Save as Draft</button>
-                <button class="btn btn-primary" type="button">Save Product</button>
+                <button class="btn btn-primary" type="button" (click)="submitAddProduct()">Save Product</button>
               </div>
             </div>
           </main>
@@ -2120,7 +2138,7 @@ interface DashboardMetric {
             </div>
 
             <section class="metrics">
-              @for (metric of metrics; track metric.label) {
+              @for (metric of metrics(); track metric.label) {
                 <article class="metric" [class.warn]="metric.warn" [class.gold]="metric.gold">
                   <div class="metric-icon"><kc-icon [name]="metric.icon" [size]="20" /></div>
                   <span class="metric-label">{{ metric.label }}</span>
@@ -2160,7 +2178,7 @@ interface DashboardMetric {
                   </tr>
                 </thead>
                 <tbody>
-                  @for (order of orders; track order.id) {
+                  @for (order of orders(); track order.id) {
                     <tr>
                       <td><span class="order-id" (click)="selectedOrder.set(order)">{{ order.id }}</span></td>
                       <td>
@@ -2202,9 +2220,9 @@ interface DashboardMetric {
             <section class="rating-row">
               <article class="rating-card average">
                 <span>Average Rating</span>
-                <strong>4.8</strong> <span style="display:inline;color:#6b756f;letter-spacing:0;text-transform:none">/ 5.0</span>
+                <strong>{{ (reviewsStats().averageRating || 0).toFixed(1) }}</strong> <span style="display:inline;color:#6b756f;letter-spacing:0;text-transform:none">/ 5.0</span>
                 <div class="stars-large">*****</div>
-                <p class="muted" style="font-size:11px;margin-top:7px">Based on 45 total reviews</p>
+                <p class="muted" style="font-size:11px;margin-top:7px">Based on {{ reviewsStats().totalReviews || 0 }} total reviews</p>
               </article>
 
               <article class="rating-card dist">
@@ -2230,7 +2248,7 @@ interface DashboardMetric {
             </div>
 
             <section class="review-list">
-              @for (review of reviews; track review.name) {
+              @for (review of reviews(); track review.id || review.name) {
                 <article class="review-card">
                   <div class="review-top">
                     <div class="review-person">
@@ -2269,9 +2287,9 @@ interface DashboardMetric {
                   <img class="banner" src="https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=700&q=85" alt="Store banner" />
                   <div class="seller-card-body">
                     <img class="store-logo-preview" src="https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=180&q=85" alt="Store logo" />
-                    <h2>Kosal's Khmer Creations</h2>
-                    <div class="store-rating"><strong>★ 4.8</strong><span>Siem Reap, Cambodia</span></div>
-                    <p>Bringing the soul of Angkor to your doorstep. We specialize in authentic, hand-woven silks and traditional...</p>
+                    <h2>{{ storeProfile().storeName || 'Store Name' }}</h2>
+                    <div class="store-rating"><strong>★ 4.8</strong><span>{{ storeProfile().location || 'Location' }}</span></div>
+                    <p>{{ storeProfile().storeDescription || 'No description provided.' }}</p>
                     <a class="visit" href="/"><kc-icon name="eye" [size]="15" /> View Store</a>
                   </div>
                 </article>
@@ -2308,17 +2326,17 @@ interface DashboardMetric {
                 </div>
 
                 <form class="dash-form">
-                  <label>Store Name<input class="dash-input" value="Kosal's Khmer Creations" /></label>
+                  <label>Store Name<input class="dash-input" [ngModel]="storeProfile().storeName" (ngModelChange)="storeProfile.set({...storeProfile(), storeName: $event})" name="storeName" /></label>
                   <label>Description
-                    <textarea class="dash-textarea">Bringing the soul of Angkor to your doorstep. We specialize in authentic, hand-woven silks and traditional pottery crafted by local artisans using century-old techniques. Our goal is to preserve Cambodian heritage while creating sustainable livelihoods for our community.</textarea>
+                    <textarea class="dash-textarea" [ngModel]="storeProfile().storeDescription" (ngModelChange)="storeProfile.set({...storeProfile(), storeDescription: $event})" name="storeDesc"></textarea>
                   </label>
                   <div class="two-cols">
-                    <label>Location<input class="dash-input" value="Siem Reap, Cambodia" /></label>
-                    <label>Phone Number<input class="dash-input" value="+855 12 345 678" /></label>
+                    <label>Location<input class="dash-input" [ngModel]="storeProfile().location" (ngModelChange)="storeProfile.set({...storeProfile(), location: $event})" name="location" /></label>
+                    <label>Phone Number<input class="dash-input" [ngModel]="storeProfile().phoneNumber" (ngModelChange)="storeProfile.set({...storeProfile(), phoneNumber: $event})" name="phone" /></label>
                   </div>
                   <div class="form-actions">
                     <button class="btn btn-ghost" type="button">Cancel</button>
-                    <button class="btn btn-primary" type="button">Save Changes</button>
+                    <button class="btn btn-primary" type="button" (click)="saveStoreProfile()">Save Changes</button>
                   </div>
                 </form>
               </article>
@@ -2330,7 +2348,7 @@ interface DashboardMetric {
             <p class="muted">Track your sales, commission, and seller earnings.</p>
 
             <section class="metrics" style="margin-top:28px">
-              @for (metric of payoutMetrics; track metric.label) {
+              @for (metric of payoutMetrics(); track metric.label) {
                 <article class="metric" [class.warn]="metric.warn" [class.gold]="metric.gold">
                   <div class="metric-icon"><kc-icon [name]="metric.icon" [size]="20" /></div>
                   <span class="metric-label">{{ metric.note }}</span>
@@ -2354,7 +2372,7 @@ interface DashboardMetric {
                     <tr><th>Order ID</th><th>Date</th><th>Total</th><th>Commission (10%)</th><th>Earning</th><th>Status</th></tr>
                   </thead>
                   <tbody>
-                    @for (row of payouts; track row.id) {
+                    @for (row of payouts(); track row.id) {
                       <tr>
                         <td class="order-id">{{ row.id }}</td>
                         <td>{{ row.date }}</td>
@@ -2518,9 +2536,133 @@ interface DashboardMetric {
     }
   `,
 })
-export class SellerDashboardPage {
+export class SellerDashboardPage implements OnInit {
   protected readonly view = signal<DashboardView>('dashboard');
   protected readonly selectedOrder = signal<SellerOrder | null>(null);
+  protected readonly myStoreId = signal<string | null>(null);
+  
+  private readonly sellerService = inject(SellerService);
+  private readonly http = inject(HttpClient);
+  
+  ngOnInit() {
+    this.http.get<any[]>(`${environment.apiUrl}/sellers/my-stores`).subscribe({
+      next: (stores) => {
+        if (stores && stores.length > 0) {
+          const storeId = stores[0]._id;
+          this.myStoreId.set(storeId);
+          this.loadDashboardData(storeId);
+        }
+      },
+      error: (err) => console.error('Failed to load stores (Are you logged in?)', err)
+    });
+  }
+
+  private loadDashboardData(storeId: string) {
+    // 1. Orders and Metrics
+    this.sellerService.getStoreOrders(storeId).subscribe({
+      next: (data) => {
+        this.metrics.set([
+          { label: 'Pending Orders', value: data.metrics.pendingOrders.toString(), icon: 'clipboard' },
+          { label: 'In Transit', value: data.metrics.inTransit.toString(), icon: 'truck', warn: true },
+          { label: 'Completed (30d)', value: data.metrics.completed30d.toString(), icon: 'check' },
+          { label: 'Revenue (MTD)', value: `$${data.metrics.revenueMtd.toFixed(2)}`, icon: 'wallet', gold: true },
+        ]);
+
+        this.dashboardMetrics.set([
+          { label: 'Total Sales', value: `$${data.metrics.revenueMtd.toFixed(2)}`, note: 'Lifetime', icon: 'chart' },
+          { label: 'Pending Orders', value: data.metrics.pendingOrders.toString(), note: 'Requires Action', icon: 'clipboard', warn: true },
+        ]);
+
+        this.payoutMetrics.set([
+          { label: 'Total Sales', value: `$${data.metrics.revenueMtd.toFixed(2)}`, note: 'This month', icon: 'chart' },
+          { label: 'Platform Commission', value: `$${(data.metrics.revenueMtd * 0.1).toFixed(2)}`, note: '10% standard rate', icon: 'percent', warn: true },
+          { label: 'Seller Earnings', value: `$${(data.metrics.revenueMtd * 0.9).toFixed(2)}`, note: 'Ready for payout', icon: 'wallet' },
+        ]);
+
+        const mappedOrders = data.orders.map((o: any) => {
+          let statusClass: OrderStatusClass = 'pending';
+          if (o.orderStatus === 'SHIPPED') statusClass = 'shipped';
+          if (o.orderStatus === 'DELIVERED') statusClass = 'delivered';
+          return {
+            id: o.orderNumber || o.id,
+            buyer: o.buyerName,
+            initials: o.buyerName ? o.buyerName.substring(0, 2).toUpperCase() : 'CU',
+            color: '#dfe8ff',
+            product: o.myItems.length > 0 ? o.myItems[0].productName : 'Multiple Items',
+            qty: o.myItems.length > 0 ? o.myItems[0].quantity : 1,
+            total: `$${o.myTotal.toFixed(2)}`,
+            address: o.deliveryInfo?.address || 'No address',
+            date: new Date(o.createdAt).toLocaleDateString(),
+            status: o.orderStatus,
+            statusClass
+          };
+        });
+        this.orders.set(mappedOrders);
+        this.dashboardOrders.set(mappedOrders.slice(0, 5));
+
+        // Populate payouts logic (mock payout using completed orders)
+        const payoutData = data.orders
+          .filter((o: any) => o.paymentStatus === 'PAID')
+          .map((o: any) => {
+            const total = o.myTotal;
+            const commission = total * 0.1;
+            const earning = total - commission;
+            return {
+              id: o.orderNumber || o.id,
+              date: new Date(o.createdAt).toLocaleDateString(),
+              total: `$${total.toFixed(2)}`,
+              commission: `$${commission.toFixed(2)}`,
+              earning: `$${earning.toFixed(2)}`,
+              status: 'PAID'
+            };
+          });
+        this.payouts.set(payoutData);
+      },
+      error: (err) => console.error('Failed to load orders', err)
+    });
+
+    // 2. Products
+    this.sellerService.getStoreProducts(storeId).subscribe({
+      next: (data) => {
+        this.products.set(data.products || []);
+        this.lowStock.set((data.products || []).filter((p: any) => p.stock <= 5));
+      },
+      error: (err) => console.error('Failed to load products', err)
+    });
+
+    // 3. Profile
+    this.sellerService.getStoreProfile(storeId).subscribe({
+      next: (profile) => {
+        this.storeProfile.set({
+          storeName: profile.storeName,
+          storeDescription: profile.storeDescription,
+          location: profile.location,
+          phoneNumber: profile.phoneNumber
+        });
+      },
+      error: (err) => console.error('Failed to load profile', err)
+    });
+
+    // 4. Reviews
+    this.sellerService.getStoreReviews(storeId).subscribe({
+      next: (data) => {
+        this.reviewsStats.set(data.stats || {});
+        const mappedReviews = (data.reviews || []).map((r: any) => ({
+          id: r._id,
+          name: r.reviewerName || 'Anonymous',
+          initial: (r.reviewerName || 'A').substring(0, 1).toUpperCase(),
+          color: '#f0a36e',
+          product: r.productName || 'Unknown Product',
+          date: new Date(r.createdAt).toLocaleDateString(),
+          text: r.comment,
+          rating: r.rating,
+          response: r.sellerResponse || null
+        }));
+        this.reviews.set(mappedReviews);
+      },
+      error: (err) => console.error('Failed to load reviews', err)
+    });
+  }
 
   protected readonly navItems: Array<{ view: DashboardView; label: string; icon: string }> = [
     { view: 'dashboard', label: 'Dashboard', icon: 'grid' },
@@ -2533,123 +2675,65 @@ export class SellerDashboardPage {
     { view: 'settings', label: 'Settings', icon: 'settings' },
   ];
 
-  protected readonly metrics: DashboardMetric[] = [
-    { label: 'Pending Orders', value: '12', icon: 'clipboard' },
-    { label: 'In Transit', value: '45', icon: 'truck', warn: true },
-    { label: 'Completed (30d)', value: '184', icon: 'check' },
-    { label: 'Revenue (MTD)', value: '$2,450.00', icon: 'wallet', gold: true },
-  ];
+  protected readonly metrics = signal<DashboardMetric[]>([
+    { label: 'Pending Orders', value: '-', icon: 'clipboard' },
+    { label: 'In Transit', value: '-', icon: 'truck', warn: true },
+    { label: 'Completed (30d)', value: '-', icon: 'check' },
+    { label: 'Revenue (MTD)', value: '-', icon: 'wallet', gold: true },
+  ]);
 
-  protected readonly dashboardMetrics: DashboardMetric[] = [
-    { label: 'Total Products', value: '24', note: '+2 this month', icon: 'box' },
-    { label: 'Total Orders', value: '128', note: '+12% from last week', icon: 'cart' },
-    { label: 'Pending Orders', value: '8', note: 'Requires Action', icon: 'clipboard', warn: true },
-    { label: 'Total Sales', value: '$2,450', note: 'Lifetime', icon: 'chart' },
-    { label: 'Seller Earnings', value: '$2,205', note: 'Next payout in 3 days', icon: 'wallet', gold: true },
-  ];
+  protected readonly dashboardMetrics = signal<DashboardMetric[]>([]);
+  protected readonly dashboardOrders = signal<any[]>([]);
+  protected readonly lowStock = signal<any[]>([]);
+  protected readonly products = signal<any[]>([]);
+  protected readonly payoutMetrics = signal<DashboardMetric[]>([]);
+  
+  // Also create a signal for store profile
+  protected readonly storeProfile = signal<any>({
+    storeName: '',
+    storeDescription: '',
+    location: '',
+    phoneNumber: '',
+  });
 
-  protected readonly dashboardOrders = [
-    { id: 'KC-0001', buyer: 'Vannak Som', product: 'Handmade Basket', qty: 2, total: '$45.00', status: 'PENDING' },
-    { id: 'KC-0002', buyer: 'Chanlina Keo', product: 'Palm Sugar Pack', qty: 5, total: '$12.50', status: 'SHIPPED' },
-    { id: 'KC-0003', buyer: 'Davith Heng', product: 'Clay Pottery Cup', qty: 1, total: '$8.00', status: 'DELIVERED' },
-  ];
+  protected readonly newProduct = signal<any>({
+    name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE'
+  });
 
-  protected readonly lowStock = [
-    {
-      name: 'Palm Sugar Pack',
-      left: 3,
-      image: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=120&q=85',
-    },
-    {
-      name: 'Handmade Basket',
-      left: 2,
-      image: 'https://images.unsplash.com/photo-1595428774223-ef52624120e2?w=120&q=85',
-    },
-    {
-      name: 'Clay Pottery Cup',
-      left: 4,
-      image: 'https://images.unsplash.com/photo-1517705008128-361805f42e86?w=120&q=85',
-    },
-  ];
+  protected readonly reviews = signal<any[]>([]);
+  protected readonly reviewsStats = signal<any>({});
+  protected readonly payouts = signal<any[]>([]);
 
-  protected readonly products = [
-    {
-      name: 'Handmade Khmer Scarf',
-      sku: 'SKU-TEX-001',
-      category: 'Textiles',
-      price: '$12.50',
-      stock: 42,
-      status: 'ACTIVE',
-      image: 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=120&q=85',
-    },
-    {
-      name: 'Palm Sugar Pack',
-      sku: 'SKU-FD-902',
-      category: 'Food & Drink',
-      price: '$3.50',
-      stock: 5,
-      status: 'LOW STOCK',
-      image: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=120&q=85',
-    },
-    {
-      name: 'Clay Pottery Cup',
-      sku: 'SKU-POT-443',
-      category: 'Pottery',
-      price: '$6.00',
-      stock: 0,
-      status: 'OUT OF STOCK',
-      image: 'https://images.unsplash.com/photo-1517705008128-361805f42e86?w=120&q=85',
-    },
-  ];
+  submitAddProduct() {
+    const data = this.newProduct();
+    if (!data.name || !data.category || !data.price || data.stock === null) return;
 
-  protected readonly payoutMetrics: DashboardMetric[] = [
-    { label: 'Total Sales', value: '$2,450', note: '+12% vs last month', icon: 'chart' },
-    { label: 'Platform Commission', value: '$245', note: '10% standard rate', icon: 'percent', warn: true },
-    { label: 'Seller Earnings', value: '$2,205', note: 'Ready for payout', icon: 'wallet' },
-    { label: 'Pending Payout', value: '$620', note: 'Request payout', icon: 'calendar', warn: true },
-  ];
+    this.sellerService.createProduct(data).subscribe({
+      next: () => {
+        alert('Product added successfully!');
+        if (this.myStoreId()) {
+          this.loadDashboardData(this.myStoreId()!);
+        }
+        this.view.set('products');
+        this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE' });
+      },
+      error: (err) => alert('Failed to add product: ' + err.message)
+    });
+  }
 
-  protected readonly orders: SellerOrder[] = [
-    {
-      id: 'KC-0001',
-      buyer: 'Sokha Meas',
-      initials: 'SM',
-      color: '#f0a36e',
-      product: 'Hand-Woven Silk Scarf (Indigo)',
-      qty: 2,
-      total: '$76.00',
-      address: 'Phnom Penh, St. 21',
-      date: 'Oct 24, 2023',
-      status: 'Pending',
-      statusClass: 'pending',
-    },
-    {
-      id: 'KC-0002',
-      buyer: 'Kosal Van',
-      initials: 'KV',
-      color: '#dfe8ff',
-      product: 'Angkor Ceramic Bowl Set',
-      qty: 1,
-      total: '$120.00',
-      address: 'Siem Reap, Wat Bo',
-      date: 'Oct 23, 2023',
-      status: 'Shipped',
-      statusClass: 'shipped',
-    },
-    {
-      id: 'KC-0003',
-      buyer: 'Bopha Thul',
-      initials: 'BT',
-      color: '#9de8bd',
-      product: 'Silver Inlaid Jewelry Box',
-      qty: 1,
-      total: '$245.00',
-      address: 'Battambang, Sangkat',
-      date: 'Oct 22, 2023',
-      status: 'Delivered',
-      statusClass: 'delivered',
-    },
-  ];
+  saveStoreProfile() {
+    const data = this.storeProfile();
+    const id = this.myStoreId();
+    if (!id) return;
+    this.sellerService.updateStoreProfile(id, data).subscribe({
+      next: () => alert('Store profile updated successfully!'),
+      error: (err) => alert('Failed to update profile')
+    });
+  }
+
+
+
+  protected readonly orders = signal<SellerOrder[]>([]);
 
   protected readonly bars = [
     { label: '5 Stars', width: '86%', count: 38 },

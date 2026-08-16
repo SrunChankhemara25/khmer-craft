@@ -55,6 +55,7 @@ export const listProductsQuerySchema = z
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(12),
     status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).optional(),
+    sellerId: z.string().optional(),
   })
   .strip()
   .refine(
@@ -81,6 +82,7 @@ export const createProductSchema = z
     images: z.array(z.string().trim().url().max(2048)).max(10).optional(),
     stock: z.number().int().min(0).max(1_000_000).default(0),
     status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).default('ACTIVE'),
+    sellerId: z.string().optional(),
   })
   .strict();
 
