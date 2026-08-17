@@ -1,13 +1,17 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavbarComponent } from '../shared/navbar.component';
 import { FooterComponent } from '../shared/footer.component';
 import { IconComponent } from '../shared/icon.component';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { finalize } from 'rxjs';
+import { apiErrorMessage, AuthService } from '../core/auth/auth.service';
 
 @Component({
   selector: 'app-become-seller',
   standalone: true,
-  imports: [CommonModule, NavbarComponent, FooterComponent, IconComponent],
+  imports: [CommonModule, ReactiveFormsModule, NavbarComponent, FooterComponent, IconComponent],
   template: `
   <app-navbar></app-navbar>
 
@@ -18,7 +22,7 @@ import { IconComponent } from '../shared/icon.component';
         <h1>Turn your craft into a thriving business</h1>
         <p>Join 1,200+ Cambodian sellers reaching customers across the country and around the world. No listing fees, transparent payouts, full support.</p>
         <div class="hero-actions">
-          <button class="btn btn-primary btn-lg">Start Selling Now <ui-icon name="arrow-right" [size]="16" color="#fff"></ui-icon></button>
+          <button class="btn btn-primary btn-lg" (click)="scrollToForm()">Start Selling Now <ui-icon name="arrow-right" [size]="16" color="#fff"></ui-icon></button>
           <button class="btn btn-outline btn-lg">See Success Stories</button>
         </div>
         <div class="hero-trust">
@@ -67,80 +71,79 @@ import { IconComponent } from '../shared/icon.component';
     </div>
   </section>
 
-  <section class="container pricing-section">
-    <div class="section-head-center">
-      <h2>Simple, transparent pricing</h2>
-      <p>No hidden fees. You only pay when you make a sale.</p>
-    </div>
-    <div class="pricing-grid">
-      <div class="pricing-card">
-        <span class="badge badge-neutral">Standard</span>
-        <div class="pricing-amount">8%<small>/ per sale</small></div>
-        <ul>
-          <li><ui-icon name="check" [size]="14" color="var(--color-accent)"></ui-icon> Unlimited product listings</li>
-          <li><ui-icon name="check" [size]="14" color="var(--color-accent)"></ui-icon> Weekly payouts</li>
-          <li><ui-icon name="check" [size]="14" color="var(--color-accent)"></ui-icon> Basic storefront customization</li>
-          <li><ui-icon name="check" [size]="14" color="var(--color-accent)"></ui-icon> Standard support</li>
-        </ul>
-        <button class="btn btn-outline btn-block">Choose Standard</button>
-      </div>
-      <div class="pricing-card featured">
-        <span class="badge badge-gold">Most Popular</span>
-        <div class="pricing-amount">5%<small>/ per sale</small></div>
-        <ul>
-          <li><ui-icon name="check" [size]="14" color="#fff"></ui-icon> Everything in Standard</li>
-          <li><ui-icon name="check" [size]="14" color="#fff"></ui-icon> Featured placement in category pages</li>
-          <li><ui-icon name="check" [size]="14" color="#fff"></ui-icon> Priority payouts (2 days)</li>
-          <li><ui-icon name="check" [size]="14" color="#fff"></ui-icon> Dedicated seller success manager</li>
-        </ul>
-        <button class="btn btn-primary btn-block">Choose Growth</button>
-      </div>
-    </div>
-  </section>
-
-  <section class="container form-section">
+  <section class="container form-section" id="apply-form">
     <div class="form-card">
       <div class="section-head-center">
         <h2>Apply to become a seller</h2>
-        <p>Tell us a bit about your craft — we'll be in touch within 2 business days.</p>
+        <p>Create your seller account and start listing products today.</p>
       </div>
-      <form class="apply-form">
+      
+      @if (error()) {
+        <div class="notice error" role="alert" style="margin-bottom: 24px; padding: 12px; border-radius: 4px; background: #fee; color: #c00;">{{ error() }}</div>
+      }
+
+      <form class="apply-form" [formGroup]="form" (ngSubmit)="submit()">
         <div class="form-grid">
           <div class="field">
             <label>Full Name</label>
-            <input type="text" placeholder="Your name">
+            <input type="text" formControlName="name" placeholder="Your name">
+            @if (form.controls.name.touched && form.controls.name.invalid) {
+              <small class="error-text">Name is required.</small>
+            }
           </div>
           <div class="field">
             <label>Phone Number</label>
-            <input type="text" placeholder="+855 00 000 000">
+            <input type="text" formControlName="phone" placeholder="+855 00 000 000">
           </div>
-          <div class="field span-2">
+          <div class="field">
             <label>Email Address</label>
             <div class="input-icon-wrap">
               <ui-icon name="mail" [size]="16"></ui-icon>
-              <input type="email" placeholder="you@example.com">
+              <input type="email" formControlName="email" placeholder="you@example.com">
             </div>
+            @if (form.controls.email.touched && form.controls.email.invalid) {
+              <small class="error-text">Enter a valid email address.</small>
+            }
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <div class="input-icon-wrap">
+              <ui-icon name="lock" [size]="16"></ui-icon>
+              <input type="password" formControlName="password" placeholder="Min. 8 characters">
+            </div>
+            @if (form.controls.password.touched && form.controls.password.invalid) {
+              <small class="error-text">Password requires min 8 chars, 1 uppercase, 1 lowercase, and 1 number.</small>
+            }
           </div>
           <div class="field">
             <label>Business / Shop Name</label>
-            <input type="text" placeholder="E.g. Srey Khmer Handmade">
+            <input type="text" formControlName="businessName" placeholder="E.g. Srey Khmer Handmade">
+            @if (form.controls.businessName.touched && form.controls.businessName.invalid) {
+              <small class="error-text">Business name is required.</small>
+            }
           </div>
           <div class="field">
             <label>Product Category</label>
-            <select>
-              <option>Handmade Crafts</option>
-              <option>Pottery</option>
-              <option>Weaving</option>
-              <option>Local Food</option>
-              <option>Other</option>
+            <select formControlName="category">
+              <option value="" disabled>Select a category</option>
+              <option value="Handmade Crafts">Handmade Crafts</option>
+              <option value="Pottery">Pottery</option>
+              <option value="Weaving">Weaving</option>
+              <option value="Local Food">Local Food</option>
+              <option value="Other">Other</option>
             </select>
+            @if (form.controls.category.touched && form.controls.category.invalid) {
+              <small class="error-text">Category is required.</small>
+            }
           </div>
           <div class="field span-2">
             <label>Tell us about your products <span class="optional">(optional)</span></label>
-            <textarea rows="4" placeholder="What do you make, and where are you based?"></textarea>
+            <textarea formControlName="description" rows="4" placeholder="What do you make, and where are you based?"></textarea>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary btn-lg btn-block">Submit Application <ui-icon name="arrow-right" [size]="16" color="#fff"></ui-icon></button>
+        <button type="submit" class="btn btn-primary btn-lg btn-block" [disabled]="loading()">
+          {{ loading() ? 'Submitting Application...' : 'Submit Application' }} <ui-icon name="arrow-right" [size]="16" color="#fff"></ui-icon>
+        </button>
         <p class="form-note">By applying, you agree to KhmerCraft's Seller Terms and Community Guidelines.</p>
       </form>
     </div>
@@ -182,16 +185,6 @@ import { IconComponent } from '../shared/icon.component';
     .step-card strong { display: block; font-size: 14px; margin-bottom: 6px; }
     .step-card small { color: var(--color-muted); font-size: 12.5px; line-height: 1.5; }
 
-    .pricing-section { padding: 20px 32px 56px; }
-    .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 780px; margin: 0 auto; }
-    .pricing-card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 28px; background: #fff; }
-    .pricing-card.featured { background: linear-gradient(135deg, #3a5a45, #22362a); color: #fff; border-color: #22362a; }
-    .pricing-amount { font-size: 40px; font-weight: 800; font-family: var(--font-heading); margin: 18px 0 20px; }
-    .pricing-amount small { font-size: 13px; font-weight: 500; color: var(--color-muted); }
-    .pricing-card.featured .pricing-amount small { color: rgba(255,255,255,0.6); }
-    .pricing-card ul { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 12px; }
-    .pricing-card li { display: flex; align-items: center; gap: 9px; font-size: 13.5px; }
-
     .form-section { padding: 20px 32px 60px; }
     .form-card { max-width: 720px; margin: 0 auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 40px; background: #fff; }
     .apply-form .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
@@ -199,9 +192,10 @@ import { IconComponent } from '../shared/icon.component';
     .optional { font-weight: 400; color: var(--color-muted); }
     .apply-form textarea { width: 100%; padding: 11px 14px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); font-size: 14px; resize: vertical; font-family: var(--font-body); }
     .form-note { text-align: center; font-size: 12px; color: var(--color-muted); margin-top: 14px; }
+    .error-text { color: #c00; font-size: 12px; display: block; margin-top: 4px; }
 
     @media (max-width: 980px) {
-      .hero-inner, .pricing-grid { grid-template-columns: 1fr; }
+      .hero-inner { grid-template-columns: 1fr; }
       .stats-row, .why-grid, .steps-grid { grid-template-columns: repeat(2, 1fr); }
       .apply-form .form-grid { grid-template-columns: 1fr; }
       .span-2 { grid-column: span 1; }
@@ -209,6 +203,12 @@ import { IconComponent } from '../shared/icon.component';
   `]
 })
 export class BecomeSellerComponent {
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
+  protected readonly loading = signal(false);
+  protected readonly error = signal('');
+
   stats = [
     { value: '1,200+', label: 'Active sellers' },
     { value: '$2.4M', label: 'Paid to artisans' },
@@ -229,4 +229,60 @@ export class BecomeSellerComponent {
     { icon: 'upload', title: 'List your products', desc: 'Add photos, pricing, and descriptions using our seller tools.' },
     { icon: 'trending-up', title: 'Start selling', desc: 'Go live and start reaching customers right away.' }
   ];
+
+  protected readonly form = new FormGroup({
+    name: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
+    phone: new FormControl('', {
+      nonNullable: true,
+    }),
+    email: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email],
+    }),
+    password: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(8)],
+    }),
+    businessName: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
+    category: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
+    description: new FormControl('', {
+      nonNullable: true,
+    }),
+  });
+
+  scrollToForm() {
+    document.getElementById('apply-form')?.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  protected submit() {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    this.loading.set(true);
+    this.error.set('');
+
+    const payload = this.form.getRawValue();
+    this.auth
+      .registerSeller(payload)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: () => {
+          void this.router.navigateByUrl('/seller/orders');
+        },
+        error: (err) => {
+          this.error.set(apiErrorMessage(err, 'Could not create seller account. Please check your information and try again.'));
+        },
+      });
+  }
 }

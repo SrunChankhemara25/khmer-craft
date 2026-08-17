@@ -10,6 +10,7 @@ import {
   logout,
   refresh,
   register,
+  registerSeller,
   resetPassword,
 } from './auth.controller';
 import {
@@ -17,6 +18,7 @@ import {
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  registerSellerSchema,
   resetPasswordSchema,
 } from './auth.validation';
 import {
@@ -32,6 +34,12 @@ router.post(
   registrationRateLimit,
   validate(registerSchema),
   register,
+);
+router.post(
+  '/register-seller',
+  registrationRateLimit,
+  validate(registerSellerSchema),
+  registerSeller,
 );
 router.post('/login', loginRateLimit, validate(loginSchema), login);
 router.post('/refresh', refresh);
@@ -51,7 +59,7 @@ router.post(
 router.patch(
   '/change-password',
   authenticate,
-  authorize('BUYER'),
+  authorize('BUYER', 'SELLER'),
   validate(changePasswordSchema),
   changePassword,
 );

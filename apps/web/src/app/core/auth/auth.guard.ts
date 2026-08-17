@@ -9,7 +9,7 @@ export const buyerGuard: CanActivateFn = (_route, state) => {
 
   return auth.loadCurrentUser().pipe(
     map((user) =>
-      user?.role === 'BUYER'
+      user && ['BUYER', 'SELLER'].includes(user.role)
         ? true
         : router.createUrlTree(['/login'], {
             // Send them back to whatever they were actually trying to reach.

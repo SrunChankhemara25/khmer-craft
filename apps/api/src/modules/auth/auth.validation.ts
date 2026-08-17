@@ -25,6 +25,18 @@ export const registerSchema = z
   })
   .strict();
 
+export const registerSellerSchema = z
+  .object({
+    name: z.string().trim().min(2).max(100),
+    email,
+    password,
+    phone: z.string().trim().min(8).max(30).optional(),
+    businessName: z.string().trim().min(2).max(100),
+    category: z.string().trim().min(2).max(100),
+    description: z.string().trim().max(4000).optional(),
+  })
+  .strict();
+
 export const loginSchema = z
   .object({
     email,
@@ -67,6 +79,7 @@ export const changePasswordSchema = z
   });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type RegisterSellerInput = z.infer<typeof registerSellerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

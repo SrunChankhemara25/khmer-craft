@@ -30,6 +30,20 @@ export class AuthService {
       .pipe(tap(({ user }) => this.setUser(user)));
   }
 
+  registerSeller(payload: {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+    businessName: string;
+    category: string;
+    description?: string;
+  }) {
+    return this.http
+      .post<AuthResponse>(`${API_URL}/register-seller`, payload)
+      .pipe(tap(({ user }) => this.setUser(user)));
+  }
+
   login(email: string, password: string, expectedRole: UserRole) {
     return this.http
       .post<AuthResponse>(`${API_URL}/login`, {

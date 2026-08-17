@@ -26,6 +26,15 @@ export const register = async (request: Request, response: Response) => {
   });
 };
 
+export const registerSeller = async (request: Request, response: Response) => {
+  const result = await authService.registerSeller(request.body);
+  setSessionCookies(response, result.accessToken, result.refreshToken);
+  response.status(201).json({
+    message: 'Seller account created successfully',
+    user: result.user,
+  });
+};
+
 export const login = async (request: Request, response: Response) => {
   const result = await authService.login(request.body);
   setSessionCookies(response, result.accessToken, result.refreshToken);
