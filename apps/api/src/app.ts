@@ -20,6 +20,7 @@ import authRoutes from './modules/auth/auth.routes';
 import cartRoutes from './modules/cart/cart.routes';
 import catalogRoutes from './modules/catalog/catalog.routes';
 import orderRoutes from './modules/orders/orders.routes';
+import sellerRoutes from './modules/sellers/sellers.routes';
 
 export const createApp = () => {
   const app = express();
@@ -54,7 +55,7 @@ export const createApp = () => {
   );
   // 100kb is ample for every JSON payload this API accepts; a larger ceiling
   // only widens the memory-exhaustion surface.
-  app.use(express.json({ limit: '100kb' }));
+  app.use(express.json({ limit: '5mb' }));
   app.use(cookieParser());
   app.use(preventOperatorInjection);
   app.use(apiRateLimit);
@@ -65,8 +66,8 @@ export const createApp = () => {
   // Auth stays at /auth for backwards compatibility with the web client that
   // is already deployed against it; commerce is namespaced under /api.
   // TODO(api-prefix): fold /auth into /api/auth once the web client can be
-  // updated in the same release.
   app.use('/auth', authRoutes);
+  app.use('/api/sellers', sellerRoutes);
   app.use('/api/products', catalogRoutes);
   app.use('/api/cart', cartRoutes);
   app.use('/api/orders', orderRoutes);

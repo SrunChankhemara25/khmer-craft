@@ -39,7 +39,7 @@ export class Login {
   private goToDestination(userRole: string) {
     const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
     if (userRole === 'SELLER' && (!returnUrl || returnUrl === '/')) {
-      void this.router.navigateByUrl('/seller/orders');
+      void this.router.navigateByUrl('/seller/dashboard');
     } else {
       void this.router.navigateByUrl(returnUrl && returnUrl.startsWith('/') ? returnUrl : '/');
     }

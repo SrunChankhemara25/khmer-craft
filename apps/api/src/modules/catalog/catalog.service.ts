@@ -208,6 +208,7 @@ export const createProduct = async (input: CreateProductInput) => {
     images: input.images ?? [],
     stock: input.stock,
     status: input.status,
+    sellerId: input.sellerId,
   });
 
   return toProductResponse(product);

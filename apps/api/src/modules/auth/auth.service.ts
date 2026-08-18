@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import PasswordResetToken from '../../../models/PasswordResetToken';
 import RefreshToken from '../../../models/RefreshToken';
 import User, { IUser } from '../../../models/User';
+import SellerProfile from '../../../models/SellerProfile';
 import { env } from '../../config/env';
 import { AppError } from '../../errors/app-error';
 import { signAccessToken } from '../../utils/jwt';
@@ -95,7 +96,6 @@ export class AuthService {
           status: 'ACTIVE',
         }], { session });
 
-        const SellerProfile = (await import('../../../models/SellerProfile')).default;
         await SellerProfile.create([{
           user_id: user[0]._id,
           businessName: input.businessName,

@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { environment } from '../../../environments/environment';
+import { API_URL } from './api.config';
 
 export interface DashboardMetrics {
   pendingOrders: number;
@@ -40,27 +40,27 @@ export class SellerService {
 
   getStoreOrders(storeId: string) {
     return this.http.get<OrdersDashboardResponse>(
-      `${environment.apiUrl}/sellers/my-stores/${storeId}/orders`
+      `${API_URL}/sellers/my-stores/${storeId}/orders`
     );
   }
 
   getStoreProfile(storeId: string) {
-    return this.http.get<any>(`${environment.apiUrl}/sellers/my-stores/${storeId}`);
+    return this.http.get<any>(`${API_URL}/sellers/my-stores/${storeId}`);
   }
 
   updateStoreProfile(storeId: string, data: any) {
-    return this.http.put<any>(`${environment.apiUrl}/sellers/my-stores/${storeId}/profile`, data);
+    return this.http.put<any>(`${API_URL}/sellers/my-stores/${storeId}/profile`, data);
   }
 
   getStoreReviews(storeId: string) {
-    return this.http.get<any>(`${environment.apiUrl}/sellers/my-stores/${storeId}/reviews`);
+    return this.http.get<any>(`${API_URL}/sellers/my-stores/${storeId}/reviews`);
   }
 
   getStoreProducts(storeId: string) {
-    return this.http.get<any>(`${environment.apiUrl}/catalog?sellerId=${storeId}`);
+    return this.http.get<any>(`${API_URL}/products?sellerId=${storeId}`);
   }
 
   createProduct(data: any) {
-    return this.http.post<any>(`${environment.apiUrl}/catalog`, data);
+    return this.http.post<any>(`${API_URL}/products`, data);
   }
 }

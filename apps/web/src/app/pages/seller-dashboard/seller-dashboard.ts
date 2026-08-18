@@ -1,9 +1,10 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { environment } from '../../../environments/environment';
+import { API_URL } from '../../core/api/api.config';
 import { KcIcon } from '../../components/ui/kc-icon';
 import { SellerService } from '../../core/api/seller.service';
+import { AuthService } from '../../core/auth/auth.service';
 
 type DashboardView = 'dashboard' | 'products' | 'add' | 'orders' | 'profile' | 'sales' | 'reviews' | 'settings';
 type OrderStatusClass = 'pending' | 'shipped' | 'delivered';
@@ -480,7 +481,7 @@ interface DashboardMetric {
     }
 
     .reviews-layout {
-      max-width: 980px;
+      max-width: 1400px;
     }
 
     .rating-row {
@@ -699,7 +700,7 @@ interface DashboardMetric {
       gap: 24px;
       grid-template-columns: 300px 1fr;
       margin-top: 28px;
-      max-width: 980px;
+      max-width: 1400px;
     }
 
     .seller-card,
@@ -1884,7 +1885,11 @@ interface DashboardMetric {
         <header class="topbar">
           <div class="search">
             <kc-icon name="search" [size]="18" />
-            <input [placeholder]="view() === 'reviews' ? 'Search reviews...' : 'Search orders, ID, or customers...'" />
+            <input 
+              [placeholder]="view() === 'reviews' ? 'Search reviews...' : (view() === 'products' ? 'Search products...' : 'Search orders, ID, or customers...')"
+              [ngModel]="globalSearchQuery()" 
+              (ngModelChange)="globalSearchQuery.set($event)" 
+            />
           </div>
           <div class="top-actions">
             <a class="view-store" href="/">
@@ -1894,10 +1899,12 @@ interface DashboardMetric {
             <kc-icon name="bell" [size]="18" style="color:#146242" />
             <div class="seller-mini">
               <div>
-                <strong>Artisan Craft Co.</strong>
+                <strong>{{ storeProfile().storeName || 'Your Store' }}</strong>
                 <span>Premium Seller</span>
               </div>
-              <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=85" alt="Seller avatar" />
+              <div class="avatar" style="background: #146242; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;">
+                {{ (storeProfile().storeName || 'Y').substring(0, 1).toUpperCase() }}
+              </div>
             </div>
           </div>
         </header>
@@ -1953,7 +1960,7 @@ interface DashboardMetric {
 
               <aside>
                 <article class="low-stock-card">
-                  <h2>Low Stock Alert <span class="critical">3 Critical</span></h2>
+                  <h2>Low Stock Alert @if (lowStock().length > 0) { <span class="critical">{{ lowStock().length }} Critical</span> }</h2>
                   @for (stock of lowStock(); track stock.id) {
                     <div class="stock-item">
                       <img [src]="stock.image" [alt]="stock.name" />
@@ -1964,14 +1971,17 @@ interface DashboardMetric {
                       </div>
                     </div>
                   }
+                  @if (lowStock().length === 0) {
+                    <p class="muted" style="font-size: 13px; margin: 10px 0;">All products have healthy stock levels.</p>
+                  }
                   <button class="btn btn-ghost" type="button" style="width:100%;margin-top:10px">View All Inventory</button>
                 </article>
 
                 <article class="goal-widget">
                   <h2>Order Fulfillment Goal</h2>
-                  <strong>85%</strong>
-                  <div class="progress-line"><span style="width:85%;background:#f2c13d"></span></div>
-                  <p class="muted" style="font-size:12px;font-style:italic">"You're doing great! Complete 3 more orders to reach your weekly goal."</p>
+                  <strong>{{ orders().length > 0 ? '100%' : '0%' }}</strong>
+                  <div class="progress-line"><span [style.width]="orders().length > 0 ? '100%' : '0%'" style="background:#f2c13d"></span></div>
+                  <p class="muted" style="font-size:12px;font-style:italic">{{ orders().length > 0 ? '"You\'re doing great! Keep it up."' : '"No orders yet. Start promoting your products!"' }}</p>
                 </article>
               </aside>
             </section>
@@ -1987,7 +1997,7 @@ interface DashboardMetric {
             </div>
 
             <section class="product-filters">
-              <div class="field-control"><kc-icon name="search" [size]="15" /> Search by name or SKU</div>
+              <div class="field-control"><kc-icon name="search" [size]="15" /> <input class="dash-input" style="border:none;padding:0;height:auto;flex:1;background:transparent" placeholder="Search by name or SKU" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" /></div>
               <div class="field-control">All Categories</div>
               <div class="field-control">Status: All</div>
               <button class="btn btn-ghost" type="button" style="height:38px;padding:0"><kc-icon name="filter" [size]="16" /></button>
@@ -1999,7 +2009,7 @@ interface DashboardMetric {
                   <tr><th>Image</th><th>Product Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
-                  @for (product of products(); track product.id) {
+                  @for (product of filteredProducts(); track product.id) {
                     <tr>
                       <td><img class="product-thumb" [src]="product.image" [alt]="product.name" /></td>
                       <td class="product-name"><strong>{{ product.name }}</strong><span>{{ product.sku || product.id }}</span></td>
@@ -2019,8 +2029,7 @@ interface DashboardMetric {
                 </tbody>
               </table>
               <div class="table-foot">
-                <span>Showing 1 to 3 of 24 products</span>
-                <div class="pagination"><span>&lt;</span><span class="current">1</span><span>2</span><span>3</span><span>&gt;</span></div>
+                <span>Showing 1 to {{ products().length }} of {{ products().length }} products</span>
               </div>
             </section>
 
@@ -2029,13 +2038,17 @@ interface DashboardMetric {
                 <div class="sparkle"><kc-icon name="sparkles" [size]="24" /></div>
                 <div>
                   <h2>Product Optimization Tip</h2>
-                  <p>Your "Palm Sugar Pack" listing has high traffic but low stock. Restocking soon could increase your monthly revenue by approximately 15% based on seasonal demand.</p>
+                  @if (lowStock().length > 0) {
+                    <p>Your "{{ lowStock()[0].name }}" listing has high traffic but low stock. Restocking soon could prevent you from missing out on potential sales.</p>
+                  } @else {
+                    <p>Your inventory is looking healthy. Consider adding new products to expand your catalog and reach more buyers.</p>
+                  }
                 </div>
               </article>
               <article class="inventory-card">
-                <h2>Inventory Health <span style="float:right">18</span></h2>
-                <div class="progress-line"><span style="width:75%"></span></div>
-                <p>75% of your inventory is currently active and visible to customers.</p>
+                <h2>Inventory Health <span style="float:right">{{ products().length }}</span></h2>
+                <div class="progress-line"><span [style.width]="products().length > 0 ? '100%' : '0%'"></span></div>
+                <p>{{ products().length > 0 ? '100%' : '0%' }} of your inventory is currently active and visible to customers.</p>
               </article>
             </section>
           </main>
@@ -2083,9 +2096,13 @@ interface DashboardMetric {
 
                 <article class="form-card">
                   <h2><kc-icon name="image" [size]="18" style="color:#146242" /> Product Images</h2>
-                  <div class="upload-drop">
+                  <div class="upload-drop" (click)="fileInput.click()" style="cursor: pointer; position: relative;">
+                    <input type="file" #fileInput hidden accept="image/*" (change)="onFileSelected($event)">
+                    @if (newProduct().image) {
+                      <img [src]="newProduct().image" style="max-height: 120px; object-fit: contain; margin-bottom: 12px; border-radius: 4px;" />
+                    }
                     <kc-icon name="upload-cloud" [size]="32" />
-                    <span>Click to upload or drag and drop</span>
+                    <span>{{ newProduct().image ? 'Click to change image' : 'Click to upload or drag and drop' }}</span>
                     <small>PNG, JPG or WEBP (Max 5MB each)</small>
                   </div>
                   <button class="add-tile" type="button">+</button>
@@ -2100,12 +2117,12 @@ interface DashboardMetric {
               <aside class="add-side">
                 <span class="preview-label">Live Preview</span>
                 <article class="product-preview">
-                  <img src="https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=520&q=85" alt="Product preview" />
+                  <img [src]="newProduct().image || 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=520&q=85'" alt="Product preview" />
                   <div class="preview-body">
-                    <small>Handicrafts <span style="float:right;color:#8b5f1a">★ 4.9</span></small>
+                    <small style="text-transform: uppercase;">{{ newProduct().category || 'Category' }}</small>
                     <h3>{{ newProduct().name || 'Product Name Preview' }}</h3>
                     <p>Store: {{ storeProfile().storeName || 'Your Store' }}</p>
-                    <div class="preview-price"><strong>${{ newProduct().price || '0.00' }} <span style="display:block;color:#6e7974;font-size:11px">Free Delivery</span></strong><span class="pill green">In Stock</span></div>
+                    <div class="preview-price"><strong>$<span>{{ newProduct().price || '0.00' }}</span> <span style="display:block;color:#6e7974;font-size:11px">Free Delivery</span></strong><span class="pill green">In Stock</span></div>
                   </div>
                 </article>
                 <article class="pro-tip">
@@ -2150,7 +2167,7 @@ interface DashboardMetric {
             <section class="filters">
               <div class="field">
                 <label>Search Keywords</label>
-                <div class="field-control"><kc-icon name="search" [size]="15" /> Order ID or Customer Name</div>
+                <div class="field-control"><kc-icon name="search" [size]="15" /> <input class="dash-input" style="border:none;padding:0;height:auto;flex:1;background:transparent" placeholder="Order ID or Customer Name" [ngModel]="orderSearchQuery()" (ngModelChange)="orderSearchQuery.set($event)" /></div>
               </div>
               <div class="field">
                 <label>Status Filter</label>
@@ -2178,7 +2195,7 @@ interface DashboardMetric {
                   </tr>
                 </thead>
                 <tbody>
-                  @for (order of orders(); track order.id) {
+                  @for (order of filteredOrders(); track order.id) {
                     <tr>
                       <td><span class="order-id" (click)="selectedOrder.set(order)">{{ order.id }}</span></td>
                       <td>
@@ -2207,10 +2224,19 @@ interface DashboardMetric {
                 </tbody>
               </table>
               <div class="table-foot">
-                <span>Showing 1 to 3 of 12 orders</span>
-                <div class="pagination"><span>&lt;</span><span class="current">1</span><span>2</span><span>&gt;</span></div>
+                <span>Showing {{ filteredOrders().length === 0 ? '0' : '1' }} to {{ filteredOrders().length }} of {{ filteredOrders().length }} orders</span>
+                @if (filteredOrders().length > 0) {
+                  <div class="pagination"><span>&lt;</span><span class="current">1</span><span>&gt;</span></div>
+                }
               </div>
             </section>
+            @if (filteredOrders().length === 0) {
+              <div style="text-align:center; padding: 40px; color: #818f89; background: white; border-radius: 8px; margin-top: -16px;">
+                <kc-icon name="box" [size]="48" style="opacity: 0.5; margin-bottom: 16px;" />
+                <h3>No Orders Found</h3>
+                <p>You don't have any orders matching your criteria yet.</p>
+              </div>
+            }
           </main>
         } @else if (view() === 'reviews') {
           <main class="page reviews-layout">
@@ -2227,7 +2253,7 @@ interface DashboardMetric {
 
               <article class="rating-card dist">
                 <h2>Rating Distribution</h2>
-                @for (bar of bars; track bar.label) {
+                @for (bar of bars(); track bar.label) {
                   <div class="bar-row">
                     <span>{{ bar.label }}</span>
                     <div class="track"><div class="fill" [class.low]="bar.low" [style.width]="bar.width"></div></div>
@@ -2248,7 +2274,7 @@ interface DashboardMetric {
             </div>
 
             <section class="review-list">
-              @for (review of reviews(); track review.id || review.name) {
+              @for (review of filteredReviews(); track review.id || review.name) {
                 <article class="review-card">
                   <div class="review-top">
                     <div class="review-person">
@@ -2284,23 +2310,42 @@ interface DashboardMetric {
             <section class="profile-grid">
               <div>
                 <article class="seller-card">
-                  <img class="banner" src="https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=700&q=85" alt="Store banner" />
+                  @if (storeProfile().bannerUrl) {
+                    <img class="banner" [src]="storeProfile().bannerUrl" alt="Store banner" />
+                  } @else {
+                    <div class="banner" style="background: #e4ded3; height: 120px; display: flex; align-items: center; justify-content: center; color: #7a8580;">No banner uploaded</div>
+                  }
                   <div class="seller-card-body">
-                    <img class="store-logo-preview" src="https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=180&q=85" alt="Store logo" />
+                    @if (storeProfile().logoUrl) {
+                      <img class="store-logo-preview" [src]="storeProfile().logoUrl" alt="Store logo" />
+                    } @else {
+                      <div class="store-logo-preview" style="background: #fff; border: 1px solid #e4ded3; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: #146242;">
+                        {{ (storeProfile().storeName || 'S').substring(0, 1).toUpperCase() }}
+                      </div>
+                    }
                     <h2>{{ storeProfile().storeName || 'Store Name' }}</h2>
-                    <div class="store-rating"><strong>★ 4.8</strong><span>{{ storeProfile().location || 'Location' }}</span></div>
+                    <div class="store-rating"><span>{{ storeProfile().location || 'Location' }}</span></div>
                     <p>{{ storeProfile().storeDescription || 'No description provided.' }}</p>
                     <a class="visit" href="/"><kc-icon name="eye" [size]="15" /> View Store</a>
                   </div>
                 </article>
 
                 <article class="completion-card">
-                  <div class="completion-head"><span>Profile Completion</span><span style="color:#146242">85%</span></div>
-                  <div class="progress-line"><span></span></div>
+                  <div class="completion-head"><span>Profile Completion</span><span style="color:#146242">{{ profileCompletion() }}%</span></div>
+                  <div class="progress-line"><span [style.width.%]="profileCompletion()"></span></div>
                   <div class="check-list">
-                    <span><kc-icon name="check" [size]="16" style="color:#146242" /> Logo & Banner Uploaded</span>
-                    <span><kc-icon name="check" [size]="16" style="color:#146242" /> Store Description</span>
-                    <span><kc-icon name="shield" [size]="16" style="color:#8c6a33" /> Verification Documents</span>
+                    <span>
+                      <kc-icon [name]="storeProfile().storeName && storeProfile().location ? 'check' : 'circle'" [size]="16" [style.color]="storeProfile().storeName && storeProfile().location ? '#146242' : '#ccc'" /> 
+                      Basic Info
+                    </span>
+                    <span>
+                      <kc-icon [name]="storeProfile().storeDescription ? 'check' : 'circle'" [size]="16" [style.color]="storeProfile().storeDescription ? '#146242' : '#ccc'" /> 
+                      Store Description
+                    </span>
+                    <span>
+                      <kc-icon [name]="storeProfile().phoneNumber ? 'check' : 'circle'" [size]="16" [style.color]="storeProfile().phoneNumber ? '#146242' : '#ccc'" /> 
+                      Contact Number
+                    </span>
                   </div>
                 </article>
               </div>
@@ -2309,18 +2354,20 @@ interface DashboardMetric {
                 <div class="upload-row">
                   <div>
                     <label style="font-size:11px;font-weight:900">Store Logo</label>
-                    <div class="upload-box">
-                      <span class="upload-icon"><kc-icon name="file" [size]="24" /></span>
+                    <div class="upload-box" style="height: 140px; cursor: pointer;" (click)="logoInput.click()">
+                      <kc-icon name="file" [size]="20" style="color: #146242" />
                       <strong>Replace Logo</strong>
-                      SVG, PNG, JPG (Max. 2MB)
+                      <span>SVG, PNG, JPG (Max. 5MB)</span>
+                      <input #logoInput type="file" accept="image/*" style="display: none" (change)="onProfileImageSelected($event, 'logoUrl')" />
                     </div>
                   </div>
                   <div>
                     <label style="font-size:11px;font-weight:900">Store Banner</label>
-                    <div class="upload-box">
-                      <span class="upload-icon"><kc-icon name="image" [size]="24" /></span>
+                    <div class="upload-box" style="height: 140px; cursor: pointer;" (click)="bannerInput.click()">
+                      <kc-icon name="image" [size]="20" style="color: #146242" />
                       <strong>Upload New Banner</strong>
-                      Recommended 1200×400px
+                      <span>Recommended 1200x400px (Max. 5MB)</span>
+                      <input #bannerInput type="file" accept="image/*" style="display: none" (change)="onProfileImageSelected($event, 'bannerUrl')" />
                     </div>
                   </div>
                 </div>
@@ -2331,7 +2378,14 @@ interface DashboardMetric {
                     <textarea class="dash-textarea" [ngModel]="storeProfile().storeDescription" (ngModelChange)="storeProfile.set({...storeProfile(), storeDescription: $event})" name="storeDesc"></textarea>
                   </label>
                   <div class="two-cols">
-                    <label>Location<input class="dash-input" [ngModel]="storeProfile().location" (ngModelChange)="storeProfile.set({...storeProfile(), location: $event})" name="location" /></label>
+                    <label>Location
+                      <div style="position: relative; display: flex;">
+                        <input class="dash-input" style="padding-right: 36px; width: 100%" [ngModel]="storeProfile().location" (ngModelChange)="storeProfile.set({...storeProfile(), location: $event})" name="location" placeholder="City, Country" />
+                        <button type="button" (click)="detectLocation()" [disabled]="isDetectingLocation()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #146242; padding: 0; display: flex; align-items: center;" title="Auto-detect Location">
+                          <kc-icon [name]="isDetectingLocation() ? 'loader' : 'map-pin'" [size]="18" />
+                        </button>
+                      </div>
+                    </label>
                     <label>Phone Number<input class="dash-input" [ngModel]="storeProfile().phoneNumber" (ngModelChange)="storeProfile.set({...storeProfile(), phoneNumber: $event})" name="phone" /></label>
                   </div>
                   <div class="form-actions">
@@ -2401,8 +2455,8 @@ interface DashboardMetric {
                 </article>
                 <article class="goal-card">
                   <h3>Next Payout Goal <strong>$1,000 threshold</strong></h3>
-                  <div class="progress-line" style="margin:13px 0 9px"><span style="width:62%"></span></div>
-                  <p class="muted" style="font-size:11px">$620.00 reached · $380.00 to go</p>
+                  <div class="progress-line" style="margin:13px 0 9px"><span [style.width]="'0%'"></span></div>
+                  <p class="muted" style="font-size:11px">{{ payoutMetrics()[0]?.value || '$0.00' }} reached</p>
                   <button class="btn btn-primary" type="button" style="width:100%;margin-top:16px">Set Automatic Payout</button>
                 </article>
               </aside>
@@ -2419,11 +2473,11 @@ interface DashboardMetric {
                   <h2><kc-icon name="user" [size]="18" style="color:#146242" /> Account Info</h2>
                   <form class="settings-form">
                     <div class="two-cols">
-                      <label>Full Name<input class="dash-input" value="Sokha Reach" /></label>
-                      <label>Email Address<input class="dash-input" value="sokha.reach@khmercraft.com" /></label>
+                      <label>Full Name<input class="dash-input" [value]="user()?.name" disabled style="background: #f5f7fb; cursor: not-allowed;" /></label>
+                      <label>Email Address<input class="dash-input" [value]="user()?.email" disabled style="background: #f5f7fb; cursor: not-allowed;" /></label>
                     </div>
-                    <label>Phone Number<input class="dash-input" value="+855 12 345 678" /></label>
-                    <div class="form-actions"><button class="btn btn-primary" type="button">Save Changes</button></div>
+                    <label>Phone Number<input class="dash-input" [ngModel]="storeProfile().phoneNumber" (ngModelChange)="storeProfile.set({...storeProfile(), phoneNumber: $event})" name="settingsPhone" /></label>
+                    <div class="form-actions"><button class="btn btn-primary" type="button" (click)="saveStoreProfile()">Save Changes</button></div>
                   </form>
                 </article>
 
@@ -2537,23 +2591,77 @@ interface DashboardMetric {
   `,
 })
 export class SellerDashboardPage implements OnInit {
+  private readonly sellerService = inject(SellerService);
+  protected readonly authService = inject(AuthService);
+  protected readonly user = this.authService.user;
+
   protected readonly view = signal<DashboardView>('dashboard');
   protected readonly selectedOrder = signal<SellerOrder | null>(null);
   protected readonly myStoreId = signal<string | null>(null);
+
+  protected readonly isDetectingLocation = signal(false);
+
+  async detectLocation() {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    this.isDetectingLocation.set(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const data = await res.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county || '';
+          const country = data.address?.country || '';
+          const locationString = [city, country].filter(Boolean).join(', ');
+          
+          this.storeProfile.set({ ...this.storeProfile(), location: locationString || `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+        } catch (err) {
+          alert('Failed to get location name. Using coordinates instead.');
+          this.storeProfile.set({ ...this.storeProfile(), location: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+        } finally {
+          this.isDetectingLocation.set(false);
+        }
+      },
+      (error) => {
+        alert('Unable to retrieve your location. Please check your browser permissions.');
+        this.isDetectingLocation.set(false);
+      }
+    );
+  }
+
+  protected readonly profileCompletion = computed(() => {
+    const p = this.storeProfile();
+    let score = 0;
+    if (p.storeName?.trim()) score += 25;
+    if (p.storeDescription?.trim()) score += 25;
+    if (p.location?.trim()) score += 25;
+    if (p.phoneNumber?.trim()) score += 25;
+    return score;
+  });
   
-  private readonly sellerService = inject(SellerService);
   private readonly http = inject(HttpClient);
   
   ngOnInit() {
-    this.http.get<any[]>(`${environment.apiUrl}/sellers/my-stores`).subscribe({
+    this.http.get<any[]>(`${API_URL}/sellers/my-stores`).subscribe({
       next: (stores) => {
         if (stores && stores.length > 0) {
           const storeId = stores[0]._id;
           this.myStoreId.set(storeId);
           this.loadDashboardData(storeId);
+        } else {
+          alert('API returned empty stores list! Backend failed to create it.');
         }
       },
-      error: (err) => console.error('Failed to load stores (Are you logged in?)', err)
+      error: (err) => {
+        console.error('Failed to load stores', err);
+        alert('API error when loading stores: ' + err.status + ' ' + (err.error?.message || err.message));
+      }
     });
   }
 
@@ -2637,7 +2745,9 @@ export class SellerDashboardPage implements OnInit {
           storeName: profile.storeName,
           storeDescription: profile.storeDescription,
           location: profile.location,
-          phoneNumber: profile.phoneNumber
+          phoneNumber: profile.phoneNumber,
+          logoUrl: profile.logoUrl,
+          bannerUrl: profile.bannerUrl
         });
       },
       error: (err) => console.error('Failed to load profile', err)
@@ -2686,6 +2796,16 @@ export class SellerDashboardPage implements OnInit {
   protected readonly dashboardOrders = signal<any[]>([]);
   protected readonly lowStock = signal<any[]>([]);
   protected readonly products = signal<any[]>([]);
+  protected readonly searchQuery = signal('');
+  protected readonly globalSearchQuery = signal('');
+  
+  protected readonly filteredProducts = computed(() => {
+    const localQ = this.searchQuery().toLowerCase();
+    const globalQ = this.globalSearchQuery().toLowerCase();
+    const q = localQ || globalQ;
+    if (!q) return this.products();
+    return this.products().filter(p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)));
+  });
   protected readonly payoutMetrics = signal<DashboardMetric[]>([]);
   
   // Also create a signal for store profile
@@ -2697,16 +2817,51 @@ export class SellerDashboardPage implements OnInit {
   });
 
   protected readonly newProduct = signal<any>({
-    name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE'
+    name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: ''
   });
 
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.newProduct.set({ ...this.newProduct(), image: e.target.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
   protected readonly reviews = signal<any[]>([]);
+  protected readonly filteredReviews = computed(() => {
+    const q = this.globalSearchQuery().toLowerCase();
+    if (!q) return this.reviews();
+    return this.reviews().filter(r => 
+      r.name.toLowerCase().includes(q) || 
+      r.comment.toLowerCase().includes(q) ||
+      (r.product && r.product.toLowerCase().includes(q))
+    );
+  });
   protected readonly reviewsStats = signal<any>({});
   protected readonly payouts = signal<any[]>([]);
 
   submitAddProduct() {
-    const data = this.newProduct();
-    if (!data.name || !data.category || !data.price || data.stock === null) return;
+    const data = { ...this.newProduct() };
+    
+    // Parse numbers safely from input binding strings
+    data.price = Number(data.price);
+    data.stock = Number(data.stock);
+
+    if (!data.name || !data.category || !data.price || isNaN(data.stock)) return;
+
+    data.sellerName = this.user()?.name || 'Sothy Roth';
+    data.storeName = this.storeProfile()?.storeName || 'Sothy Awesome Store';
+    data.sellerId = this.myStoreId() || undefined;
+
+    // Clean up fields that backend strict validation rejects
+    delete data.material;
+    if (!data.image) {
+      delete data.image;
+    }
 
     this.sellerService.createProduct(data).subscribe({
       next: () => {
@@ -2715,75 +2870,67 @@ export class SellerDashboardPage implements OnInit {
           this.loadDashboardData(this.myStoreId()!);
         }
         this.view.set('products');
-        this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE' });
+        this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: '' });
       },
-      error: (err) => alert('Failed to add product: ' + err.message)
+      error: (err) => {
+        const errorMsg = err.error?.error?.details || err.error?.error?.message || err.message;
+        alert('Failed to add product: ' + JSON.stringify(errorMsg));
+      }
     });
   }
 
   saveStoreProfile() {
     const data = this.storeProfile();
     const id = this.myStoreId();
-    if (!id) return;
+    if (!id) {
+      alert('Store ID is missing! Please refresh the page and try again.');
+      return;
+    }
     this.sellerService.updateStoreProfile(id, data).subscribe({
       next: () => alert('Store profile updated successfully!'),
-      error: (err) => alert('Failed to update profile')
+      error: (err) => alert('Failed to update profile: ' + (err.error?.message || err.message))
     });
   }
 
 
 
   protected readonly orders = signal<SellerOrder[]>([]);
+  protected readonly orderSearchQuery = signal('');
+  protected readonly filteredOrders = computed(() => {
+    const localQ = this.orderSearchQuery().toLowerCase();
+    const globalQ = this.globalSearchQuery().toLowerCase();
+    const q = localQ || globalQ;
+    if (!q) return this.orders();
+    return this.orders().filter(o => 
+      o.id.toLowerCase().includes(q) || 
+      o.buyer.toLowerCase().includes(q) ||
+      o.product.toLowerCase().includes(q)
+    );
+  });
 
-  protected readonly bars = [
-    { label: '5 Stars', width: '86%', count: 38 },
-    { label: '4 Stars', width: '14%', count: 5 },
-    { label: '3 Stars', width: '6%', count: 2, low: true },
-    { label: '2 Stars', width: '0%', count: 0 },
-  ];
+  protected readonly bars = signal<any[]>([]);
 
-  protected readonly payouts = [
-    { id: '#KC-8942', date: 'Oct 24, 2023', total: '$120.00', commission: '-$12.00', earning: '$108.00', status: 'PAID' },
-    { id: '#KC-8945', date: 'Oct 25, 2023', total: '$85.00', commission: '-$8.50', earning: '$76.50', status: 'PENDING' },
-    { id: '#KC-8949', date: 'Oct 25, 2023', total: '$350.00', commission: '-$35.00', earning: '$315.00', status: 'PENDING' },
-    { id: '#KC-8930', date: 'Oct 22, 2023', total: '$210.00', commission: '-$21.00', earning: '$189.00', status: 'PAID' },
-    { id: '#KC-8921', date: 'Oct 20, 2023', total: '$45.00', commission: '-$4.50', earning: '$40.50', status: 'PAID' },
-  ];
 
-  protected readonly reviews = [
-    {
-      name: 'Dara',
-      initial: 'D',
-      color: '#ffd2b5',
-      product: 'Handmade Khmer Scarf',
-      date: 'October 24, 2023',
-      text:
-        'Good quality and beautiful product. The silk is incredibly soft and the patterns are authentic. Highly recommend this artisan!',
-    },
-    {
-      name: 'Sokha M.',
-      initial: 'S',
-      color: '#f7d777',
-      product: 'Ceramic Lotus Vase',
-      date: 'October 21, 2023',
-      text:
-        'The craftsmanship is superb. My only minor issue was the shipping took a little longer than expected, but the product was worth the wait.',
-      response:
-        'Thank you for your feedback, Sokha! We are glad you love the vase. We are working on optimizing our shipping partner to ensure faster delivery next time.',
-    },
-    {
-      name: 'Vannak',
-      initial: 'V',
-      color: '#a9efc8',
-      product: 'Woven Bamboo Basket Set',
-      date: 'October 15, 2023',
-      text:
-        'These baskets look even better in person. Perfectly functional and adds a nice rustic touch to my kitchen.',
-      image: 'https://images.unsplash.com/photo-1595428774223-ef52624120e2?w=160&q=85',
-    },
-  ];
+
+
 
   protected currentTitle(): string {
     return this.navItems.find((item) => item.view === this.view())?.label ?? 'Dashboard';
+  }
+
+  onProfileImageSelected(event: any, field: 'logoUrl' | 'bannerUrl') {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File is too large (max 5MB)');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64Str = e.target?.result as string;
+        this.storeProfile.set({ ...this.storeProfile(), [field]: base64Str });
+      };
+      reader.readAsDataURL(file);
+    }
   }
 }

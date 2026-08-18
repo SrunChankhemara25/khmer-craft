@@ -118,7 +118,7 @@ export class SellerLogin {
           this.success.set(`Signed in as ${user.name}.`);
           const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
           void this.router.navigateByUrl(
-            returnUrl && returnUrl.startsWith('/') ? returnUrl : '/seller/orders',
+            returnUrl && returnUrl.startsWith('/') ? returnUrl : '/seller/dashboard',
           );
         },
         error: (error) =>

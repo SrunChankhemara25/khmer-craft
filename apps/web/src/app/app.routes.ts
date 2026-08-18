@@ -140,6 +140,7 @@ export const routes: Routes = [
   },
   {
     path: 'seller/dashboard',
+    canActivate: [buyerGuard],
     component: SellerDashboardPage,
     title: 'Seller Dashboard | KhmerCraft',
   },

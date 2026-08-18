@@ -279,7 +279,7 @@ export class BecomeSellerComponent {
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: () => {
-          void this.router.navigateByUrl('/seller/orders');
+          void this.router.navigateByUrl('/seller/dashboard');
         },
         error: (err) => {
           this.error.set(apiErrorMessage(err, 'Could not create seller account. Please check your information and try again.'));
