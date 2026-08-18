@@ -22,13 +22,24 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
       <!-- Announcement bar: slim, and every claim here links somewhere real. -->
       <div class="announce">
         <div class="container announce-inner">
-          <span><ui-icon name="truck" [size]="13" /> Free delivery over $50 in Phnom Penh</span>
-          <span class="dot">·</span>
-          <span><ui-icon name="shield" [size]="13" /> Secure checkout</span>
+          @if (sellerArea()) {
+            <span><ui-icon name="store" [size]="13" /> KhmerCraft for sellers</span>
+            <span class="dot">·</span>
+            <span><ui-icon name="banknote" [size]="13" /> No listing fees</span>
+          } @else {
+            <span><ui-icon name="truck" [size]="13" /> Free delivery over $50 in Phnom Penh</span>
+            <span class="dot">·</span>
+            <span><ui-icon name="shield" [size]="13" /> Secure checkout</span>
+          }
           <div class="announce-links">
-            <a routerLink="/orders">Track order</a>
-            <a routerLink="/help">Support</a>
-            <a routerLink="/become-a-seller">Seller portal</a>
+            @if (sellerArea()) {
+              <a routerLink="/seller/orders">Seller dashboard</a>
+              <a routerLink="/help">Seller support</a>
+            } @else {
+              <a routerLink="/orders">Track order</a>
+              <a routerLink="/help">Support</a>
+              <a routerLink="/become-a-seller">Seller portal</a>
+            }
           </div>
         </div>
       </div>
@@ -53,6 +64,7 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
             <span class="search-label">Search</span>
           </button>
 
+          @if (!sellerArea()) {
           <a class="icon-btn wishlist-btn" routerLink="/wishlist" aria-label="Wishlist">
             <ui-icon
               name="heart"
@@ -71,14 +83,21 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
               <span class="cart-badge">{{ cartCount() }}</span>
             }
           </a>
+          }
 
           @if (user(); as currentUser) {
-            <a class="signin-btn" routerLink="/profile">
+            <a
+              class="signin-btn"
+              [routerLink]="isSeller() ? '/seller/orders' : '/profile'"
+            >
               <ui-icon name="user" [size]="15" />
               <span class="signin-label">{{ firstName(currentUser.name) }}</span>
             </a>
           } @else {
-            <a class="signin-btn" routerLink="/login">
+            <a
+              class="signin-btn"
+              [routerLink]="sellerArea() ? '/seller/login' : '/login'"
+            >
               <ui-icon name="user" [size]="15" />
               <span class="signin-label">Sign In</span>
             </a>
@@ -96,9 +115,34 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         </div>
       </div>
 
-      <!-- Category navigation row. Sits under the logo/nav/profile row, so
-           each category is one hover away rather than hidden behind a menu. -->
-      <app-category-menu />
+      <!-- Shopper navigation. A seller has no use for the category tree, so
+           the row is replaced with their own links. -->
+      @if (!sellerArea()) {
+        <app-category-menu />
+      } @else {
+        <nav class="seller-row">
+          <div class="seller-row-inner container">
+            <span class="seller-badge">
+              <ui-icon name="store" [size]="13" /> Seller portal
+            </span>
+            @if (isSeller()) {
+              <a routerLink="/seller/orders" [class.on]="isPath('/seller/orders')">
+                Orders
+              </a>
+              <a routerLink="/become-a-seller" [class.on]="isPath('/become-a-seller')">
+                Selling guide
+              </a>
+            } @else {
+              <a routerLink="/become-a-seller" [class.on]="isPath('/become-a-seller')">
+                Why sell with us
+              </a>
+            }
+            <a class="back-to-shop" routerLink="/">
+              <ui-icon name="arrow-left" [size]="13" /> Back to shopping
+            </a>
+          </div>
+        </nav>
+      }
 
       @if (menuOpen()) {
         <nav class="mobile-menu">
@@ -132,6 +176,55 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         border-bottom-color: var(--color-border);
         box-shadow: var(--shadow-xs);
       }
+      .seller-row {
+        border-top: 1px solid var(--color-border);
+        background: var(--color-bg-alt);
+      }
+      .seller-row-inner {
+        display: flex;
+        align-items: center;
+        gap: clamp(14px, 1.6vw, 28px);
+        height: 40px;
+        font-size: 13.5px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+      }
+      .seller-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: var(--radius-full);
+        background: var(--color-accent-soft);
+        color: var(--color-accent);
+        font-size: 11.5px;
+        font-weight: 700;
+      }
+      .seller-row-inner a:hover,
+      .seller-row-inner a.on {
+        color: var(--color-text);
+      }
+      .seller-row-inner a.on {
+        font-weight: 650;
+      }
+      .back-to-shop {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: auto;
+        color: var(--color-accent);
+        font-weight: 600;
+      }
+      @media (max-width: 700px) {
+        .seller-row-inner {
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .back-to-shop {
+          margin-left: 0;
+        }
+      }
+
       .announce {
         background: #6f271c;
         color: rgba(255, 255, 255, 0.92);
@@ -404,6 +497,28 @@ export class NavbarComponent {
     // Resolve the session once so the header can show a profile link instead
     // of "Sign In" for a user who is already authenticated.
     this.auth.loadCurrentUser().subscribe();
+  }
+
+  /**
+   * True on the seller side of the marketplace.
+   *
+   * The two sides want different chrome: a shopper needs categories, a cart
+   * and a wishlist, while a seller needs their orders and listings and has no
+   * use for a basket. Derived from the URL so no page has to declare it.
+   */
+  protected readonly sellerArea = computed(() => {
+    const path = this.url().split('?')[0];
+    return path.startsWith('/seller') || path.startsWith('/become-a-seller');
+  });
+
+  /** Signed in with a seller (or admin) account. */
+  protected readonly isSeller = computed(() => {
+    const role = this.user()?.role;
+    return role === 'SELLER' || role === 'ADMIN';
+  });
+
+  protected isPath(path: string): boolean {
+    return this.url().split('?')[0].startsWith(path);
   }
 
   protected is(name: string): boolean {
