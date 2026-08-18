@@ -176,8 +176,8 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         grid-template-columns: 1fr auto 1fr;
         align-items: center;
         gap: clamp(18px, 2.4vw, 42px);
-        padding-top: 14px;
-        padding-bottom: 14px;
+        padding-top: 8px;
+        padding-bottom: 8px;
         height: var(--header-h);
       }
       .logo {
@@ -193,7 +193,7 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
       }
       .logo-mark {
         width: 34px;
-        height: 34px;
+        height: 30px;
         border-radius: 11px 11px 17px 11px;
         background: var(--color-accent);
         display: flex;

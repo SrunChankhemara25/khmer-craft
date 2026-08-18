@@ -40,7 +40,10 @@ const CLOSE_DELAY_MS = 220;
   template: `
     <div class="cat-bar" (mouseleave)="scheduleClose()">
       <nav class="cat-row container" aria-label="Product categories">
-        @for (category of categories; track category.slug) {
+        <span class="edge" aria-hidden="true"></span>
+
+        <div class="cat-items">
+          @for (category of categories; track category.slug) {
           <a
             class="cat-item"
             [class.open]="openSlug() === category.slug"
@@ -50,9 +53,10 @@ const CLOSE_DELAY_MS = 220;
             [attr.aria-expanded]="openSlug() === category.slug"
             (click)="close()"
           >
-            {{ category.name }}
-          </a>
-        }
+              {{ category.name }}
+            </a>
+          }
+        </div>
 
         <a class="cat-item all" routerLink="/products" (click)="close()">
           All products
@@ -126,14 +130,27 @@ const CLOSE_DELAY_MS = 220;
       .cat-bar {
         border-top: 1px solid var(--color-border);
       }
+      /* Three tracks, matching the row above: the categories stay centred no
+         matter how wide "All products" or the left edge happen to be. A flex
+         row with margin-left:auto pushed them off-centre. */
       .cat-row {
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        gap: clamp(14px, 1.6vw, 30px);
-        height: 46px;
+        height: 40px;
         font-size: 13.5px;
         font-weight: 500;
         color: var(--color-text-secondary);
+      }
+      .cat-items {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(14px, 1.6vw, 30px);
+        height: 100%;
+      }
+      .edge {
+        display: block;
       }
       .cat-item {
         position: relative;
@@ -149,7 +166,7 @@ const CLOSE_DELAY_MS = 220;
         border-bottom-color: var(--color-accent);
       }
       .cat-item.all {
-        margin-left: auto;
+        justify-self: end;
         color: var(--color-accent);
         font-weight: 600;
       }
@@ -265,15 +282,25 @@ const CLOSE_DELAY_MS = 220;
       /* Touch: the row scrolls sideways and the panels never open — each item
          is still a link to its category page. */
       @media (max-width: 980px) {
+        /* One scrolling strip rather than three tracks — centring is
+           meaningless once the row is wider than the screen. */
         .cat-row {
+          display: flex;
           overflow-x: auto;
+          gap: clamp(14px, 1.6vw, 30px);
           scrollbar-width: none;
         }
         .cat-row::-webkit-scrollbar {
           display: none;
         }
+        .edge {
+          display: none;
+        }
+        .cat-items {
+          justify-content: flex-start;
+        }
         .cat-item.all {
-          margin-left: 0;
+          justify-self: auto;
         }
         .panel {
           display: none;

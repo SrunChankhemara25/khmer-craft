@@ -77,7 +77,7 @@
   --error: #a12f2f;
   --font-display: Georgia, 'Times New Roman', serif;
 
-  --header-h: 76px;
+  --header-h: 62px;
   --content-max: none;
   --page-gutter: clamp(16px, 2.4vw, 64px);
   --section-space: clamp(58px, 7vw, 112px);
@@ -556,12 +556,12 @@ app-home .features-strip {
   display: grid !important;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0 !important;
-  padding-block: 18px !important;
+  padding-block: 10px !important;
   border-bottom: 1px solid var(--color-border);
 }
 
 app-home .feature-item {
-  min-height: 48px;
+  min-height: 42px;
   justify-content: center;
   padding-inline: 20px;
   border-right: 1px solid var(--color-border);
@@ -577,14 +577,14 @@ app-home .section {
 /* The category discovery row belongs to the opening viewport, directly after
    the trust strip, so it uses a tighter transition than later sections. */
 app-home .hero + .section {
-  padding-top: clamp(22px, 2.5vw, 38px) !important;
+  padding-top: clamp(16px, 1.8vw, 26px) !important;
 }
 
 app-home .hero + .section + .section {
-  padding-top: clamp(32px, 3vw, 48px) !important;
+  padding-top: clamp(22px, 2vw, 34px) !important;
 }
 
-app-home .section-head { margin-bottom: 26px !important; }
+app-home .section-head { margin-bottom: 16px !important; }
 app-home .section-head h2,
 app-home h2.center { font-size: clamp(26px, 2.3vw, 38px) !important; }
 
@@ -663,6 +663,10 @@ app-products .product-grid {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)) !important;
   gap: clamp(18px, 2vw, 30px) !important;
 }
+
+app-store-detail .product-grid app-product-card:nth-child(3n + 1) .product-photo { object-position: 76% center; }
+app-store-detail .product-grid app-product-card:nth-child(3n + 2) .product-photo { object-position: 61% center; }
+app-store-detail .product-grid app-product-card:nth-child(3n + 3) .product-photo { object-position: 88% center; }
 
 @media (min-width: 1500px) {
   app-category-detail .product-grid > *,
