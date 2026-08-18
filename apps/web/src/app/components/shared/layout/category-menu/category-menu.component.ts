@@ -1,4 +1,11 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CatalogService } from '../../../../core/catalog/catalog.service';
 import { IconComponent } from '../../ui/icon/icon.component';
@@ -42,8 +49,12 @@ const CLOSE_DELAY_MS = 220;
       </a>
 
       @if (isOpen()) {
-        <div class="panel" role="menu">
-          <div class="panel-inner">
+        <!-- Dims the page beneath so the panel reads as a layer over the
+             storefront rather than part of it. -->
+        <div class="scrim" aria-hidden="true"></div>
+
+        <div class="panel" role="menu" [style.top.px]="panelTop()">
+          <div class="panel-inner container">
             <div class="columns">
               @for (category of categories; track category.slug) {
                 <div class="column">
@@ -127,43 +138,60 @@ const CLOSE_DELAY_MS = 220;
         transform: rotate(180deg);
       }
 
+      /* Full-bleed bar under the whole header, rather than a card floating
+         over the content. Fixed rather than absolute because the header is
+         sticky and contains the announcement bar, so the panel has to start
+         below whatever the header currently measures. */
       .panel {
-        position: absolute;
-        top: calc(100% + 14px);
-        left: 50%;
-        transform: translateX(-50%);
+        position: fixed;
+        left: 0;
+        right: 0;
         z-index: 60;
-        width: min(94vw, 1080px);
-        animation: drop 140ms var(--ease-out);
+        width: 100%;
+        border-top: 1px solid var(--color-border);
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-surface);
+        box-shadow: var(--shadow-md);
+        animation: drop 150ms var(--ease-out);
       }
-      /* Bridges the gap between trigger and panel so the pointer can travel
-         down without crossing dead space and triggering mouseleave. */
+      /* Bridges the gap between the trigger and the panel so the pointer can
+         travel down without crossing dead space and firing mouseleave. */
       .panel::before {
         content: '';
         position: absolute;
-        top: -14px;
+        top: -18px;
         left: 0;
         right: 0;
-        height: 14px;
+        height: 18px;
+      }
+      .scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 55;
+        background: rgba(24, 20, 18, 0.28);
+        animation: fade 150ms var(--ease-out);
+      }
+      @keyframes fade {
+        from {
+          opacity: 0;
+        }
       }
       @keyframes drop {
         from {
           opacity: 0;
-          transform: translate(-50%, -6px);
+          transform: translateY(-8px);
         }
       }
+      /* Content sits in the same container as the rest of the page, so the
+         columns line up with the header and the grid below it. */
       .panel-inner {
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        background: var(--color-surface);
-        box-shadow: var(--shadow-lg);
         overflow: hidden;
       }
       .columns {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 6px 22px;
-        padding: 22px 24px 18px;
+        gap: 6px 28px;
+        padding: 24px 0 18px;
       }
       .column-head {
         display: flex;
@@ -225,9 +253,8 @@ const CLOSE_DELAY_MS = 220;
       .panel-foot {
         display: flex;
         gap: 24px;
-        padding: 12px 24px;
+        padding: 13px 0;
         border-top: 1px solid var(--color-border);
-        background: var(--color-bg-alt);
       }
       .panel-foot a {
         display: inline-flex;
@@ -265,10 +292,15 @@ const CLOSE_DELAY_MS = 220;
   ],
   host: {
     '(document:keydown.escape)': 'close()',
+    // The header shrinks as the announcement bar scrolls away, so the panel
+    // has to follow it rather than sit at a stale offset.
+    '(window:scroll)': 'onViewportChange()',
+    '(window:resize)': 'onViewportChange()',
   },
 })
 export class CategoryMenuComponent {
   protected readonly catalog = inject(CatalogService);
+  private readonly host = inject(ElementRef<HTMLElement>);
   protected readonly categories = this.catalog.categories;
 
   /** Set by the navbar so the trigger underlines on the categories routes. */
@@ -277,16 +309,33 @@ export class CategoryMenuComponent {
   private readonly openState = signal(false);
   protected readonly isOpen = computed(() => this.openState());
 
+  /**
+   * Where the header currently ends.
+   *
+   * Measured on open rather than hardcoded: the header is sticky and carries
+   * an announcement bar that scrolls away, so its height is not a constant.
+   */
+  protected readonly panelTop = signal(0);
+
+  private measureHeader(): void {
+    const header = (this.host.nativeElement as HTMLElement).closest('header');
+    this.panelTop.set(header ? Math.round(header.getBoundingClientRect().bottom) : 0);
+  }
+
   private openTimer?: ReturnType<typeof setTimeout>;
   private closeTimer?: ReturnType<typeof setTimeout>;
 
   protected scheduleOpen(): void {
     clearTimeout(this.closeTimer);
-    this.openTimer = setTimeout(() => this.openState.set(true), OPEN_DELAY_MS);
+    this.openTimer = setTimeout(() => {
+      this.measureHeader();
+      this.openState.set(true);
+    }, OPEN_DELAY_MS);
   }
 
   protected open(): void {
     clearTimeout(this.closeTimer);
+    this.measureHeader();
     this.openState.set(true);
   }
 
@@ -296,6 +345,12 @@ export class CategoryMenuComponent {
       () => this.openState.set(false),
       CLOSE_DELAY_MS,
     );
+  }
+
+  protected onViewportChange(): void {
+    if (this.openState()) {
+      this.measureHeader();
+    }
   }
 
   protected close(): void {
