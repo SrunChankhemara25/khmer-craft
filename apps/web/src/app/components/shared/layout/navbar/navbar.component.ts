@@ -28,7 +28,7 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
           <div class="announce-links">
             <a routerLink="/orders">Track order</a>
             <a routerLink="/help">Support</a>
-            <a routerLink="/seller/login">Seller portal</a>
+            <a routerLink="/become-a-seller">Seller portal</a>
           </div>
         </div>
       </div>
@@ -44,7 +44,9 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         <nav class="nav-links">
           <a routerLink="/" [class.active]="is('home')">Home</a>
           <a routerLink="/products" [class.active]="is('products')">Products</a>
-          <app-category-menu [active]="is('categories')" />
+          <a routerLink="/categories" [class.active]="is('categories')"
+            >Categories</a
+          >
           <a routerLink="/stores" [class.active]="is('stores')">Stores</a>
         </nav>
 
@@ -102,6 +104,10 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
           </button>
         </div>
       </div>
+
+      <!-- Category navigation row. Sits under the logo/nav/profile row, so
+           each category is one hover away rather than hidden behind a menu. -->
+      <app-category-menu />
 
       @if (menuOpen()) {
         <nav class="mobile-menu">

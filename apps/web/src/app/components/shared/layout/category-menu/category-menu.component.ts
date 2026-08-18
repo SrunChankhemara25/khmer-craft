@@ -1,108 +1,118 @@
 import {
   Component,
   ElementRef,
-  computed,
   inject,
-  input,
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CatalogService } from '../../../../core/catalog/catalog.service';
+import { Category } from '../../../../core/catalog/catalog.models';
 import { IconComponent } from '../../ui/icon/icon.component';
 
 /**
- * Categories nav item with a hover mega-menu.
+ * The category navigation row.
  *
- * Opening on hover is a pointer convenience, not the only way in: the trigger
- * is a real link to /categories, so keyboard and touch users reach the same
- * place without the panel. The panel opens on focus too, and Escape closes it.
+ * Every top-level category is its own nav item, and hovering one opens a panel
+ * showing that category's second level. This is the standard storefront
+ * pattern: the categories are the navigation, rather than being hidden behind
+ * a single "Categories" entry that costs an extra hop to reach.
  *
- * Both timings exist to stop the menu fighting the pointer. A short open delay
- * means brushing past the item on the way to Stores does not flash the panel;
- * a longer close delay means moving diagonally down into the panel does not
- * dismiss it the moment the pointer leaves the trigger.
+ * Hover is a pointer convenience, not the only route in — each item is a real
+ * link to its category page, the panel also opens on keyboard focus, and
+ * Escape closes it. Below 980px the row scrolls horizontally and the panels
+ * are suppressed, since hover means nothing on touch.
  */
-const OPEN_DELAY_MS = 120;
+
+/** Cross-cutting views offered alongside the sub-categories. */
+const SHOP_BY: { label: string; params: Record<string, string> }[] = [
+  { label: 'Best sellers', params: { sort: 'featured' } },
+  { label: 'New arrivals', params: { sort: 'newest' } },
+  { label: 'Top rated', params: { sort: 'rating' } },
+  { label: 'Under $5', params: { collection: 'under-5' } },
+];
+
+const OPEN_DELAY_MS = 110;
 const CLOSE_DELAY_MS = 220;
 
 @Component({
   selector: 'app-category-menu',
   imports: [RouterLink, IconComponent],
   template: `
-    <div
-      class="menu-root"
-      (mouseenter)="scheduleOpen()"
-      (mouseleave)="scheduleClose()"
-      (focusin)="open()"
-      (focusout)="scheduleClose()"
-    >
-      <a
-        routerLink="/categories"
-        class="trigger"
-        [class.active]="active()"
-        [class.open]="isOpen()"
-        [attr.aria-expanded]="isOpen()"
-        aria-haspopup="true"
-      >
-        Categories
-        <ui-icon name="chevron-down" [size]="13" />
-      </a>
+    <div class="cat-bar" (mouseleave)="scheduleClose()">
+      <nav class="cat-row container" aria-label="Product categories">
+        @for (category of categories; track category.slug) {
+          <a
+            class="cat-item"
+            [class.open]="openSlug() === category.slug"
+            [routerLink]="['/categories', category.slug]"
+            (mouseenter)="scheduleOpen(category.slug)"
+            (focus)="open(category.slug)"
+            [attr.aria-expanded]="openSlug() === category.slug"
+            (click)="close()"
+          >
+            {{ category.name }}
+          </a>
+        }
 
-      @if (isOpen()) {
-        <!-- Dims the page beneath so the panel reads as a layer over the
-             storefront rather than part of it. -->
-        <div class="scrim" aria-hidden="true"></div>
+        <a class="cat-item all" routerLink="/products" (click)="close()">
+          All products
+        </a>
+      </nav>
 
-        <div class="panel" role="menu" [style.top.px]="panelTop()">
+      @if (activeCategory(); as cat) {
+        <div class="panel" [style.top.px]="panelTop()" role="menu">
           <div class="panel-inner container">
-            <div class="columns">
-              @for (category of categories; track category.slug) {
-                <div class="column">
-                  <a
-                    class="column-head"
-                    [routerLink]="['/categories', category.slug]"
-                    (click)="close()"
-                  >
-                    <span class="icon">
-                      <ui-icon [name]="category.icon" [size]="15" />
-                    </span>
-                    <span class="head-text">
-                      <strong>{{ category.name }}</strong>
-                      <small>{{ catalog.countByCategory(category.slug) }} products</small>
-                    </span>
-                  </a>
-
-                  <ul>
-                    @for (sub of category.subcategories; track sub.slug) {
-                      @let count = catalog.countBySubcategory(category.slug, sub.slug);
-                      <li>
-                        <a
-                          [routerLink]="['/categories', category.slug]"
-                          [queryParams]="{ sub: sub.slug }"
-                          (click)="close()"
-                          [class.empty]="count === 0"
-                        >
-                          <span>{{ sub.name }}</span>
-                          <!-- Zero is shown rather than hidden: an empty
-                               sub-category is a real gap a seller can fill,
-                               and it lands on a proper empty state. -->
-                          <em>{{ count }}</em>
-                        </a>
-                      </li>
-                    }
-                  </ul>
-                </div>
+            <div class="col by-type">
+              <h4>By type</h4>
+              <a
+                class="type-link"
+                [routerLink]="['/categories', cat.slug]"
+                (click)="close()"
+              >
+                All {{ cat.name }}
+                <em>{{ catalog.countByCategory(cat.slug) }}</em>
+              </a>
+              @for (sub of cat.subcategories; track sub.slug) {
+                @let count = catalog.countBySubcategory(cat.slug, sub.slug);
+                <a
+                  class="type-link"
+                  [routerLink]="['/categories', cat.slug]"
+                  [queryParams]="{ sub: sub.slug }"
+                  (click)="close()"
+                  [class.empty]="count === 0"
+                >
+                  {{ sub.name }}
+                  <em>{{ count }}</em>
+                  <ui-icon name="chevron-right" [size]="14" />
+                </a>
               }
             </div>
 
-            <div class="panel-foot">
-              <a routerLink="/categories" (click)="close()">
-                Browse all categories <ui-icon name="arrow-right" [size]="13" />
-              </a>
-              <a routerLink="/products" (click)="close()">
-                See every product <ui-icon name="arrow-right" [size]="13" />
-              </a>
+            <div class="col shop-by">
+              <h4>Shop by</h4>
+              @for (entry of shopBy; track entry.label) {
+                <a
+                  class="type-link"
+                  routerLink="/products"
+                  [queryParams]="withCategory(cat, entry.params)"
+                  (click)="close()"
+                >
+                  {{ entry.label }}
+                </a>
+              }
             </div>
+
+            <aside class="promo">
+              <h3>{{ cat.name }}</h3>
+              <p>{{ cat.tagline }}</p>
+              <a
+                class="promo-cta"
+                [routerLink]="['/categories', cat.slug]"
+                (click)="close()"
+              >
+                Shop {{ cat.name }} <ui-icon name="arrow-right" [size]="14" />
+              </a>
+            </aside>
           </div>
         </div>
       }
@@ -110,38 +120,41 @@ const CLOSE_DELAY_MS = 220;
   `,
   styles: [
     `
-      .menu-root {
-        position: relative;
+      :host {
+        display: block;
       }
-      .trigger {
+      .cat-bar {
+        border-top: 1px solid var(--color-border);
+      }
+      .cat-row {
+        display: flex;
+        align-items: center;
+        gap: clamp(14px, 1.6vw, 30px);
+        height: 46px;
+        font-size: 13.5px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+      }
+      .cat-item {
+        position: relative;
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        padding: 6px 0;
+        height: 100%;
         border-bottom: 2px solid transparent;
         white-space: nowrap;
-        cursor: pointer;
       }
-      .trigger:hover,
-      .trigger.open {
+      .cat-item:hover,
+      .cat-item.open {
         color: var(--color-text);
-      }
-      .trigger.active {
-        color: var(--color-text);
-        font-weight: 600;
         border-bottom-color: var(--color-accent);
       }
-      .trigger ui-icon {
-        transition: transform var(--dur-fast) var(--ease-standard);
-      }
-      .trigger.open ui-icon {
-        transform: rotate(180deg);
+      .cat-item.all {
+        margin-left: auto;
+        color: var(--color-accent);
+        font-weight: 600;
       }
 
-      /* Full-bleed bar under the whole header, rather than a card floating
-         over the content. Fixed rather than absolute because the header is
-         sticky and contains the announcement bar, so the panel has to start
-         below whatever the header currently measures. */
+      /* Full-bleed, anchored to the bottom of the whole header. */
       .panel {
         position: fixed;
         left: 0;
@@ -152,130 +165,116 @@ const CLOSE_DELAY_MS = 220;
         border-bottom: 1px solid var(--color-border);
         background: var(--color-surface);
         box-shadow: var(--shadow-md);
-        animation: drop 150ms var(--ease-out);
-      }
-      /* Bridges the gap between the trigger and the panel so the pointer can
-         travel down without crossing dead space and firing mouseleave. */
-      .panel::before {
-        content: '';
-        position: absolute;
-        top: -18px;
-        left: 0;
-        right: 0;
-        height: 18px;
-      }
-      .scrim {
-        position: fixed;
-        inset: 0;
-        z-index: 55;
-        background: rgba(24, 20, 18, 0.28);
-        animation: fade 150ms var(--ease-out);
-      }
-      @keyframes fade {
-        from {
-          opacity: 0;
-        }
+        animation: drop 140ms var(--ease-out);
       }
       @keyframes drop {
         from {
           opacity: 0;
-          transform: translateY(-8px);
+          transform: translateY(-6px);
         }
       }
-      /* Content sits in the same container as the rest of the page, so the
-         columns line up with the header and the grid below it. */
       .panel-inner {
-        overflow: hidden;
-      }
-      .columns {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 6px 28px;
-        padding: 24px 0 18px;
+        grid-template-columns: 1.1fr 1fr 340px;
+        gap: 40px;
+        /* padding-block, not the shorthand: this element is also .container,
+           and a padding shorthand would reset the horizontal padding that
+           keeps the columns aligned with the logo above. */
+        padding-block: 26px 30px;
       }
-      .column-head {
+      h4 {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--color-muted);
+        margin-bottom: 14px;
+      }
+      .type-link {
         display: flex;
         align-items: center;
-        gap: 9px;
-        padding: 6px 8px;
-        border-radius: var(--radius-sm);
-        color: var(--color-text);
-      }
-      .column-head:hover {
-        background: var(--color-accent-soft);
-      }
-      .icon {
-        display: grid;
-        place-items: center;
-        width: 28px;
-        height: 28px;
-        flex-shrink: 0;
-        border-radius: var(--radius-xs);
-        background: var(--color-bg-alt);
-        color: var(--color-accent);
-      }
-      .head-text {
-        display: flex;
-        flex-direction: column;
-        line-height: 1.25;
-      }
-      .head-text strong {
-        font-size: 13.5px;
-      }
-      .head-text small {
-        color: var(--color-muted);
-        font-size: 11px;
-      }
-      ul {
-        list-style: none;
-        margin: 4px 0 14px;
-        padding: 0 0 0 37px;
-      }
-      li a {
-        display: flex;
-        justify-content: space-between;
         gap: 10px;
-        padding: 4px 8px 4px 0;
-        color: var(--color-text-secondary);
-        font-size: 12.5px;
+        padding: 8px 6px 8px 0;
+        color: var(--color-text);
+        font-size: 14.5px;
       }
-      li a:hover {
+      .type-link:hover {
         color: var(--color-accent);
       }
-      li a em {
+      .type-link em {
+        margin-left: auto;
         color: var(--color-muted-2);
         font-style: normal;
-        font-size: 11px;
+        font-size: 11.5px;
       }
-      li a.empty {
+      .type-link ui-icon {
         color: var(--color-muted-2);
       }
-      .panel-foot {
-        display: flex;
-        gap: 24px;
-        padding: 13px 0;
-        border-top: 1px solid var(--color-border);
+      .type-link.empty {
+        color: var(--color-muted-2);
       }
-      .panel-foot a {
+      .by-type,
+      .shop-by {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .promo {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 24px;
+        border-radius: var(--radius-lg);
+        background: var(--color-accent-soft);
+      }
+      .promo h3 {
+        font-family: var(--font-heading);
+        font-size: 22px;
+      }
+      .promo p {
+        margin: 8px 0 18px;
+        color: var(--color-text-secondary);
+        font-size: 13.5px;
+        line-height: 1.6;
+      }
+      .promo-cta {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        color: var(--color-accent);
-        font-size: 12.5px;
+        gap: 7px;
+        margin-top: auto;
+        padding: 10px 18px;
+        border-radius: var(--radius-full);
+        background: var(--color-accent);
+        color: #fff;
+        font-size: 13px;
         font-weight: 600;
       }
-      .panel-foot a:hover {
-        text-decoration: underline;
+      .promo-cta:hover {
+        background: var(--color-accent-hover);
       }
 
       @media (max-width: 1100px) {
-        .columns {
-          grid-template-columns: repeat(2, 1fr);
+        .panel-inner {
+          grid-template-columns: 1fr 1fr;
+          gap: 28px;
+        }
+        .promo {
+          display: none;
         }
       }
-      /* The nav links are hidden below this width anyway, and a hover menu is
-         meaningless on touch — the trigger stays a plain link. */
+      /* Touch: the row scrolls sideways and the panels never open — each item
+         is still a link to its category page. */
       @media (max-width: 980px) {
+        .cat-row {
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .cat-row::-webkit-scrollbar {
+          display: none;
+        }
+        .cat-item.all {
+          margin-left: 0;
+        }
         .panel {
           display: none;
         }
@@ -284,16 +283,11 @@ const CLOSE_DELAY_MS = 220;
         .panel {
           animation: none;
         }
-        .trigger ui-icon {
-          transition: none;
-        }
       }
     `,
   ],
   host: {
     '(document:keydown.escape)': 'close()',
-    // The header shrinks as the announcement bar scrolls away, so the panel
-    // has to follow it rather than sit at a stale offset.
     '(window:scroll)': 'onViewportChange()',
     '(window:resize)': 'onViewportChange()',
   },
@@ -301,54 +295,62 @@ const CLOSE_DELAY_MS = 220;
 export class CategoryMenuComponent {
   protected readonly catalog = inject(CatalogService);
   private readonly host = inject(ElementRef<HTMLElement>);
+
   protected readonly categories = this.catalog.categories;
+  protected readonly shopBy = SHOP_BY;
 
-  /** Set by the navbar so the trigger underlines on the categories routes. */
-  readonly active = input(false);
-
-  private readonly openState = signal(false);
-  protected readonly isOpen = computed(() => this.openState());
-
-  /**
-   * Where the header currently ends.
-   *
-   * Measured on open rather than hardcoded: the header is sticky and carries
-   * an announcement bar that scrolls away, so its height is not a constant.
-   */
+  /** Slug of the category whose panel is open, or null. */
+  protected readonly openSlug = signal<string | null>(null);
   protected readonly panelTop = signal(0);
-
-  private measureHeader(): void {
-    const header = (this.host.nativeElement as HTMLElement).closest('header');
-    this.panelTop.set(header ? Math.round(header.getBoundingClientRect().bottom) : 0);
-  }
 
   private openTimer?: ReturnType<typeof setTimeout>;
   private closeTimer?: ReturnType<typeof setTimeout>;
 
-  protected scheduleOpen(): void {
-    clearTimeout(this.closeTimer);
-    this.openTimer = setTimeout(() => {
-      this.measureHeader();
-      this.openState.set(true);
-    }, OPEN_DELAY_MS);
+  protected activeCategory(): Category | undefined {
+    const slug = this.openSlug();
+    return slug ? this.catalog.category(slug) : undefined;
   }
 
-  protected open(): void {
+  /** A "Shop by" view stays inside the category being browsed. */
+  protected withCategory(
+    category: Category,
+    params: Record<string, string>,
+  ): Record<string, string> {
+    return { category: category.slug, ...params };
+  }
+
+  /**
+   * The header is sticky and its announcement bar scrolls away, so its height
+   * is not a constant — measure rather than hardcode an offset.
+   */
+  private measureHeader(): void {
+    const header = (this.host.nativeElement as HTMLElement).closest('header');
+    this.panelTop.set(
+      header ? Math.round(header.getBoundingClientRect().bottom) : 0,
+    );
+  }
+
+  protected scheduleOpen(slug: string): void {
+    clearTimeout(this.closeTimer);
+    clearTimeout(this.openTimer);
+    // Moving along the row swaps panels immediately; only the first open waits.
+    const delay = this.openSlug() ? 0 : OPEN_DELAY_MS;
+    this.openTimer = setTimeout(() => this.open(slug), delay);
+  }
+
+  protected open(slug: string): void {
     clearTimeout(this.closeTimer);
     this.measureHeader();
-    this.openState.set(true);
+    this.openSlug.set(slug);
   }
 
   protected scheduleClose(): void {
     clearTimeout(this.openTimer);
-    this.closeTimer = setTimeout(
-      () => this.openState.set(false),
-      CLOSE_DELAY_MS,
-    );
+    this.closeTimer = setTimeout(() => this.openSlug.set(null), CLOSE_DELAY_MS);
   }
 
   protected onViewportChange(): void {
-    if (this.openState()) {
+    if (this.openSlug()) {
       this.measureHeader();
     }
   }
@@ -356,6 +358,6 @@ export class CategoryMenuComponent {
   protected close(): void {
     clearTimeout(this.openTimer);
     clearTimeout(this.closeTimer);
-    this.openState.set(false);
+    this.openSlug.set(null);
   }
 }
