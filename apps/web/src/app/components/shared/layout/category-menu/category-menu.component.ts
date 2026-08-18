@@ -58,9 +58,14 @@ const CLOSE_DELAY_MS = 220;
           }
         </div>
 
-        <a class="cat-item all" routerLink="/products" (click)="close()">
-          All products
-        </a>
+        <div class="cat-shortcuts">
+          <a class="cat-item all" routerLink="/products" (click)="close()">
+            All products
+          </a>
+          <a class="cat-item all" routerLink="/stores" (click)="close()">
+            All stores
+          </a>
+        </div>
       </nav>
 
       @if (activeCategory(); as cat) {
@@ -165,8 +170,14 @@ const CLOSE_DELAY_MS = 220;
         color: var(--color-text);
         border-bottom-color: var(--color-accent);
       }
+      .cat-shortcuts {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: clamp(12px, 1.2vw, 22px);
+        height: 100%;
+      }
       .cat-item.all {
-        justify-self: end;
         color: var(--color-accent);
         font-weight: 600;
       }
@@ -299,8 +310,8 @@ const CLOSE_DELAY_MS = 220;
         .cat-items {
           justify-content: flex-start;
         }
-        .cat-item.all {
-          justify-self: auto;
+        .cat-shortcuts {
+          gap: clamp(12px, 1.2vw, 22px);
         }
         .panel {
           display: none;

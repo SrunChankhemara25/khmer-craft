@@ -41,15 +41,6 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
           KhmerCraft
         </a>
 
-        <nav class="nav-links">
-          <a routerLink="/" [class.active]="is('home')">Home</a>
-          <a routerLink="/products" [class.active]="is('products')">Products</a>
-          <a routerLink="/categories" [class.active]="is('categories')"
-            >Categories</a
-          >
-          <a routerLink="/stores" [class.active]="is('stores')">Stores</a>
-        </nav>
-
         <div class="nav-actions">
           <button
             type="button"
@@ -169,11 +160,10 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         text-decoration: underline;
       }
       .navbar-inner {
-        /* Three tracks so the nav sits dead centre regardless of how wide the
-           logo or the actions happen to be. A flex row would let a longer
-           store name shove the links off-centre. */
+        /* Logo left, actions right. The middle track carried the nav links
+           until the category row below took that job. */
         display: grid;
-        grid-template-columns: 1fr auto 1fr;
+        grid-template-columns: auto 1fr;
         align-items: center;
         gap: clamp(18px, 2.4vw, 42px);
         padding-top: 8px;
@@ -199,29 +189,6 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         display: flex;
         align-items: center;
         justify-content: center;
-      }
-      .nav-links {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: clamp(17px, 1.65vw, 30px);
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--color-text-secondary);
-        white-space: nowrap;
-      }
-      .nav-links a {
-        padding: 10px 0;
-        border-bottom: 2px solid transparent;
-        white-space: nowrap;
-      }
-      .nav-links a:hover {
-        color: var(--color-text);
-      }
-      .nav-links a.active {
-        color: var(--color-text);
-        font-weight: 600;
-        border-bottom-color: var(--color-accent);
       }
       .nav-actions {
         display: flex;
@@ -341,9 +308,6 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         border-bottom: 0;
       }
       @media (max-width: 1380px) {
-        .nav-links {
-          display: none;
-        }
         .menu-btn {
           display: flex;
         }
@@ -358,7 +322,6 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         }
       }
       @media (max-width: 1180px) {
-        .nav-links { gap: 16px; font-size: 13px; }
         .search-label { display: none; }
         .search-btn { width: 40px; padding: 0; justify-content: center; }
       }
