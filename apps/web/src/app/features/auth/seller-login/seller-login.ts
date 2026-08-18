@@ -73,7 +73,7 @@ import { AuthLayout } from '../../../shared/auth-layout/auth-layout';
 
       <p class="auth-switch">
         Not selling yet?
-        <a routerLink="/become-a-seller">Become a seller</a>
+        <a routerLink="/seller">Become a seller</a>
       </p>
       <a class="admin-link" routerLink="/login">Buyer sign in</a>
     </app-auth-layout>

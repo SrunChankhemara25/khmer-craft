@@ -1,6 +1,12 @@
 import { Routes } from '@angular/router';
 import { buyerGuard } from './core/auth/auth.guard';
 import { sellerGuard } from './core/auth/seller.guard';
+import { AppLayout } from './components/layout/layout';
+import { HomePage } from './pages/home/home';
+import { SellerPage } from './pages/seller/seller';
+import { AboutPage } from './pages/about/about';
+import { SellerOnboardingPage } from './pages/seller-onboarding/seller-onboarding';
+import { SellerDashboardPage } from './pages/seller-dashboard/seller-dashboard';
 
 /**
  * Everything is lazy-loaded. The storefront branch imported all 19 page
@@ -126,6 +132,21 @@ export const routes: Routes = [
         (m) => m.SellerLogin,
       ),
     title: 'Seller sign in | KhmerCraft',
+  },
+  {
+    path: 'seller/onboarding',
+    component: SellerOnboardingPage,
+    title: 'Seller Onboarding | KhmerCraft',
+  },
+  {
+    path: 'seller/dashboard',
+    component: SellerDashboardPage,
+    title: 'Seller Dashboard | KhmerCraft',
+  },
+  {
+    path: 'seller',
+    component: SellerPage,
+    title: 'Sell on KhmerCraft | KhmerCraft',
   },
   {
     path: 'seller/orders',

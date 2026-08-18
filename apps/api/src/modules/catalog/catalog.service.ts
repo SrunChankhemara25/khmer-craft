@@ -50,6 +50,10 @@ const buildFilter = (query: ListProductsQuery): QueryFilter<IProduct> => {
   // active products unless a status is explicitly requested.
   filter.status = query.status ?? 'ACTIVE';
 
+  if (query.sellerId) {
+    filter.sellerId = query.sellerId;
+  }
+
   if (query.search) {
     // Escaped so a search for "c++" or "(" cannot blow up the regex engine.
     const safe = query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
