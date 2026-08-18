@@ -36,9 +36,13 @@ export class Login {
    * who clicked Checkout lands back on checkout rather than being stranded on
    * the login page with a success message — which is what used to happen.
    */
-  private goToDestination() {
+  private goToDestination(userRole: string) {
     const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-    void this.router.navigateByUrl(returnUrl && returnUrl.startsWith('/') ? returnUrl : '/');
+    if (userRole === 'SELLER' && (!returnUrl || returnUrl === '/')) {
+      void this.router.navigateByUrl('/seller/orders');
+    } else {
+      void this.router.navigateByUrl(returnUrl && returnUrl.startsWith('/') ? returnUrl : '/');
+    }
   }
 
   protected submit() {
@@ -57,7 +61,7 @@ export class Login {
       .subscribe({
         next: ({ user }) => {
           this.success.set(`Welcome back, ${user.name}.`);
-          this.goToDestination();
+          this.goToDestination(user.role);
         },
         error: (error) => this.error.set(apiErrorMessage(error)),
       });

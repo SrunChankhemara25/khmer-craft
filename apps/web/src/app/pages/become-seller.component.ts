@@ -4,14 +4,14 @@ import { NavbarComponent } from '../shared/navbar.component';
 import { FooterComponent } from '../shared/footer.component';
 import { IconComponent } from '../shared/icon.component';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { apiErrorMessage, AuthService } from '../core/auth/auth.service';
 
 @Component({
   selector: 'app-become-seller',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, NavbarComponent, FooterComponent, IconComponent],
+  imports: [CommonModule, ReactiveFormsModule, NavbarComponent, FooterComponent, IconComponent, RouterLink],
   template: `
   <app-navbar></app-navbar>
 
@@ -23,7 +23,7 @@ import { apiErrorMessage, AuthService } from '../core/auth/auth.service';
         <p>Join 1,200+ Cambodian sellers reaching customers across the country and around the world. No listing fees, transparent payouts, full support.</p>
         <div class="hero-actions">
           <button class="btn btn-primary btn-lg" (click)="scrollToForm()">Start Selling Now <ui-icon name="arrow-right" [size]="16" color="#fff"></ui-icon></button>
-          <button class="btn btn-outline btn-lg">See Success Stories</button>
+          <a class="btn btn-outline btn-lg" routerLink="/seller/login">Sign in to Seller Portal</a>
         </div>
         <div class="hero-trust">
           <span><ui-icon name="check-circle" [size]="14"></ui-icon> No setup fees</span>
@@ -145,6 +145,7 @@ import { apiErrorMessage, AuthService } from '../core/auth/auth.service';
           {{ loading() ? 'Submitting Application...' : 'Submit Application' }} <ui-icon name="arrow-right" [size]="16" color="#fff"></ui-icon>
         </button>
         <p class="form-note">By applying, you agree to KhmerCraft's Seller Terms and Community Guidelines.</p>
+        <p class="form-note" style="margin-top: 8px;">Already have a seller account? <a routerLink="/seller/login">Sign in here</a>.</p>
       </form>
     </div>
   </section>
