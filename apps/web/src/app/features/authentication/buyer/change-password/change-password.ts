@@ -9,10 +9,11 @@ import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { apiErrorMessage, AuthService } from '../../../../core/auth/auth.service';
 import { AuthLayout } from '../../../../components/shared/authentication/auth-layout/auth-layout';
+import { IconComponent } from '../../../../components/shared/ui/icon/icon.component';
 
 @Component({
   selector: 'app-change-password',
-  imports: [ReactiveFormsModule, AuthLayout],
+  imports: [ReactiveFormsModule, AuthLayout, IconComponent],
   templateUrl: './change-password.html',
 })
 export class ChangePassword {
@@ -23,6 +24,9 @@ export class ChangePassword {
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
+  protected readonly currentPasswordVisible = signal(false);
+  protected readonly newPasswordVisible = signal(false);
+  protected readonly confirmPasswordVisible = signal(false);
   protected readonly form = new FormGroup({
     currentPassword: new FormControl('', {
       nonNullable: true,
@@ -41,6 +45,18 @@ export class ChangePassword {
       validators: [Validators.required],
     }),
   });
+
+  protected toggleCurrentPassword(): void {
+    this.currentPasswordVisible.update((visible) => !visible);
+  }
+
+  protected toggleNewPassword(): void {
+    this.newPasswordVisible.update((visible) => !visible);
+  }
+
+  protected toggleConfirmPassword(): void {
+    this.confirmPasswordVisible.update((visible) => !visible);
+  }
 
   protected submit() {
     const value = this.form.getRawValue();

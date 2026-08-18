@@ -174,6 +174,17 @@ export const routes: Routes = [
     title: 'Forgot password | KhmerCraft',
   },
   {
+    // Email verification step. The page is a placeholder — there is no
+    // verification endpoint on the API yet.
+    path: 'verify',
+    loadComponent: () =>
+      import('./features/authentication/buyer/verify/verify').then(
+        (m) => m.Verify,
+      ),
+    title: 'Verify your email | KhmerCraft',
+  },
+  { path: 'verify-code', pathMatch: 'full', redirectTo: 'verify' },
+  {
     path: 'reset-password',
     loadComponent: () =>
       import('./features/authentication/buyer/reset-password/reset-password').then(

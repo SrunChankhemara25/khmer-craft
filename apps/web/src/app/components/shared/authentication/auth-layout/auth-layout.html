@@ -1,7 +1,6 @@
-<!-- Shared by buyer, seller and admin authentication screens. -->
 <main class="auth-page" [class.admin-theme]="admin()">
   <section class="story-panel" aria-label="About KhmerCraft">
-    <a class="brand" routerLink="/login" aria-label="KhmerCraft home">
+    <a class="brand" routerLink="/" aria-label="KhmerCraft home">
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 48 48" role="img">
           <path d="M24 4 42 14v20L24 44 6 34V14L24 4Z" />
@@ -27,7 +26,7 @@
   </section>
 
   <section class="form-panel">
-    <div class="mobile-brand">
+    <a class="mobile-brand" routerLink="/">
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 48 48">
           <path d="M24 4 42 14v20L24 44 6 34V14L24 4Z" />
@@ -35,7 +34,7 @@
         </svg>
       </span>
       KhmerCraft
-    </div>
+    </a>
 
     <div class="form-wrap">
       <div class="heading">

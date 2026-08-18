@@ -11,11 +11,12 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { CartService } from '../../../../core/cart/cart.service';
 import { WishlistService } from '../../../../core/wishlist/wishlist.service';
 import { IconComponent } from '../../ui/icon/icon.component';
+import { CategoryMenuComponent } from '../category-menu/category-menu.component';
 import { SearchOverlayComponent } from '../../../user/search/search-overlay/search-overlay.component';
 
 @Component({
   selector: 'app-navbar',
-  imports: [RouterLink, IconComponent, SearchOverlayComponent],
+  imports: [RouterLink, IconComponent, SearchOverlayComponent, CategoryMenuComponent],
   template: `
     <header class="navbar" [class.scrolled]="scrolled()">
       <!-- Announcement bar: slim, and every claim here links somewhere real. -->
@@ -43,14 +44,8 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         <nav class="nav-links">
           <a routerLink="/" [class.active]="is('home')">Home</a>
           <a routerLink="/products" [class.active]="is('products')">Products</a>
-          <a routerLink="/categories" [class.active]="is('categories')"
-            >Categories</a
-          >
+          <app-category-menu [active]="is('categories')" />
           <a routerLink="/stores" [class.active]="is('stores')">Stores</a>
-          <a routerLink="/about" [class.active]="is('about')">About</a>
-          <a routerLink="/become-a-seller" [class.active]="is('seller')"
-            >Become a Seller</a
-          >
         </nav>
 
         <div class="nav-actions">
@@ -114,10 +109,6 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
           <a routerLink="/products" (click)="menuOpen.set(false)">Products</a>
           <a routerLink="/categories" (click)="menuOpen.set(false)">Categories</a>
           <a routerLink="/stores" (click)="menuOpen.set(false)">Stores</a>
-          <a routerLink="/about" (click)="menuOpen.set(false)">About</a>
-          <a routerLink="/become-a-seller" (click)="menuOpen.set(false)"
-            >Become a Seller</a
-          >
         </nav>
       }
     </header>

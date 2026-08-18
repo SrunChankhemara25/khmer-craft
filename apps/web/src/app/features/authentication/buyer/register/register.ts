@@ -9,11 +9,22 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { apiErrorMessage, AuthService } from '../../../../core/auth/auth.service';
 import { AuthLayout } from '../../../../components/shared/authentication/auth-layout/auth-layout';
+import { IconComponent } from '../../../../components/shared/ui/icon/icon.component';
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink, AuthLayout],
+  imports: [ReactiveFormsModule, RouterLink, AuthLayout, IconComponent],
   templateUrl: './register.html',
+  styles: [
+    `
+    .required { color: var(--color-danger, #b92a2a); margin-left: 6px; }
+    .input-icon-wrap { display: block; position: relative; width: 100%; }
+    .input-icon-wrap ui-icon { color: var(--color-muted); position: absolute; left: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 2; width: 20px; height: 20px; display: inline-grid; place-items: center; line-height: 0; }
+    .input-icon-wrap ui-icon svg { display: block; width: 18px; height: 18px; }
+    .input-icon-wrap input { padding-left: 40px !important; box-sizing: border-box; display: block; width: 100%; }
+    .password-field input { padding-right: 48px; }
+    `,
+  ],
 })
 export class Register {
   private readonly auth = inject(AuthService);
@@ -23,6 +34,7 @@ export class Register {
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
+  protected readonly passwordVisible = signal(false);
   protected readonly form = new FormGroup({
     name: new FormControl('', {
       nonNullable: true,
@@ -42,6 +54,10 @@ export class Register {
       ],
     }),
   });
+
+  protected togglePassword(): void {
+    this.passwordVisible.update((visible) => !visible);
+  }
 
   protected submit() {
     if (this.form.invalid) {
