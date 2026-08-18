@@ -658,10 +658,19 @@ app-category-detail .body {
   gap: clamp(24px, 3vw, 52px) !important;
 }
 
+/* Filters toggled off: the products take the whole row. Needs !important to
+   beat the two-column rule above, which is itself !important. */
+app-category-detail .body.no-rail {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+/* 270px forced only three cards into the 1030px content column, so each one
+   came out 324px wide and the page felt like a lookbook rather than a shop.
+   210px fits four or five, at a size closer to the rest of the storefront. */
 app-category-detail .product-grid,
 app-products .product-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)) !important;
-  gap: clamp(18px, 2vw, 30px) !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)) !important;
+  gap: clamp(14px, 1.4vw, 22px) !important;
 }
 
 app-store-detail .product-grid app-product-card:nth-child(3n + 1) .product-photo { object-position: 76% center; }
@@ -692,9 +701,13 @@ app-store-detail .product-grid app-product-card:nth-child(3n + 3) .product-photo
     grid-template-columns: 310px minmax(0, 1fr) !important;
   }
 
+  app-category-detail .body.no-rail {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
   app-category-detail .product-grid,
   app-products .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)) !important;
   }
 }
 

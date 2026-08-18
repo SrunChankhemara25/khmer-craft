@@ -108,8 +108,9 @@ const SORTS: { value: ProductSort; label: string }[] = [
           <button
             type="button"
             class="filter-trigger"
-            (click)="filtersOpen.set(true)"
-            [attr.aria-expanded]="filtersOpen()"
+            [class.on]="railVisible()"
+            (click)="toggleFilters()"
+            [attr.aria-expanded]="railVisible()"
           >
             <ui-icon name="filter" [size]="16" />
             Filters
@@ -157,7 +158,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
       </section>
 
       <!-- Body -->
-      <section class="container body">
+      <section class="container body" [class.no-rail]="!railVisible()">
         @if (filtersOpen()) {
           <button
             class="filter-backdrop"
@@ -473,7 +474,9 @@ const SORTS: { value: ProductSort; label: string }[] = [
         gap: 12px;
       }
       .filter-trigger {
-        display: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
         align-items: center;
         gap: 8px;
         min-height: 38px;
@@ -554,6 +557,14 @@ const SORTS: { value: ProductSort; label: string }[] = [
       }
 
       /* ---- body ---- */
+      /* With the rail hidden the products take the whole row, which is the
+         point of the toggle — more columns, not wider cards. */
+      .body.no-rail {
+        grid-template-columns: 1fr;
+      }
+      .body.no-rail .filters {
+        display: none;
+      }
       .body {
         display: grid;
         grid-template-columns: 232px 1fr;
@@ -999,6 +1010,24 @@ export class CategoryDetailComponent {
       .filter((product) => product.categorySlug !== slug)
       .slice(0, 10);
   });
+
+  /**
+   * Whether the filter rail occupies its column on desktop.
+   *
+   * Separate from `filtersOpen`, which drives the mobile drawer: on a narrow
+   * screen the rail is an overlay that starts closed, while on desktop it is a
+   * column that starts open. One signal cannot mean both.
+   */
+  protected readonly railVisible = signal(true);
+
+  protected toggleFilters(): void {
+    // Below the breakpoint the rail is a drawer, so the same button opens it.
+    if (window.matchMedia('(max-width: 1050px)').matches) {
+      this.filtersOpen.set(!this.filtersOpen());
+      return;
+    }
+    this.railVisible.set(!this.railVisible());
+  }
 
   protected setSub(slug: string | null): void {
     this.merge({ sub: slug });
