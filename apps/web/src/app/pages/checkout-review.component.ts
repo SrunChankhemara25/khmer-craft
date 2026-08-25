@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CheckoutStepsComponent } from '../shared/checkout-steps.component';
 import { IconComponent } from '../shared/icon.component';
+import { CartService } from '../core/cart/cart.service';
 
 @Component({
   selector: 'app-checkout-review',
@@ -137,6 +138,7 @@ import { IconComponent } from '../shared/icon.component';
   `]
 })
 export class CheckoutReviewComponent {
+  protected readonly cart = inject(CartService);
   confirmed = false;
 
   delivery = {

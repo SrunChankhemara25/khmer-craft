@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { authenticate } from '../../middleware/authenticate';
 import { authorize } from '../../middleware/authorize';
 import { validate } from '../../middleware/validate';
-import { create, detail, list } from './catalog.controller';
-import { createProductSchema } from './catalog.validation';
+import { create, detail, list, update, remove } from './catalog.controller';
+import { createProductSchema, updateProductSchema } from './catalog.validation';
 
 const router = Router();
 
@@ -22,6 +22,21 @@ router.post(
   authorize('SELLER', 'ADMIN'),
   validate(createProductSchema),
   create,
+);
+
+router.patch(
+  '/:id',
+  authenticate,
+  authorize('SELLER', 'ADMIN'),
+  validate(updateProductSchema),
+  update,
+);
+
+router.delete(
+  '/:id',
+  authenticate,
+  authorize('SELLER', 'ADMIN'),
+  remove,
 );
 
 export default router;

@@ -281,10 +281,7 @@ export class AuthService {
 
     return {
       user,
-      accessToken: signAccessToken(
-        { sub: user.id, role: user.role, ver: user.token_version },
-        { expiresIn: '7d' }, // Increased from 15m for development stability
-      ),
+      accessToken: signAccessToken(user.id, user.role, user.token_version),
       refreshToken: nextToken,
     };
   }

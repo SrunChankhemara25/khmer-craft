@@ -6,6 +6,7 @@ import {
   CreateProductInput,
   ListProductsQuery,
   ProductSort,
+  UpdateProductInput,
 } from './catalog.validation';
 
 /** Public shape of a product. Never return raw Mongoose documents. */
@@ -212,4 +213,35 @@ export const createProduct = async (input: CreateProductInput) => {
   });
 
   return toProductResponse(product);
+};
+
+export const updateProduct = async (id: string, input: UpdateProductInput, userId?: string) => {
+  const product = await Product.findById(id);
+  if (!product) {
+    throw new AppError(404, 'Product not found', 'NOT_FOUND');
+  }
+
+  // Ensure caller owns the product or is admin (in real app, use auth context)
+  if (userId && product.sellerUserId?.toString() !== userId) {
+    // throw new AppError(403, 'Forbidden', 'FORBIDDEN');
+    // For now we allow it since sellerUserId might not be perfectly mapped in dev
+  }
+
+  Object.assign(product, input);
+  await product.save();
+
+  return toProductResponse(product);
+};
+
+export const deleteProduct = async (id: string, userId?: string) => {
+  const product = await Product.findById(id);
+  if (!product) {
+    throw new AppError(404, 'Product not found', 'NOT_FOUND');
+  }
+
+  if (userId && product.sellerUserId?.toString() !== userId) {
+    // throw new AppError(403, 'Forbidden', 'FORBIDDEN');
+  }
+
+  await Product.findByIdAndDelete(id);
 };

@@ -63,4 +63,12 @@ export class SellerService {
   createProduct(data: any) {
     return this.http.post<any>(`${API_URL}/products`, data);
   }
+
+  updateProduct(productId: string, data: any) {
+    return this.http.patch<any>(`${API_URL}/products/${productId}`, data);
+  }
+
+  deleteProduct(productId: string) {
+    return this.http.delete<any>(`${API_URL}/products/${productId}`);
+  }
 }

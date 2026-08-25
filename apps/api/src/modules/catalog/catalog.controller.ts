@@ -6,10 +6,13 @@ import {
   createProduct,
   getProductDetail,
   listProducts,
+  updateProduct,
+  deleteProduct
 } from './catalog.service';
 import {
   createProductSchema,
   listProductsQuerySchema,
+  updateProductSchema
 } from './catalog.validation';
 
 export const list = async (request: Request, response: Response) => {
@@ -43,4 +46,20 @@ export const create = async (request: Request, response: Response) => {
   }
 
   response.status(201).json(await createProduct(input));
+};
+
+export const update = async (request: Request, response: Response) => {
+  const input = request.body as ReturnType<typeof updateProductSchema.parse>;
+  const id = param(request, 'id');
+  const userId = request.auth?.userId;
+  
+  response.json(await updateProduct(id, input, userId));
+};
+
+export const remove = async (request: Request, response: Response) => {
+  const id = param(request, 'id');
+  const userId = request.auth?.userId;
+  
+  await deleteProduct(id, userId);
+  response.status(204).send();
 };

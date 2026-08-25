@@ -87,3 +87,22 @@ export const createProductSchema = z
   .strict();
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
+
+export const updateProductSchema = z
+  .object({
+    name: z.string().trim().min(2).max(200).optional(),
+    description: z.string().trim().max(4000).optional(),
+    price: z.number().positive().max(1_000_000).optional(),
+    compareAtPrice: z.number().positive().max(1_000_000).optional(),
+    category: z.string().trim().min(2).max(80).optional(),
+    sellerName: z.string().trim().min(2).max(120).optional(),
+    storeName: z.string().trim().max(120).optional(),
+    location: z.string().trim().max(80).optional(),
+    image: z.string().trim().max(5_000_000).optional(),
+    images: z.array(z.string().trim().max(5_000_000)).max(10).optional(),
+    stock: z.number().int().min(0).max(1_000_000).optional(),
+    status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).optional(),
+  })
+  .strict();
+
+export type UpdateProductInput = z.infer<typeof updateProductSchema>;

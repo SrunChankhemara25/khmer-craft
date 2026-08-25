@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { CheckoutStepsComponent } from '../shared/checkout-steps.component';
 import { IconComponent } from '../shared/icon.component';
+import { CartService } from '../core/cart/cart.service';
 
 @Component({
   selector: 'app-checkout-delivery',
@@ -120,6 +121,8 @@ import { IconComponent } from '../shared/icon.component';
   `]
 })
 export class CheckoutDeliveryComponent {
+  protected readonly cart = inject(CartService);
+  
   items = [
     { name: 'Hand-Etched Terracotta Bowl', store: 'Siem Reap Pottery Collective', variant: 'Large', qty: 1, lineTotal: 45.00 },
     { name: 'Premium Raw Silk Scarf', store: 'Prey Veng Silk Weavers', variant: 'Emerald Green', qty: 2, lineTotal: 120.00 }

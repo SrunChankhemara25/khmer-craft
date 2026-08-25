@@ -2019,9 +2019,9 @@ interface DashboardMetric {
                       <td><span class="pill" [class.green]="product.status === 'ACTIVE'" [class.yellow]="product.status === 'LOW STOCK'" [class.red]="product.status === 'OUT OF STOCK'">{{ product.status }}</span></td>
                       <td>
                         <div class="row-actions">
-                          <button class="icon-btn" type="button"><kc-icon name="edit" [size]="15" /></button>
-                          <button class="icon-btn" type="button"><kc-icon name="eye-off" [size]="15" /></button>
-                          <button class="icon-btn" type="button"><kc-icon name="trash" [size]="15" /></button>
+                          <button class="icon-btn" type="button" (click)="editProduct(product)"><kc-icon name="edit" [size]="15" /></button>
+                          <button class="icon-btn" type="button" (click)="toggleProductStatus(product)"><kc-icon [name]="product.status === 'ACTIVE' ? 'eye-off' : 'eye'" [size]="15" /></button>
+                          <button class="icon-btn" type="button" (click)="deleteProduct(product.id)"><kc-icon name="trash" [size]="15" /></button>
                         </div>
                       </td>
                     </tr>
@@ -2875,6 +2875,32 @@ export class SellerDashboardPage implements OnInit {
   protected readonly reviewsStats = signal<any>({});
   protected readonly payouts = signal<any[]>([]);
 
+  editProduct(product: any) {
+    this.newProduct.set({ ...product });
+    this.view.set('add'); // Reusing the add view for editing
+  }
+
+  toggleProductStatus(product: any) {
+    const newStatus = product.status === 'ACTIVE' ? 'OUT OF STOCK' : 'ACTIVE';
+    this.sellerService.updateProduct(product.id, { status: newStatus }).subscribe({
+      next: () => {
+        if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
+      },
+      error: (err) => alert('Failed to update status: ' + err.message)
+    });
+  }
+
+  deleteProduct(productId: string) {
+    if (confirm('Are you sure you want to delete this product?')) {
+      this.sellerService.deleteProduct(productId).subscribe({
+        next: () => {
+          if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
+        },
+        error: (err) => alert('Failed to delete product: ' + err.message)
+      });
+    }
+  }
+
   submitAddProduct() {
     const data = { ...this.newProduct() };
     
@@ -2892,6 +2918,25 @@ export class SellerDashboardPage implements OnInit {
     delete data.material;
     if (!data.image) {
       delete data.image;
+    }
+    
+    // If it has an id, it is an edit
+    if (data.id) {
+      const id = data.id;
+      delete data.id;
+      this.sellerService.updateProduct(id, data).subscribe({
+        next: () => {
+          alert('Product updated successfully!');
+          if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
+          this.view.set('products');
+          this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: '' });
+        },
+        error: (err) => {
+          const errorMsg = err.error?.error?.details || err.error?.error?.message || err.message;
+          alert('Failed to update product: ' + JSON.stringify(errorMsg));
+        }
+      });
+      return;
     }
 
     this.sellerService.createProduct(data).subscribe({
