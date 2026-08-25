@@ -25,7 +25,11 @@ import { IconComponent } from './icon.component';
       [attr.aria-label]="product().name"
     >
       <div class="thumb-wrap">
-        <div class="product-thumb img-placeholder">{{ product().name }}</div>
+        @if (product().image) {
+          <img class="product-thumb" [src]="product().image" [alt]="product().name" />
+        } @else {
+          <div class="product-thumb img-placeholder">{{ product().name }}</div>
+        }
 
         @if (product().status === 'out-of-stock') {
           <span class="stock-badge badge badge-neutral">Out of stock</span>
@@ -117,6 +121,8 @@ import { IconComponent } from './icon.component';
       }
       .product-thumb {
         height: 178px;
+        width: 100%;
+        object-fit: cover;
       }
       .stock-badge {
         position: absolute;

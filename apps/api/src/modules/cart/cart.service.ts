@@ -22,7 +22,7 @@ export const deliveryFeeFor = (subtotal: number) =>
 export const toCartResponse = async (cart: ICart) => {
   const productIds = cart.items.map((item) => item.productId);
   const products = await Product.find({
-    _id: mongoose.trusted({ $in: productIds }),
+    _id: { $in: productIds },
   });
   const byId = new Map<string, IProduct>(
     products.map((product) => [String(product._id), product]),

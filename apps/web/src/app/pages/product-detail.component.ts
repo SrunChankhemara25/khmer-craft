@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { CartService } from '../core/cart/cart.service';
 import { CatalogService } from '../core/catalog/catalog.service';
+import { CommerceApiService } from '../core/api/commerce-api.service';
 import { WishlistService } from '../core/wishlist/wishlist.service';
 import { NavbarComponent } from '../shared/navbar.component';
 import { FooterComponent } from '../shared/footer.component';
@@ -35,7 +36,11 @@ import { ProductRailComponent } from '../shared/product-rail.component';
 
         <div class="product-layout">
           <div class="gallery">
-            <div class="main-image img-placeholder">{{ p.name }}</div>
+            @if (p.image) {
+              <img class="main-image" [src]="p.image" [alt]="p.name" />
+            } @else {
+              <div class="main-image img-placeholder">{{ p.name }}</div>
+            }
           </div>
 
           <div class="info">
@@ -49,7 +54,11 @@ import { ProductRailComponent } from '../shared/product-rail.component';
             </div>
 
             <a class="store-row card" [routerLink]="['/stores', p.storeId]">
-              <div class="store-avatar img-placeholder"></div>
+              @if (storeProfile()?.storeAvatarUrl) {
+                <img class="store-avatar" [src]="storeProfile()?.storeAvatarUrl" [alt]="p.sellerName" />
+              } @else {
+                <div class="store-avatar img-placeholder"></div>
+              }
               <div>
                 <small>Store</small>
                 <strong>{{ p.sellerName }}</strong>
@@ -125,9 +134,13 @@ import { ProductRailComponent } from '../shared/product-rail.component';
             </div>
 
             @if (feedback(); as message) {
-              <p class="feedback" role="status">
-                <ui-icon name="check-circle" [size]="14" /> {{ message }}
-                <a routerLink="/cart">View cart</a>
+              <p class="feedback" [class.error-feedback]="message !== '' && !message.includes('added to your cart')" role="status">
+                @if (message.includes('added to your cart')) {
+                  <ui-icon name="check-circle" [size]="14" /> {{ message }}
+                  <a routerLink="/cart">View cart</a>
+                } @else {
+                  <ui-icon name="alert-circle" [size]="14" /> {{ message }}
+                }
               </p>
             }
           </div>
@@ -179,9 +192,10 @@ import { ProductRailComponent } from '../shared/product-rail.component';
         align-items: start;
       }
       .main-image {
-        height: 460px;
-        border-radius: var(--radius-lg);
-        font-size: 13px;
+        aspect-ratio: 4/5;
+        border-radius: var(--radius-md);
+        width: 100%;
+        object-fit: cover;
       }
       .info {
         display: flex;
@@ -207,6 +221,7 @@ import { ProductRailComponent } from '../shared/product-rail.component';
         height: 40px;
         border-radius: 50%;
         flex-shrink: 0;
+        object-fit: cover;
       }
       .store-row small {
         display: block;
@@ -316,6 +331,9 @@ import { ProductRailComponent } from '../shared/product-rail.component';
         font-size: 13px;
         font-weight: 600;
       }
+      .feedback.error-feedback {
+        color: var(--color-danger);
+      }
       .feedback a {
         color: var(--color-accent);
         text-decoration: underline;
@@ -365,6 +383,7 @@ export class ProductDetailComponent {
   private readonly catalog = inject(CatalogService);
   private readonly cart = inject(CartService);
   private readonly wishlist = inject(WishlistService);
+  private readonly api = inject(CommerceApiService);
 
   private readonly id = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('id') ?? '')),
@@ -379,6 +398,7 @@ export class ProductDetailComponent {
 
   protected readonly quantity = signal(1);
   protected readonly feedback = signal('');
+  protected readonly storeProfile = signal<any>(null);
 
   protected readonly saved = computed(() => this.wishlist.isWishlisted(this.id()));
 
@@ -399,6 +419,16 @@ export class ProductDetailComponent {
       this.id();
       this.quantity.set(1);
       this.feedback.set('');
+      
+      const p = this.product();
+      if (p?.storeId) {
+        this.api.getStore(p.storeId).subscribe({
+          next: (store) => this.storeProfile.set(store),
+          error: () => this.storeProfile.set(null)
+        });
+      } else {
+        this.storeProfile.set(null);
+      }
     });
   }
 
@@ -419,8 +449,7 @@ export class ProductDetailComponent {
     }
     const units = this.quantity();
     if (!(await this.cart.add(current, units))) {
-      // cart.error carries the server's reason, e.g. "Only 3 left in stock".
-      this.feedback.set('');
+      this.feedback.set(this.cart.error() || 'Failed to add to cart.');
       return;
     }
     this.feedback.set(`${units} × ${current.name} added to your cart.`);

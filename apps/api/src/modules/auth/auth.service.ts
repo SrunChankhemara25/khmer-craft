@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import PasswordResetToken from '../../../models/PasswordResetToken';
 import RefreshToken from '../../../models/RefreshToken';
 import User, { IUser } from '../../../models/User';
-import SellerProfile from '../../../models/SellerProfile';
+import Seller from '../../../models/Seller';
 import { env } from '../../config/env';
 import { AppError } from '../../errors/app-error';
 import { signAccessToken } from '../../utils/jwt';
@@ -55,7 +55,7 @@ export class AuthService {
     if (await User.exists({ email })) {
       throw new AppError(
         409,
-        'An account with this email already exists',
+        'An account with this email already exists. Try signing in instead.',
         'EMAIL_IN_USE',
       );
     }
@@ -74,36 +74,59 @@ export class AuthService {
 
   async registerSeller(input: RegisterSellerInput) {
     const email = normalizeEmail(input.email);
-    if (await User.exists({ email })) {
-      throw new AppError(
-        409,
-        'An account with this email already exists',
-        'EMAIL_IN_USE',
-      );
-    }
+    const existingUser = await User.findOne({ email }).select('+password_hash');
 
     const session = await mongoose.startSession();
     let result: any;
 
     try {
       await session.withTransaction(async () => {
-        const user = await User.create([{
-          name: input.name,
-          email,
-          password_hash: await hashPassword(input.password),
-          phone: input.phone,
-          role: 'SELLER',
-          status: 'ACTIVE',
-        }], { session });
+        let user;
 
-        await SellerProfile.create([{
-          user_id: user[0]._id,
-          businessName: input.businessName,
+        if (existingUser) {
+          if (existingUser.role === 'SELLER') {
+            throw new AppError(
+              409,
+              'An account with this email is already a seller. Please sign in.',
+              'EMAIL_IN_USE',
+            );
+          }
+
+          const passwordMatches = await verifyPassword(input.password, existingUser.password_hash);
+          if (!passwordMatches) {
+            throw new AppError(
+              401,
+              'This email is already registered. To upgrade your account to a Seller, please enter your correct password.',
+              'INVALID_CREDENTIALS',
+            );
+          }
+
+          existingUser.role = 'SELLER';
+          await existingUser.save({ session });
+          user = existingUser;
+        } else {
+          const created = await User.create([{
+            name: input.name,
+            email,
+            password_hash: await hashPassword(input.password),
+            phone: input.phone,
+            role: 'SELLER',
+            status: 'ACTIVE',
+          }], { session });
+          user = created[0];
+        }
+
+        await Seller.create([{
+          userId: user._id,
+          storeName: input.businessName,
           category: input.category,
-          description: input.description || '',
+          storeDescription: input.description || '',
+          subscriptionPlan: 'STARTER',
+          onboardingStatus: 'COMPLETED',
+          phoneNumber: input.phone,
         }], { session });
 
-        result = { user: user[0], ...(await this.createSession(user[0])) };
+        result = { user, ...(await this.createSession(user)) };
       });
     } finally {
       await session.endSession();
@@ -258,7 +281,10 @@ export class AuthService {
 
     return {
       user,
-      accessToken: signAccessToken(user.id, user.role, user.token_version),
+      accessToken: signAccessToken(
+        { sub: user.id, role: user.role, ver: user.token_version },
+        { expiresIn: '7d' }, // Increased from 15m for development stability
+      ),
       refreshToken: nextToken,
     };
   }

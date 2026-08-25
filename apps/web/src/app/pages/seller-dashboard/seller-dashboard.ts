@@ -2484,12 +2484,12 @@ interface DashboardMetric {
                 <article class="settings-card" style="margin-top:24px">
                   <h2><kc-icon name="lock" [size]="18" style="color:#146242" /> Security</h2>
                   <form class="settings-form">
-                    <label>Current Password<input class="dash-input" type="password" value="password" /></label>
+                    <label>Current Password<input class="dash-input" type="password" [ngModel]="currentPassword()" (ngModelChange)="currentPassword.set($event)" name="currentPassword" /></label>
                     <div class="two-cols">
-                      <label>New Password<input class="dash-input" type="password" value="password" /></label>
-                      <label>Confirm New Password<input class="dash-input" type="password" value="password" /></label>
+                      <label>New Password<input class="dash-input" type="password" [ngModel]="newPassword()" (ngModelChange)="newPassword.set($event)" name="newPassword" /></label>
+                      <label>Confirm New Password<input class="dash-input" type="password" [ngModel]="confirmNewPassword()" (ngModelChange)="confirmNewPassword.set($event)" name="confirmNewPassword" /></label>
                     </div>
-                    <div><button class="btn btn-ghost" type="button">Update Password</button></div>
+                    <div><button class="btn btn-ghost" type="button" (click)="updatePassword()">Update Password</button></div>
                   </form>
                 </article>
               </div>
@@ -2599,7 +2599,38 @@ export class SellerDashboardPage implements OnInit {
   protected readonly selectedOrder = signal<SellerOrder | null>(null);
   protected readonly myStoreId = signal<string | null>(null);
 
+  protected readonly currentPassword = signal('');
+  protected readonly newPassword = signal('');
+  protected readonly confirmNewPassword = signal('');
+
   protected readonly isDetectingLocation = signal(false);
+
+  updatePassword() {
+    if (!this.currentPassword() || !this.newPassword() || !this.confirmNewPassword()) {
+      alert('Please fill in all password fields.');
+      return;
+    }
+    if (this.newPassword() !== this.confirmNewPassword()) {
+      alert('New passwords do not match.');
+      return;
+    }
+
+    this.authService.changePassword(
+      this.currentPassword(),
+      this.newPassword(),
+      this.confirmNewPassword()
+    ).subscribe({
+      next: () => {
+        alert('Password updated successfully');
+        this.currentPassword.set('');
+        this.newPassword.set('');
+        this.confirmNewPassword.set('');
+      },
+      error: (err) => {
+        alert('Failed to update password: ' + (err.error?.message || err.message));
+      }
+    });
+  }
 
   async detectLocation() {
     if (!navigator.geolocation) {

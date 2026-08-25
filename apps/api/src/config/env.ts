@@ -23,7 +23,7 @@ export const env = {
     return secret;
   },
   get jwtExpiresInSeconds() {
-    return asPositiveNumber(process.env.JWT_EXPIRES_IN_SECONDS, 15 * 60);
+    return asPositiveNumber(process.env.JWT_EXPIRES_IN_SECONDS, 7 * 24 * 60 * 60);
   },
   get refreshTokenExpiresInDays() {
     return asPositiveNumber(process.env.REFRESH_TOKEN_EXPIRES_IN_DAYS, 7);

@@ -46,6 +46,21 @@ router.get('/stores', async (req: Request, res: Response) => {
   }
 });
 
+// GET single seller by ID (public store profile)
+router.get('/stores/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const store = await Seller.findById(req.params.id);
+    if (!store) {
+      res.status(404).json({ error: 'Store not found' });
+      return;
+    }
+    res.json(store);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch store' });
+  }
+});
+
+
 // ==============================
 // SELLER ONBOARDING
 // ==============================

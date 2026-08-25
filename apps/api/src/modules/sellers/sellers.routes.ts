@@ -6,10 +6,16 @@ import {
   getStoreProfile,
   updateStoreProfile,
   getStoreOrders,
-  getStoreReviews
+  getStoreReviews,
+  getPublicStores,
+  getPublicStoreProfile
 } from './sellers.controller';
 
 const router = Router();
+
+// Public routes
+router.get('/stores', getPublicStores);
+router.get('/stores/:storeId', getPublicStoreProfile);
 
 router.use(authenticate, authorize('BUYER', 'SELLER', 'ADMIN'));
 

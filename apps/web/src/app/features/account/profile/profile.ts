@@ -51,6 +51,15 @@ import { IconComponent } from '../../../shared/icon.component';
           </article>
 
           <div class="links">
+            @if (currentUser.role === 'SELLER') {
+              <a class="card link-card card-hover" routerLink="/seller/dashboard">
+                <ui-icon name="package" [size]="18" />
+                <div>
+                  <strong>Seller Dashboard</strong>
+                  <span>Manage your store and orders</span>
+                </div>
+              </a>
+            }
             <a class="card link-card card-hover" routerLink="/orders">
               <ui-icon name="package" [size]="18" />
               <div>

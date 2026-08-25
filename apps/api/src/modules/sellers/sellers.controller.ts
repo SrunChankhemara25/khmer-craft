@@ -89,3 +89,25 @@ export const getStoreOrders = async (req: Request, res: Response) => {
 export const getStoreReviews = async (req: Request, res: Response) => {
   res.json({ stats: {}, reviews: [] });
 };
+
+export const getPublicStores = async (req: Request, res: Response) => {
+  try {
+    const sellers = await Seller.find({}).populate('userId', 'name email status');
+    res.json(sellers);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch sellers' });
+  }
+};
+
+export const getPublicStoreProfile = async (req: Request, res: Response) => {
+  try {
+    const store = await Seller.findById(req.params.storeId);
+    if (!store) {
+      res.status(404).json({ error: 'Store not found' });
+      return;
+    }
+    res.json(store);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch store' });
+  }
+};

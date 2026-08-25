@@ -12,6 +12,7 @@ export interface ISeller extends Document {
   location?: string;
   phoneNumber?: string;
   verificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
+  category?: string;
 }
 
 const SellerSchema: Schema = new Schema(
@@ -43,7 +44,8 @@ const SellerSchema: Schema = new Schema(
       type: String,
       enum: ['UNVERIFIED', 'PENDING', 'VERIFIED'],
       default: 'UNVERIFIED'
-    }
+    },
+    category: { type: String }
   },
   { timestamps: true }
 );

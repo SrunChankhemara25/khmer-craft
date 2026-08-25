@@ -46,15 +46,21 @@ import { IconComponent } from '../shared/icon.component';
 
         <div class="card-block">
           <h3><ui-icon name="package" [size]="17" color="var(--color-accent)"></ui-icon> Order review</h3>
-          <div class="order-item" *ngFor="let item of items">
-            <div class="thumb img-placeholder"></div>
-            <div class="info">
-              <span class="store-tag"><ui-icon name="store" [size]="11"></ui-icon> {{ item.store }}</span>
-              <strong>{{ item.name }}</strong>
-              <small>Qty: {{ item.qty }} &middot; {{ item.variant }}</small>
+          @for (line of cart.lines(); track line.product.id) {
+            <div class="order-item">
+              @if (line.product.image) {
+                <img class="thumb" [src]="line.product.image" [alt]="line.product.name" />
+              } @else {
+                <div class="thumb img-placeholder"></div>
+              }
+              <div class="info">
+                <span class="store-tag"><ui-icon name="store" [size]="11"></ui-icon> {{ line.product.sellerName }}</span>
+                <strong>{{ line.product.name }}</strong>
+                <small>Qty: {{ line.quantity }}</small>
+              </div>
+              <span class="price">\${{ line.lineTotal.toFixed(2) }}</span>
             </div>
-            <span class="price">\${{ item.lineTotal.toFixed(2) }}</span>
-          </div>
+          }
         </div>
       </div>
 
@@ -84,7 +90,13 @@ import { IconComponent } from '../shared/icon.component';
 
     .order-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
     .order-item:last-child { border-bottom: none; }
-    .thumb { width: 46px; height: 46px; border-radius: var(--radius-sm); flex-shrink: 0; }
+    .thumb {
+      width: 46px;
+      height: 46px;
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+      object-fit: cover;
+    }
     .info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
     .store-tag { font-size: 11px; color: var(--color-muted); display: flex; align-items: center; gap: 4px; }
     .info small { color: var(--color-muted); font-size: 11px; }

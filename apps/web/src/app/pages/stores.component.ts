@@ -1,7 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map, catchError, of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CatalogService } from '../core/catalog/catalog.service';
+import { CommerceApiService } from '../core/api/commerce-api.service';
 import { NavbarComponent } from '../shared/navbar.component';
 import { FooterComponent } from '../shared/footer.component';
 import { IconComponent } from '../shared/icon.component';
@@ -48,7 +51,11 @@ import { IconComponent } from '../shared/icon.component';
         <div class="store-grid">
           @for (store of filtered(); track store.id) {
             <article class="store-card card card-hover">
-              <div class="store-logo img-placeholder">{{ store.name }}</div>
+              @if (store.logoUrl) {
+                <img class="store-logo" [src]="store.logoUrl" [alt]="store.name" />
+              } @else {
+                <div class="store-logo img-placeholder">{{ store.name }}</div>
+              }
               <div class="store-body">
                 <span class="badge badge-soft">{{ store.categoryName }}</span>
                 <h2>{{ store.name }}</h2>
@@ -162,6 +169,8 @@ import { IconComponent } from '../shared/icon.component';
         height: 150px;
         font-size: 11.5px;
         text-align: center;
+        width: 100%;
+        object-fit: cover;
       }
       .store-body {
         display: flex;
@@ -233,14 +242,42 @@ import { IconComponent } from '../shared/icon.component';
 })
 export class StoresComponent {
   protected readonly catalog = inject(CatalogService);
+  private readonly api = inject(CommerceApiService);
   protected readonly term = signal('');
+  
+  private readonly apiStores = toSignal(
+    this.api.listStores().pipe(
+      map(sellers => sellers.map(apiStore => ({
+        id: apiStore._id,
+        name: apiStore.storeName,
+        logoUrl: apiStore.storeAvatarUrl,
+        categoryName: 'General Store',
+        description: apiStore.storeDescription || 'A local Cambodian artisan store.',
+        location: apiStore.location || 'Cambodia',
+        rating: 5.0,
+        reviewCount: 0
+      }))),
+      catchError(() => of([]))
+    ),
+    { initialValue: [] }
+  );
 
   protected readonly filtered = computed(() => {
     const needle = this.term().trim().toLowerCase();
-    if (!needle) {
-      return this.catalog.stores;
+    
+    // Combine local mock stores with live API stores
+    const allStores = [...this.catalog.stores];
+    for (const apiStore of this.apiStores()) {
+      if (!allStores.find(s => s.id === apiStore.id)) {
+        allStores.push(apiStore);
+      }
     }
-    return this.catalog.stores.filter((store) =>
+
+    if (!needle) {
+      return allStores;
+    }
+    
+    return allStores.filter((store) =>
       [store.name, store.location, store.categoryName]
         .join(' ')
         .toLowerCase()

@@ -1,8 +1,9 @@
 import { Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs';
+import { map, switchMap, catchError, of } from 'rxjs';
 import { CatalogService } from '../core/catalog/catalog.service';
+import { CommerceApiService } from '../core/api/commerce-api.service';
 import { NavbarComponent } from '../shared/navbar.component';
 import { FooterComponent } from '../shared/footer.component';
 import { IconComponent } from '../shared/icon.component';
@@ -29,7 +30,11 @@ import { ProductCardComponent } from '../shared/product-card.component';
         </nav>
 
         <div class="head-card card">
-          <div class="store-logo img-placeholder">{{ s.name }}</div>
+          @if (s.logoUrl) {
+            <img class="store-logo" [src]="s.logoUrl" [alt]="s.name" />
+          } @else {
+            <div class="store-logo img-placeholder">{{ s.name }}</div>
+          }
           <div class="head-body">
             <span class="badge badge-soft">{{ s.categoryName }}</span>
             <h1>{{ s.name }}</h1>
@@ -95,12 +100,11 @@ import { ProductCardComponent } from '../shared/product-card.component';
         align-items: center;
       }
       .store-logo {
-        width: 132px;
-        height: 132px;
-        border-radius: var(--radius-md);
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
         flex-shrink: 0;
-        font-size: 11px;
-        text-align: center;
+        object-fit: cover;
       }
       .head-body {
         display: flex;
@@ -174,13 +178,38 @@ import { ProductCardComponent } from '../shared/product-card.component';
 export class StoreDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly catalog = inject(CatalogService);
+  private readonly api = inject(CommerceApiService);
 
   private readonly storeId = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('id') ?? '')),
     { initialValue: this.route.snapshot.paramMap.get('id') ?? '' },
   );
 
-  protected readonly store = computed(() => this.catalog.store(this.storeId()));
+  protected readonly store = toSignal(
+    this.route.paramMap.pipe(
+      map((params) => params.get('id') ?? ''),
+      switchMap((id) => {
+        if (!id) return of(null);
+        const localStore = this.catalog.store(id);
+        if (localStore) return of(localStore);
+
+        return this.api.getStore(id).pipe(
+          map(apiStore => ({
+            id: apiStore._id,
+            name: apiStore.storeName,
+            logoUrl: apiStore.storeAvatarUrl,
+            categoryName: 'General Store',
+            description: apiStore.storeDescription || 'A local Cambodian artisan store.',
+            location: apiStore.location || 'Cambodia',
+            rating: 5.0,
+            reviewCount: 0
+          })),
+          catchError(() => of(null))
+        );
+      })
+    ),
+    { initialValue: this.catalog.store(this.route.snapshot.paramMap.get('id') ?? '') ?? null }
+  );
 
   protected readonly products = computed(() =>
     this.catalog.search({ storeId: this.storeId() }),
