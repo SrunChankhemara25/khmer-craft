@@ -17,15 +17,6 @@ import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-sl
 
   <app-hero-slider />
 
-  <section class="hero">
-    <div class="container features-strip animate-in">
-      <div class="feature-item"><span class="f-icon"><ui-icon name="check-circle" [size]="16"></ui-icon></span> Authentic &amp; Local <small>100% Cambodian</small></div>
-      <div class="feature-item"><span class="f-icon"><ui-icon name="lock" [size]="16"></ui-icon></span> Secure Payment <small>Safe &amp; Trusted</small></div>
-      <div class="feature-item"><span class="f-icon"><ui-icon name="truck" [size]="16"></ui-icon></span> Fast Delivery <small>Across Cambodia</small></div>
-      <div class="feature-item"><span class="f-icon"><ui-icon name="heart" [size]="16"></ui-icon></span> Support Local <small>Artisans &amp; Farmers</small></div>
-    </div>
-  </section>
-
   <section class="container section">
     <div class="section-head">
       <h2>Browse by category</h2>
@@ -146,7 +137,7 @@ import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-sl
       <div>
         <h3>Become a seller</h3>
         <p>Grow your business with KhmerCraft Marketplace</p>
-        <button class="btn btn-dark" routerLink="/become-a-seller">Start Selling Now</button>
+        <a class="btn btn-dark" href="http://localhost:4300/become-a-seller" target="_blank" rel="noopener">Start Selling Now</a>
       </div>
     </div>
     <div class="banner-card support-local">
@@ -203,17 +194,11 @@ import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-sl
   styles: [`
     /* The hero band now holds only the trust strip; the slider above owns the
        headline space, so the old 56px top padding just left a gap. */
-    .hero { background: var(--color-bg-alt); padding: 20px 0 24px; border-top: 1px solid var(--color-border); }
     .hero-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
     .hero-copy h1 { font-size: 44px; line-height: 1.1; margin: 16px 0 18px; }
     .hero-copy p { color: var(--color-muted); font-size: 15.5px; margin-bottom: 26px; max-width: 460px; line-height: 1.6; }
     .hero-actions { display: flex; gap: 12px; }
     .hero-image { height: 340px; border-radius: var(--radius-lg); }
-    .features-strip { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
-    .feature-item { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 13.5px; }
-    .feature-item small { display: block; font-weight: 400; color: var(--color-muted); font-size: 12px; }
-    .f-icon { width: 32px; height: 32px; border-radius: 50%; background: #fff; border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-accent); flex-shrink: 0; }
-
     .section { padding: 44px 32px; }
     .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
     .section-head h2 { font-size: 21px; }
@@ -317,8 +302,8 @@ export class HomeComponent {
     { label: 'Best Sellers', params: { sort: 'featured' } },
     { label: 'Handmade Crafts', params: { collection: 'handmade-crafts' } },
     { label: 'Local Food & Agro', params: { collection: 'agro-products' } },
-    { label: 'Pottery', params: { category: 'pottery' } },
-    { label: 'Weaving', params: { category: 'weaving' } },
+    { label: 'Home & Living', params: { category: 'home-living' } },
+    { label: 'Arts & Culture', params: { category: 'arts-culture' } },
   ];
 
   initials(name: string): string {

@@ -30,7 +30,7 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
                   <span>{{ s.id === 's006' ? 'New Khmer collection' : 'Farm fresh every morning' }}</span>
                   <h1>{{ s.id === 's006' ? 'Cambodian craft, modern style.' : 'Fresh from the Mekong.' }}</h1>
                   <p>{{ s.id === 's006' ? 'Contemporary silhouettes shaped by Khmer textiles.' : 'Seasonal Cambodian fruit selected at peak freshness.' }}</p>
-                  <a class="btn btn-primary" href="#products">Shop collection <ui-icon name="arrow-right" [size]="14" /></a>
+                  <a class="btn btn-primary" href="#products" (click)="scrollToSection('products', $event)">Shop collection <ui-icon name="arrow-right" [size]="14" /></a>
                 </div>
               }
               <div class="identity" [class.campaign-identity]="s.id === 's006' || s.id === 's007'">
@@ -48,7 +48,7 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
               </div>
 
               <div class="store-actions" [class.campaign-actions]="s.id === 's006' || s.id === 's007'">
-                <a class="btn btn-primary" href="#products">Shop store</a>
+                <a class="btn btn-primary" href="#products" (click)="scrollToSection('products', $event)">Shop store</a>
                 <button type="button" class="btn btn-outline"><ui-icon name="heart" [size]="15" /> Follow</button>
               </div>
             </div>
@@ -57,9 +57,9 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
 
         <nav class="store-nav" aria-label="Store navigation">
           <div class="container store-nav-inner">
-            <a href="#products" class="active">Products</a>
-            <a href="#about">About</a>
-            <a href="#reviews">Reviews</a>
+            <button type="button" [class.active]="activeSection() === 'products'" (click)="scrollToSection('products')">Products</button>
+            <button type="button" [class.active]="activeSection() === 'about'" (click)="scrollToSection('about')">About</button>
+            <button type="button" [class.active]="activeSection() === 'reviews'" (click)="scrollToSection('reviews')">Reviews</button>
             <span class="store-status"><i></i> Accepting orders</span>
           </div>
         </nav>
@@ -124,10 +124,10 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
     <app-footer />
   `,
   styles: [`
-    .store-intro { padding: 18px 0 22px; background: #f7f2e9; }
-    .crumbs { display: flex; gap: 8px; margin-bottom: 20px; color: var(--color-muted); font-size: 12px; }
+    .store-intro { padding: 10px 0 12px; background: #f7f2e9; }
+    .crumbs { display: flex; gap: 7px; margin-bottom: 9px; color: var(--color-muted); font-size: 10.5px; }
     .crumbs a:hover { color: var(--color-accent); }
-    .store-banner { display: flex; align-items: center; justify-content: space-between; gap: 30px; min-height: 250px; padding: clamp(28px, 4vw, 54px); border: 1px solid var(--color-border); border-radius: 26px; background: var(--color-surface); box-shadow: 0 16px 50px rgba(64,47,29,.06); }
+    .store-banner { display: flex; align-items: center; justify-content: space-between; gap: 22px; min-height: 150px; padding: clamp(18px, 2.1vw, 26px); border: 1px solid var(--color-border); border-radius: 18px; background: var(--color-surface); box-shadow: 0 10px 30px rgba(64,47,29,.045); }
     .store-banner.fashion-store, .store-banner.fruit-store { position: relative; align-items: flex-end; min-height: clamp(240px,22vw,340px); overflow: hidden; padding: clamp(22px,2.6vw,38px); background-position: center; background-size: cover; }
     .store-banner.fashion-store { background-image: url('/assets/stores/khmer-style-hero.png'); }
     .store-banner.fruit-store { background-image: url('/assets/stores/cambodia-fruits-hero.png'); }
@@ -142,32 +142,38 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
     .campaign-identity h1 { color: var(--color-text); font-family: var(--font-body); font-size: 14px; font-weight: 800; }
     .campaign-identity .verified { padding: 0; background: transparent; font-size: 9px; }
     .campaign-actions { display: none; }
-    .identity { display: flex; align-items: center; gap: clamp(22px, 3vw, 40px); }
-    .store-logo { display: grid; place-items: center; width: clamp(92px, 9vw, 132px); aspect-ratio: 1; flex: 0 0 auto; border: 1px solid var(--color-border); border-radius: 28px; background: linear-gradient(145deg,#f3e7d3,#fffdf8); color: var(--color-accent); font-family: var(--font-heading); font-size: clamp(27px,3vw,42px); font-weight: 700; }
-    .identity-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; max-width: 760px; }
-    .verified { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: var(--radius-full); background: var(--color-success-soft); color: var(--color-success); font-size: 11px; font-weight: 750; }
-    h1 { font-size: clamp(36px,4vw,58px); }
-    .identity-copy > p { max-width: 700px; color: var(--color-text-secondary); font-size: 14px; line-height: 1.65; }
-    .meta { display: flex; flex-wrap: wrap; gap: 16px; color: var(--color-muted); font-size: 12px; }
+    .identity { display: flex; align-items: center; gap: clamp(16px, 2vw, 24px); min-width: 0; }
+    .store-logo { display: grid; place-items: center; width: clamp(68px, 6vw, 82px); aspect-ratio: 1; flex: 0 0 auto; border: 1px solid var(--color-border); border-radius: 19px; background: linear-gradient(145deg,#f3e7d3,#fffdf8); color: var(--color-accent); font-family: var(--font-heading); font-size: clamp(22px,2vw,28px); font-weight: 700; }
+    .identity-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; max-width: 760px; }
+    .verified { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: var(--radius-full); background: var(--color-success-soft); color: var(--color-success); font-size: 9.5px; font-weight: 750; }
+    .identity-copy h1 { font-size: clamp(25px,2.5vw,36px); line-height: 1.05; }
+    .identity-copy > p { max-width: 700px; color: var(--color-text-secondary); font-size: 12.5px; line-height: 1.45; }
+    .meta { display: flex; flex-wrap: wrap; gap: 12px; color: var(--color-muted); font-size: 10.5px; }
     .meta span { display: inline-flex; align-items: center; gap: 5px; }
-    .store-actions { display: flex; flex-direction: column; gap: 9px; min-width: 150px; }
-    .store-nav { position: sticky; top: calc(var(--header-h) + 32px); z-index: 20; border-bottom: 1px solid var(--color-border); background: rgba(255,253,248,.92); backdrop-filter: blur(12px); }
-    .store-nav-inner { display: flex; align-items: center; gap: 28px; min-height: 58px; }
-    .store-nav a { padding-block: 19px 16px; border-bottom: 2px solid transparent; color: var(--color-muted); font-size: 13px; font-weight: 700; }
-    .store-nav a.active { border-color: var(--color-accent); color: var(--color-text); }
+    .store-actions { display: flex; flex-direction: row; gap: 8px; flex: 0 0 auto; }
+    .store-actions .btn { min-height: 38px; padding-inline: 17px; font-size: 12px; }
+    /* Keep these section links with the store header. A floating tab bar on its
+       own felt detached once the store identity and main navigation scrolled
+       away. */
+    .store-nav { position: relative; z-index: 20; border-bottom: 1px solid var(--color-border); background: var(--color-bg); }
+    .store-nav-inner { display: flex; align-items: center; gap: 24px; min-height: 44px; }
+    .store-nav button { align-self: stretch; padding: 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--color-muted); font-size: 12px; font-weight: 700; }
+    .store-nav button:hover { color: var(--color-accent); }
+    .store-nav button.active { border-color: var(--color-accent); color: var(--color-text); }
     .store-status { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; color: var(--color-success); font-size: 12px; font-weight: 700; }
     .store-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); }
-    .products-section { padding-top: clamp(48px,6vw,84px); padding-bottom: clamp(60px,7vw,100px); }
-    .products-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+    .products-section { padding-top: 28px; padding-bottom: 48px; }
+    #products, #about, #reviews { scroll-margin-top: 92px; }
+    .products-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
     .eyebrow { color: var(--color-accent); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-    h2 { margin-top: 5px; font-size: clamp(27px,3vw,40px); }
+    h2 { margin-top: 3px; font-size: clamp(23px,2.2vw,31px); }
     .products-head > span { color: var(--color-muted); font-size: 13px; }
-    .category-tabs { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 28px; padding-bottom: 3px; }
-    .category-tabs button { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 14px; border: 1px solid var(--color-border); border-radius: var(--radius-full); background: #fff; color: var(--color-text-secondary); white-space: nowrap; }
+    .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 3px; }
+    .category-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 11px; border: 1px solid var(--color-border); border-radius: var(--radius-full); background: #fff; color: var(--color-text-secondary); font-size: 11.5px; white-space: nowrap; }
     .category-tabs button span { color: var(--color-muted); font-size: 11px; }
     .category-tabs button.active { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
     .category-tabs button.active span { color: rgba(255,255,255,.72); }
-    .product-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(225px,1fr)); gap: clamp(16px,2vw,26px); }
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 12px; }
     .empty { display: grid; place-items: center; min-height: 240px; color: var(--color-muted); }
     .about-section { display: grid; grid-template-columns: .85fr 1.15fr; gap: clamp(40px,8vw,130px); padding-top: clamp(54px,7vw,100px); padding-bottom: clamp(54px,7vw,100px); border-top: 1px solid var(--color-border); }
     .story p { margin-top: 16px; max-width: 580px; color: var(--color-text-secondary); line-height: 1.75; }
@@ -211,6 +217,7 @@ export class StoreDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly catalog = inject(CatalogService);
   protected readonly activeCategory = signal<string | null>(null);
+  protected readonly activeSection = signal<'products' | 'about' | 'reviews'>('products');
   private readonly storeId = toSignal(this.route.paramMap.pipe(map((params) => params.get('id') ?? '')), { initialValue: this.route.snapshot.paramMap.get('id') ?? '' });
   protected readonly store = computed(() => this.catalog.store(this.storeId()));
   protected readonly products = computed(() => this.catalog.search({ storeId: this.storeId() }));
@@ -221,4 +228,15 @@ export class StoreDetailComponent {
   });
   protected countCategory(category: string): number { return this.products().filter((product) => product.categoryName === category).length; }
   protected initials(name: string): string { return name.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase(); }
+  protected scrollToSection(
+    section: 'products' | 'about' | 'reviews',
+    event?: Event,
+  ): void {
+    event?.preventDefault();
+    this.activeSection.set(section);
+    document.getElementById(section)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }
 }

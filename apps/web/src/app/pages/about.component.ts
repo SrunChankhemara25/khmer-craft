@@ -88,7 +88,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
     </div>
     <div class="cta-actions">
       <button class="btn btn-primary btn-lg" routerLink="/products">Shop the Collection</button>
-      <button class="btn btn-outline-light btn-lg" routerLink="/become-a-seller">Become a Seller</button>
+      <a class="btn btn-outline-light btn-lg" href="http://localhost:4300/become-a-seller" target="_blank" rel="noopener">Become a Seller</a>
     </div>
   </section>
 

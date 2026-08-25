@@ -99,10 +99,12 @@ export const routes: Routes = [
     title: 'About | KhmerCraft',
   },
   {
+    // Seller landing, onboarding and dashboard are Seypa47's work from
+    // origin/prototype, ported into this tree's structure.
     path: 'become-a-seller',
     loadComponent: () =>
-      import('./pages/become-seller.component').then(
-        (m) => m.BecomeSellerComponent,
+      import('./features/seller/landing/seller-landing').then(
+        (m) => m.SellerPage,
       ),
     title: 'Become a seller | KhmerCraft',
   },
@@ -133,6 +135,23 @@ export const routes: Routes = [
         (m) => m.SellerLogin,
       ),
     title: 'Seller sign in | KhmerCraft',
+  },
+  {
+    path: 'seller/onboarding',
+    loadComponent: () =>
+      import('./features/seller/onboarding/seller-onboarding').then(
+        (m) => m.SellerOnboardingPage,
+      ),
+    title: 'Seller onboarding | KhmerCraft',
+  },
+  {
+    path: 'seller/dashboard',
+    canActivate: [sellerGuard],
+    loadComponent: () =>
+      import('./features/seller/dashboard/seller-dashboard').then(
+        (m) => m.SellerDashboardPage,
+      ),
+    title: 'Seller dashboard | KhmerCraft',
   },
   {
     path: 'seller/orders',

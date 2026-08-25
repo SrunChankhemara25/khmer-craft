@@ -4,8 +4,8 @@ import { CommerceApiService } from '../api/commerce-api.service';
 import { ApiProduct } from '../api/api.models';
 import {
   CATEGORIES,
+  classifyCategory,
   findCategory,
-  subcategorySlug,
 } from '../data/categories.data';
 import { PRODUCTS as FALLBACK_PRODUCTS } from '../data/products.data';
 import { STORES, findStore } from '../data/stores.data';
@@ -48,7 +48,11 @@ export class CatalogService {
       const response = await firstValueFrom(
         this.api.listProducts({ limit: 60 }),
       );
-      this.products.set(response.products.map(toProduct));
+      const apiProducts = response.products.map(toProduct);
+      const showcaseProducts = FALLBACK_PRODUCTS.filter(
+        (product) => product.storeId === 's006' || product.storeId === 's007',
+      );
+      this.products.set([...apiProducts, ...showcaseProducts]);
       this.usingFallback.set(false);
     } catch {
       this.products.set(FALLBACK_PRODUCTS);
@@ -250,10 +254,7 @@ export class CatalogService {
  * categories as free text ("Palm Sugar") while the UI routes on slugs.
  */
 const toProduct = (api: ApiProduct): Product => {
-  const categorySlug = api.category
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
+  const classification = classifyCategory(api.category);
 
   const store = STORES.find((candidate) => candidate.name === api.sellerName);
 
@@ -264,10 +265,7 @@ const toProduct = (api: ApiProduct): Product => {
     image: api.image,
     price: api.price,
     compareAtPrice: api.compareAtPrice ?? undefined,
-    categorySlug,
-    categoryName: api.category,
-    subcategory: api.subcategory,
-    subcategorySlug: api.subcategory ? subcategorySlug(api.subcategory) : null,
+    ...classification,
     sellerName: api.sellerName,
     storeId: store?.id ?? api.sellerId ?? '',
     rating: api.rating,

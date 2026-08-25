@@ -16,14 +16,16 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
 
     @if (!cart.isEmpty()) {
       <section class="container cart-layout">
-        <div class="cart-items">
+        <header class="cart-header">
           <h1>Your cart</h1>
           <p class="sub">
             {{ cart.count() }} {{ cart.count() === 1 ? 'item' : 'items' }} from
             {{ storeCount() }}
             {{ storeCount() === 1 ? 'seller' : 'sellers' }}
           </p>
+        </header>
 
+        <div class="cart-items">
           <!-- Grouped by seller: this is a multi-vendor marketplace, and items
                from different artisans ship separately. -->
           @for (group of groups(); track group.storeId) {
@@ -182,18 +184,22 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       .cart-layout {
         display: grid;
         grid-template-columns: 1fr 340px;
-        gap: 32px;
+        column-gap: 32px;
+        row-gap: 22px;
         padding: 32px 32px 44px;
         align-items: start;
       }
-      .cart-items h1 {
+      .cart-header {
+        grid-column: 1 / -1;
+      }
+      .cart-header h1 {
         font-size: 25px;
         margin-bottom: 6px;
       }
       .sub {
         color: var(--color-muted);
         font-size: 13.5px;
-        margin-bottom: 18px;
+        margin-bottom: 0;
       }
       .store-group {
         padding: 16px 18px;

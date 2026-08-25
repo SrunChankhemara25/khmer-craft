@@ -24,7 +24,8 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       </nav>
       <div class="head-row">
         <div>
-          <h1>Artisan stores</h1>
+          <span class="eyebrow">Shop directly from Cambodian makers</span>
+          <h1>Meet our artisan stores</h1>
           <p class="sub">
             {{ filtered().length }} sellers across Cambodia, each running their
             own workshop.
@@ -43,14 +44,47 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       </div>
     </section>
 
+    @if (!term()) {
+      <section class="container featured">
+        @for (store of featuredStores(); track store.id; let i = $index) {
+          <a class="featured-store" target="_self" [class.alt]="i === 1" [routerLink]="['/stores', store.id]">
+            <div class="feature-copy">
+              <span class="verified"><ui-icon name="check-circle" [size]="14" /> Verified artisan</span>
+              <div class="feature-logo">{{ initials(store.name) }}</div>
+              <p class="feature-category">{{ store.categoryName }}</p>
+              <h2>{{ store.name }}</h2>
+              <p>{{ store.description }}</p>
+              <div class="feature-meta">
+                <span><ui-icon name="map-pin" [size]="14" /> {{ store.location }}</span>
+                <span><ui-icon name="star" [size]="14" [filled]="true" /> {{ store.rating }}</span>
+                <span>{{ catalog.countByStore(store.id) }} products</span>
+              </div>
+              <span class="visit">Visit storefront <ui-icon name="arrow-right" [size]="15" /></span>
+            </div>
+            <div class="feature-art" aria-hidden="true">
+              <div class="craft-ring"></div>
+              <span>{{ i === 0 ? 'Woven by hand' : 'Harvested locally' }}</span>
+            </div>
+          </a>
+        }
+      </section>
+    }
+
     <section class="container grid-section">
+      <div class="section-title">
+        <div><span>Marketplace directory</span><h2>All stores</h2></div>
+        <strong>{{ filtered().length }} active</strong>
+      </div>
       @if (filtered().length) {
         <div class="store-grid">
           @for (store of filtered(); track store.id) {
             <article class="store-card card card-hover">
-              <div class="store-logo img-placeholder">{{ store.name }}</div>
+              <div class="store-logo img-placeholder">
+                <span class="card-initials">{{ initials(store.name) }}</span>
+                <span>{{ store.categoryName }}</span>
+              </div>
               <div class="store-body">
-                <span class="badge badge-soft">{{ store.categoryName }}</span>
+                <span class="badge badge-soft"><ui-icon name="check-circle" [size]="11" /> Verified seller</span>
                 <h2>{{ store.name }}</h2>
                 <div class="meta">
                   <span
@@ -67,12 +101,13 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
                   >
                 </div>
                 <p class="desc">{{ store.description }}</p>
-                <button
+                <a
                   class="btn btn-outline btn-sm"
+                  target="_self"
                   [routerLink]="['/stores', store.id]"
                 >
                   View Store <ui-icon name="arrow-right" [size]="13" />
-                </button>
+                </a>
               </div>
             </article>
           }
@@ -96,7 +131,8 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
   styles: [
     `
       .head {
-        padding: 26px 32px 0;
+        padding-top: clamp(32px, 4vw, 64px);
+        padding-bottom: 30px;
       }
       .crumbs {
         display: flex;
@@ -116,8 +152,10 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         flex-wrap: wrap;
       }
       h1 {
-        font-size: 27px;
+        margin-top: 7px;
+        font-size: clamp(38px, 4vw, 62px);
       }
+      .eyebrow { color: var(--color-accent); font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
       .sub {
         margin-top: 6px;
         color: var(--color-muted);
@@ -147,22 +185,51 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         border-color: transparent !important;
       }
       .grid-section {
-        padding: 26px 32px 60px;
+        padding-top: clamp(44px, 5vw, 78px);
+        padding-bottom: 70px;
       }
+      .featured { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(18px, 2vw, 30px); }
+      .featured-store { display: grid; grid-template-columns: 1.15fr .85fr; min-height: 390px; overflow: hidden; border-radius: 28px; background: #263c31; color: #fff; box-shadow: var(--shadow-md); }
+      .featured-store.alt { background: #7b2a1b; }
+      .feature-copy { display: flex; flex-direction: column; align-items: flex-start; padding: clamp(28px, 3.5vw, 54px); }
+      .verified { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: var(--radius-full); color: rgba(255,255,255,.78); font-size: 11px; font-weight: 700; }
+      .feature-logo { display: grid; place-items: center; width: 56px; height: 56px; margin-top: auto; border-radius: 17px 17px 26px 17px; background: #fff8eb; color: var(--color-accent); font-family: var(--font-heading); font-size: 20px; font-weight: 700; }
+      .feature-category { margin-top: 18px; color: #d9bd8b; font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+      .feature-copy h2 { margin-top: 6px; color: #fff; font-size: clamp(26px, 2.4vw, 40px); }
+      .feature-copy > p:not(.feature-category) { margin-top: 10px; color: rgba(255,255,255,.7); font-size: 13px; line-height: 1.6; }
+      .feature-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 18px; color: rgba(255,255,255,.7); font-size: 12px; }
+      .feature-meta span, .visit { display: inline-flex; align-items: center; gap: 5px; }
+      .visit { margin-top: 18px; color: #fff; font-size: 13px; font-weight: 750; }
+      .feature-art { position: relative; display: grid; place-items: center; overflow: hidden; background: rgba(0,0,0,.14); }
+      .featured-store:first-child .feature-art { background: url('/assets/stores/khmer-style-hero.png') 69% center / cover; }
+      .featured-store:nth-child(2) .feature-art { background: url('/assets/stores/cambodia-fruits-hero.png') 72% center / cover; }
+      .featured-store:first-child .feature-art::after, .featured-store:nth-child(2) .feature-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.28), transparent 60%); }
+      .feature-art::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(45deg, transparent 0 13px, rgba(255,255,255,.035) 14px 15px); }
+      .craft-ring { display: none; }
+      .feature-art > span { position: absolute; z-index: 2; bottom: 32px; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+      .section-title { display: flex; align-items: end; justify-content: space-between; margin-bottom: 22px; }
+      .section-title span { color: var(--color-accent); font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+      .section-title h2 { margin-top: 4px; font-size: clamp(28px, 2.5vw, 38px); }
+      .section-title > strong { color: var(--color-success); font-size: 12px; }
       .store-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 18px;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 22px;
       }
       .store-card {
         display: flex;
         flex-direction: column;
       }
       .store-logo {
-        height: 150px;
-        font-size: 11.5px;
+        height: 180px;
+        flex-direction: column;
+        gap: 12px;
+        font-size: 10px;
+        letter-spacing: .08em;
+        text-transform: uppercase;
         text-align: center;
       }
+      .card-initials { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 20px 20px 29px 20px; background: rgba(255,255,255,.72); color: var(--color-accent); font-family: var(--font-heading); font-size: 21px; font-weight: 700; box-shadow: var(--shadow-sm); }
       .store-body {
         display: flex;
         flex-direction: column;
@@ -219,11 +286,14 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         margin-bottom: 8px;
       }
       @media (max-width: 1000px) {
+        .featured { grid-template-columns: 1fr; }
         .store-grid {
           grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         }
       }
       @media (max-width: 620px) {
+        .featured-store { grid-template-columns: 1fr; min-height: 0; }
+        .feature-art { min-height: 150px; }
         .store-grid {
           grid-template-columns: 1fr;
         }
@@ -247,4 +317,12 @@ export class StoresComponent {
         .includes(needle),
     );
   });
+
+  protected readonly featuredStores = computed(() =>
+    this.catalog.stores.filter((store) => store.id === 's006' || store.id === 's007'),
+  );
+
+  protected initials(name: string): string {
+    return name.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase();
+  }
 }

@@ -1,4 +1,5 @@
 import { Product, StockStatus } from '../catalog/catalog.models';
+import { classifyCategory } from './categories.data';
 
 const stockStatus = (stock: number): StockStatus =>
   stock === 0 ? 'out-of-stock' : stock <= 5 ? 'low-stock' : 'in-stock';
@@ -19,6 +20,7 @@ interface Seed {
   createdAt: string;
   collections: string[];
   description: string;
+  image?: string;
 }
 
 /**
@@ -29,6 +31,57 @@ interface Seed {
  * badges and the disabled Add-to-Cart path are exercised in the UI.
  */
 const SEED: Seed[] = [
+  {
+    id: 'p101', name: 'Indigo Krama Panel Shirt', price: 34, compareAtPrice: 42,
+    categorySlug: 'fashion-shirts', categoryName: 'Shirts', storeId: 's006', sellerName: 'Sovann Style Studio',
+    rating: 4.9, reviewCount: 48, stock: 18, soldCount: 122, createdAt: '2026-08-01', collections: ['new-arrivals', 'best-sellers'],
+    description: 'A relaxed navy shirt finished with handwoven krama panels and natural shell buttons.', image: '/assets/stores/khmer-style-hero.png',
+  },
+  {
+    id: 'p102', name: 'Rose Silk Wrap Skirt', price: 48, categorySlug: 'fashion-women', categoryName: 'Women', storeId: 's006', sellerName: 'Sovann Style Studio',
+    rating: 4.8, reviewCount: 37, stock: 12, soldCount: 94, createdAt: '2026-07-28', collections: ['new-arrivals'],
+    description: 'A contemporary wrap skirt in luminous rose Khmer silk with a comfortable adjustable waist.', image: '/assets/stores/khmer-style-hero.png',
+  },
+  {
+    id: 'p103', name: 'Natural Silk Day Blouse', price: 29, categorySlug: 'fashion-women', categoryName: 'Women', storeId: 's006', sellerName: 'Sovann Style Studio',
+    rating: 4.7, reviewCount: 29, stock: 21, soldCount: 76, createdAt: '2026-07-21', collections: ['new-arrivals'],
+    description: 'A soft natural-silk blouse cut for warm days, with a clean neckline and easy drape.', image: '/assets/stores/khmer-style-hero.png',
+  },
+  {
+    id: 'p104', name: 'Midnight Tailored Trousers', price: 38, categorySlug: 'fashion-men', categoryName: 'Men', storeId: 's006', sellerName: 'Sovann Style Studio',
+    rating: 4.8, reviewCount: 33, stock: 16, soldCount: 81, createdAt: '2026-07-16', collections: ['best-sellers'],
+    description: 'Lightweight tailored trousers designed to pair with the studio’s krama-panel shirts.', image: '/assets/stores/khmer-style-hero.png',
+  },
+  {
+    id: 'p105', name: 'Everyday Woven Overshirt', price: 41, categorySlug: 'fashion-shirts', categoryName: 'Shirts', storeId: 's006', sellerName: 'Sovann Style Studio',
+    rating: 4.9, reviewCount: 51, stock: 9, soldCount: 140, createdAt: '2026-06-30', collections: ['best-sellers'],
+    description: 'A breathable indigo overshirt combining modern proportion with traditional woven detailing.', image: '/assets/stores/khmer-style-hero.png',
+  },
+  {
+    id: 'p106', name: 'Keo Romeat Mango Box', price: 12, categorySlug: 'fresh-fruit', categoryName: 'Mangoes', storeId: 's007', sellerName: 'Mekong Fresh Market',
+    rating: 4.9, reviewCount: 86, stock: 30, soldCount: 260, createdAt: '2026-08-05', collections: ['new-arrivals', 'best-sellers', 'agro-products'],
+    description: 'Fragrant Cambodian Keo Romeat mangoes selected ripe-firm and packed in a reusable box.', image: '/assets/stores/cambodia-fruits-hero.png',
+  },
+  {
+    id: 'p107', name: 'Sweet Pineapple Pair', price: 7.5, categorySlug: 'fresh-fruit', categoryName: 'Pineapple', storeId: 's007', sellerName: 'Mekong Fresh Market',
+    rating: 4.8, reviewCount: 61, stock: 42, soldCount: 188, createdAt: '2026-08-02', collections: ['new-arrivals', 'agro-products'],
+    description: 'Two farm-ripe pineapples with golden flesh, selected for sweetness and delivered with crown intact.', image: '/assets/stores/cambodia-fruits-hero.png',
+  },
+  {
+    id: 'p108', name: 'Dragon Fruit Basket', price: 9.25, categorySlug: 'fresh-fruit', categoryName: 'Dragon Fruit', storeId: 's007', sellerName: 'Mekong Fresh Market',
+    rating: 4.7, reviewCount: 44, stock: 28, soldCount: 151, createdAt: '2026-07-29', collections: ['agro-products'],
+    description: 'A basket of bright red dragon fruit with crisp white flesh from farms near the Mekong.', image: '/assets/stores/cambodia-fruits-hero.png',
+  },
+  {
+    id: 'p109', name: 'Rambutan Family Pack', price: 6.75, categorySlug: 'fresh-fruit', categoryName: 'Rambutan', storeId: 's007', sellerName: 'Mekong Fresh Market',
+    rating: 4.8, reviewCount: 73, stock: 35, soldCount: 224, createdAt: '2026-07-25', collections: ['best-sellers', 'agro-products'],
+    description: 'Juicy red rambutan harvested in the morning and packed as a generous family-size bundle.', image: '/assets/stores/cambodia-fruits-hero.png',
+  },
+  {
+    id: 'p110', name: 'Tropical Discovery Box', price: 18.5, categorySlug: 'fresh-fruit', categoryName: 'Fruit Boxes', storeId: 's007', sellerName: 'Mekong Fresh Market',
+    rating: 4.9, reviewCount: 102, stock: 20, soldCount: 318, createdAt: '2026-07-20', collections: ['best-sellers', 'agro-products'],
+    description: 'A changing seasonal selection of mango, mangosteen, rambutan, dragon fruit and citrus.', image: '/assets/stores/cambodia-fruits-hero.png',
+  },
   {
     id: 'p001', name: 'Handmade Khmer Silk Scarf', price: 12.5, compareAtPrice: 16,
     categorySlug: 'weaving', categoryName: 'Weaving',
@@ -193,16 +246,16 @@ const SEED: Seed[] = [
   },
 ];
 
-export const PRODUCTS: Product[] = SEED.map((seed) => ({
-  ...seed,
-  // The bundled fallback predates the two-level tree; these fixtures only
-  // render when the API is unreachable, so they sit at the top level.
-  subcategory: null,
-  subcategorySlug: null,
-  slug: seed.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, ''),
-  image: null,
-  status: stockStatus(seed.stock),
-}));
+export const PRODUCTS: Product[] = SEED.map((seed) => {
+  const classification = classifyCategory(seed.categorySlug);
+  return {
+    ...seed,
+    ...classification,
+    slug: seed.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, ''),
+    image: seed.image ?? null,
+    status: stockStatus(seed.stock),
+  };
+});

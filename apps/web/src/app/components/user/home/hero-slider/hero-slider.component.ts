@@ -71,10 +71,17 @@ const AUTOPLAY_MS = 6000;
               </div>
 
               <div class="visual img-placeholder dark">
+                <div class="woven-disc" aria-hidden="true"></div>
+                <div class="visual-frame">
+                  <span class="frame-kicker">KhmerCraft collection</span>
+                  <strong>{{ promo.visual }}</strong>
+                  <span class="frame-detail">Made in Cambodia · Crafted by hand</span>
+                </div>
+                <span class="craft-chip chip-one">Local makers</span>
+                <span class="craft-chip chip-two">Authentic craft</span>
                 @if (promo.flash) {
                   <span class="flash">{{ promo.flash }}</span>
                 }
-                <span class="visual-caption">{{ promo.visual }}</span>
               </div>
             </div>
           </article>
@@ -127,9 +134,9 @@ const AUTOPLAY_MS = 6000;
         grid-template-columns: 1fr 1fr;
         gap: clamp(28px, 4vw, 72px);
         align-items: center;
-        padding-top: clamp(22px, 2.5vw, 38px);
-        padding-bottom: clamp(34px, 3vw, 48px);
-        min-height: clamp(320px, 38vh, 410px);
+        padding-top: clamp(18px, 2vw, 30px);
+        padding-bottom: clamp(30px, 2.5vw, 40px);
+        min-height: clamp(290px, 33vh, 350px);
       }
       .copy {
         display: flex;
@@ -165,17 +172,93 @@ const AUTOPLAY_MS = 6000;
       }
       .visual {
         position: relative;
-        height: clamp(235px, 20vw, 310px);
+        height: clamp(210px, 17vw, 260px);
         border-radius: 26px 26px 76px 26px;
         display: grid;
         place-items: center;
+        overflow: hidden;
+        isolation: isolate;
+        border: 1px solid rgba(255,255,255,.1);
+        box-shadow: inset 0 1px rgba(255,255,255,.08), 0 24px 54px rgba(28,20,14,.16);
       }
-      .visual-caption {
-        font-size: 12px;
-        letter-spacing: 0.12em;
+      .visual::before,
+      .visual::after {
+        content: '';
+        position: absolute;
+        z-index: -1;
+        border-radius: 50%;
+      }
+      .visual::before {
+        width: 310px;
+        height: 310px;
+        top: -145px;
+        right: -70px;
+        border: 55px solid rgba(217,189,139,.13);
+      }
+      .visual::after {
+        width: 220px;
+        height: 220px;
+        bottom: -135px;
+        left: -65px;
+        background: rgba(142,48,33,.16);
+      }
+      .woven-disc {
+        position: absolute;
+        width: clamp(150px, 14vw, 230px);
+        aspect-ratio: 1;
+        right: 9%;
+        border: 1px solid rgba(226,190,128,.35);
+        border-radius: 50%;
+        background:
+          repeating-radial-gradient(circle, transparent 0 8px, rgba(226,190,128,.13) 9px 10px),
+          repeating-linear-gradient(45deg, transparent 0 12px, rgba(255,255,255,.055) 13px 14px);
+        box-shadow: 0 0 0 18px rgba(255,255,255,.025);
+      }
+      .visual-frame {
+        position: absolute;
+        left: clamp(22px, 4vw, 58px);
+        bottom: clamp(22px, 3vw, 42px);
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        max-width: 58%;
+        padding: 18px 20px;
+        border: 1px solid rgba(255,255,255,.15);
+        border-radius: 18px;
+        background: rgba(15,20,16,.48);
+        backdrop-filter: blur(12px);
+        color: #fff;
+      }
+      .frame-kicker,
+      .frame-detail {
+        font-family: var(--font-body);
+        font-size: 10px;
+        letter-spacing: .09em;
         text-transform: uppercase;
-        opacity: 0.55;
+        opacity: .68;
       }
+      .visual-frame strong {
+        font-family: var(--font-heading);
+        font-size: clamp(20px, 2vw, 30px);
+        font-weight: 600;
+        line-height: 1.08;
+      }
+      .craft-chip {
+        position: absolute;
+        z-index: 2;
+        padding: 7px 11px;
+        border: 1px solid rgba(255,255,255,.18);
+        border-radius: var(--radius-full);
+        background: rgba(255,255,255,.11);
+        color: rgba(255,255,255,.78);
+        font-size: 10px;
+        font-weight: 700;
+        backdrop-filter: blur(8px);
+      }
+      .chip-one { top: 24px; left: 28px; }
+      .chip-two { right: 28px; bottom: 24px; }
       .flash {
         position: absolute;
         top: 20px;
@@ -193,6 +276,7 @@ const AUTOPLAY_MS = 6000;
       .theme-brand {
         background: linear-gradient(120deg, #fffaf1, #f3eadc);
       }
+      .theme-brand .visual-frame { background: rgba(38,60,49,.8); }
       .theme-brand .eyebrow {
         background: var(--color-accent-soft);
         color: var(--color-accent);
@@ -206,7 +290,7 @@ const AUTOPLAY_MS = 6000;
       }
 
       .theme-sale {
-        background: #1d1512;
+        background: linear-gradient(125deg, #1d1512, #2b1814);
       }
       .theme-sale h1,
       .theme-sale .visual-caption {
@@ -232,7 +316,7 @@ const AUTOPLAY_MS = 6000;
       }
 
       .theme-delivery {
-        background: #14231c;
+        background: linear-gradient(125deg, #14231c, #1d3b2d);
       }
       .theme-delivery h1,
       .theme-delivery .visual-caption {
@@ -258,7 +342,7 @@ const AUTOPLAY_MS = 6000;
       }
 
       .theme-seller {
-        background: var(--color-accent);
+        background: linear-gradient(125deg, var(--color-accent), #632117);
       }
       .theme-seller h1,
       .theme-seller .visual-caption {
@@ -353,6 +437,8 @@ const AUTOPLAY_MS = 6000;
         h1 { font-size: clamp(38px, 12vw, 54px); }
         .actions { width: 100%; }
         .actions .btn { flex: 1 1 150px; }
+        .visual-frame { max-width: 72%; padding: 14px 16px; }
+        .craft-chip { display: none; }
       }
 
       @media (prefers-reduced-motion: reduce) {

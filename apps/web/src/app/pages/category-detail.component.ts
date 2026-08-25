@@ -57,50 +57,19 @@ const SORTS: { value: ProductSort; label: string }[] = [
     <app-navbar />
 
     @if (category(); as cat) {
-      <!-- Banner -->
-      <section class="banner">
-        <div class="container banner-inner">
-          <div class="banner-copy">
-            <nav class="crumbs">
-              <a routerLink="/">Home</a> <span>›</span>
-              <a routerLink="/categories">Categories</a> <span>›</span>
-              <span>{{ cat.name }}</span>
-            </nav>
-
+      <header class="category-intro">
+        <div class="container category-intro-inner">
+          <div>
+            <span class="category-label">Shop category</span>
             <h1>{{ cat.name }}</h1>
-            <p class="tagline">{{ cat.tagline }}</p>
-            <p class="count">
-              {{ totalInCategory() }}
-              {{ totalInCategory() === 1 ? 'product' : 'products' }}
-            </p>
-
-            <!-- Sub-category chips -->
-            <div class="subs">
-              <button
-                class="sub"
-                [class.active]="!activeSub()"
-                (click)="setSub(null)"
-              >
-                All {{ cat.name }}
-              </button>
-              @for (sub of cat.subcategories; track sub.slug) {
-                <button
-                  class="sub"
-                  [class.active]="activeSub() === sub.slug"
-                  (click)="setSub(sub.slug)"
-                >
-                  {{ sub.name }}
-                  <span class="sub-count">{{
-                    catalog.countBySubcategory(cat.slug, sub.slug)
-                  }}</span>
-                </button>
-              }
-            </div>
           </div>
-
-          <div class="banner-art img-placeholder dark">{{ cat.banner }}</div>
+          <p>{{ cat.tagline }}</p>
+          <span class="category-total">
+            {{ totalInCategory() }}
+            {{ totalInCategory() === 1 ? 'product' : 'products' }}
+          </span>
         </div>
-      </section>
+      </header>
 
       <!-- Toolbar -->
       <section class="container toolbar">
@@ -376,86 +345,46 @@ const SORTS: { value: ProductSort; label: string }[] = [
   `,
   styles: [
     `
-      /* ---- banner ---- */
-      .banner {
-        background: var(--color-bg-alt);
+      .category-intro {
         border-bottom: 1px solid var(--color-border);
+        background: var(--color-bg-alt);
       }
-      .banner-inner {
+      .category-intro-inner {
         display: grid;
-        grid-template-columns: 1fr 400px;
-        gap: 36px;
+        grid-template-columns: minmax(230px, .8fr) minmax(280px, 1.2fr) auto;
         align-items: center;
-        padding-top: 26px;
-        padding-bottom: 26px;
+        gap: 28px;
+        min-height: 76px;
+        padding-top: 11px;
+        padding-bottom: 11px;
       }
-      .crumbs {
-        display: flex;
-        gap: 8px;
-        font-size: 12.5px;
-        color: var(--color-muted);
-        margin-bottom: 14px;
-      }
-      .crumbs a:hover {
+      .category-label {
+        display: block;
+        margin-bottom: 3px;
         color: var(--color-accent);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .1em;
+        text-transform: uppercase;
       }
-      h1 {
-        font-size: 34px;
-        letter-spacing: -0.03em;
+      .category-intro h1 {
+        font-size: clamp(21px, 1.8vw, 27px);
+        letter-spacing: -.025em;
       }
-      .tagline {
-        margin-top: 8px;
+      .category-intro p {
+        max-width: 620px;
         color: var(--color-text-secondary);
-        font-size: 14.5px;
-        line-height: 1.6;
-        max-width: 46em;
-      }
-      .count {
-        margin-top: 6px;
-        color: var(--color-muted);
         font-size: 13px;
+        line-height: 1.55;
       }
-      .banner-art {
-        height: 190px;
-        border-radius: var(--radius-lg);
-        font-size: 12px;
-      }
-
-      /* ---- sub-category chips ---- */
-      .subs {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 9px;
-        margin-top: 20px;
-      }
-      .sub {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        padding: 9px 16px;
-        border: 1px solid var(--color-border-strong);
+      .category-total {
+        padding: 7px 12px;
+        border: 1px solid var(--color-border);
         border-radius: var(--radius-full);
-        background: #fff;
-        font-size: 13.5px;
-        font-weight: 550;
-        color: var(--color-text-secondary);
-      }
-      .sub:hover {
-        border-color: var(--color-accent);
-        color: var(--color-accent);
-      }
-      .sub.active {
-        background: var(--color-accent);
-        border-color: var(--color-accent);
-        color: #fff;
-      }
-      .sub-count {
+        background: var(--color-surface);
         color: var(--color-muted);
         font-size: 11.5px;
-        font-weight: 600;
-      }
-      .sub.active .sub-count {
-        color: rgba(255, 255, 255, 0.75);
+        white-space: nowrap;
       }
 
       /* ---- toolbar ---- */
@@ -463,10 +392,23 @@ const SORTS: { value: ProductSort; label: string }[] = [
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px;
-        padding-top: 18px;
-        padding-bottom: 14px;
+        gap: 12px;
+        padding-top: 10px;
+        padding-bottom: 10px;
         flex-wrap: wrap;
+      }
+      @media (max-width: 760px) {
+        .category-intro-inner {
+          grid-template-columns: 1fr auto;
+          gap: 8px 16px;
+          min-height: 0;
+          padding-top: 15px;
+          padding-bottom: 15px;
+        }
+        .category-intro p {
+          grid-column: 1 / -1;
+          grid-row: 2;
+        }
       }
       .left {
         display: flex;
@@ -520,7 +462,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
       .right {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 10px;
       }
       .sort {
         display: flex;
@@ -530,7 +472,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
         color: var(--color-muted);
       }
       .sort select {
-        padding: 7px 10px;
+        padding: 5px 8px;
         border: 1px solid var(--color-border-strong);
         border-radius: var(--radius-sm);
         background: #fff;
@@ -545,8 +487,8 @@ const SORTS: { value: ProductSort; label: string }[] = [
       .view button {
         display: grid;
         place-items: center;
-        width: 32px;
-        height: 32px;
+        width: 29px;
+        height: 29px;
         border: 0;
         background: #fff;
         color: var(--color-muted);
@@ -567,15 +509,15 @@ const SORTS: { value: ProductSort; label: string }[] = [
       }
       .body {
         display: grid;
-        grid-template-columns: 232px 1fr;
-        gap: 26px;
+        grid-template-columns: 206px 1fr;
+        gap: 16px;
         align-items: start;
-        padding-bottom: 60px;
+        padding-bottom: 42px;
       }
       .filters {
         border: 1px solid var(--color-border);
         border-radius: var(--radius-md);
-        padding: 18px;
+        padding: 13px;
         background: #fff;
         position: sticky;
         top: 100px;
@@ -584,10 +526,10 @@ const SORTS: { value: ProductSort; label: string }[] = [
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 18px;
-        padding-bottom: 15px;
+        margin-bottom: 11px;
+        padding-bottom: 10px;
         border-bottom: 1px solid var(--color-border);
-        font-size: 16px;
+        font-size: 14px;
       }
       .hide-filters {
         display: none;
@@ -609,28 +551,28 @@ const SORTS: { value: ProductSort; label: string }[] = [
         text-decoration: underline;
       }
       .filter-group + .filter-group {
-        margin-top: 20px;
-        padding-top: 16px;
+        margin-top: 12px;
+        padding-top: 10px;
         border-top: 1px solid var(--color-border);
       }
       .filter-group h4 {
-        font-size: 11px;
+        font-size: 10px;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: var(--color-muted);
-        margin-bottom: 9px;
+        margin-bottom: 5px;
       }
       .filter-row {
         width: 100%;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 9px;
-        padding: 7px 9px;
+        gap: 7px;
+        padding: 5px 7px;
         border: 0;
         border-radius: var(--radius-xs);
         background: none;
-        font-size: 13px;
+        font-size: 12px;
         color: var(--color-text-secondary);
         text-align: left;
       }
@@ -645,7 +587,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
       }
       .filter-row .n {
         color: var(--color-muted);
-        font-size: 12px;
+        font-size: 10.5px;
         flex-shrink: 0;
       }
       .filter-row .grow {
@@ -689,8 +631,8 @@ const SORTS: { value: ProductSort; label: string }[] = [
 
       .product-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-        gap: 18px;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        gap: 12px;
       }
       /* List view: the card keeps its markup, the row just goes full width. */
       .product-list {
@@ -829,15 +771,20 @@ const SORTS: { value: ProductSort; label: string }[] = [
           font-weight: 750;
         }
         .product-grid {
-          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
         }
       }
       @media (max-width: 560px) {
         .product-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         h1 {
           font-size: 27px;
+        }
+      }
+      @media (max-width: 370px) {
+        .product-grid {
+          grid-template-columns: 1fr;
         }
       }
     `,

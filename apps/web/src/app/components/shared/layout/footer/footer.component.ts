@@ -40,7 +40,7 @@ import { IconComponent } from '../../ui/icon/icon.component';
       </div>
       <div class="footer-col">
         <h4>Sell</h4>
-        <a routerLink="/become-a-seller">Become a Seller</a>
+        <a href="http://localhost:4300/become-a-seller" target="_blank" rel="noopener">Become a Seller</a>
         <a routerLink="/seller/login">Seller login</a>
       </div>
       <div class="footer-col">

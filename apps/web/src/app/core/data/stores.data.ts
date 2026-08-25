@@ -3,6 +3,26 @@ import { Store } from '../catalog/catalog.models';
 /** Replace with `GET /api/sellers` when the endpoint exists. */
 export const STORES: Store[] = [
   {
+    id: 's006',
+    name: 'Sovann Style Studio',
+    location: 'Phnom Penh',
+    rating: 4.9,
+    reviewCount: 184,
+    categoryName: 'Contemporary Khmer Fashion',
+    description:
+      'Modern Cambodian clothing shaped by silk, krama weaving and clean everyday tailoring. Designed in Phnom Penh and made in small workshop runs.',
+  },
+  {
+    id: 's007',
+    name: 'Mekong Fresh Market',
+    location: 'Kandal',
+    rating: 4.8,
+    reviewCount: 267,
+    categoryName: 'Fresh Cambodian Fruit',
+    description:
+      'Seasonal tropical fruit sourced each morning from family farms around the Mekong and packed for same-day freshness.',
+  },
+  {
     id: 's001',
     name: 'Srey Khmer Handmade Store',
     location: 'Siem Reap',

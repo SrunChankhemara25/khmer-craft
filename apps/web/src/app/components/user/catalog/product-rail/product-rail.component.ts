@@ -96,7 +96,7 @@ import { ProductCardComponent } from '../product-card/product-card.component';
 
       /* Fluid cards remain comfortably readable at every zoom level. */
       .rail app-product-card {
-        flex: 0 0 clamp(270px, 19vw, 370px);
+        flex: 0 0 clamp(230px, 15.5vw, 292px);
         scroll-snap-align: start;
       }
 

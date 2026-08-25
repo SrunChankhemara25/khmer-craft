@@ -1,6 +1,9 @@
 import {
+  AfterViewInit,
   Component,
+  ElementRef,
   HostListener,
+  ViewChild,
   computed,
   inject,
   signal,
@@ -9,41 +12,44 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CartService } from '../../../../core/cart/cart.service';
+import { FlyToCartService } from '../../../../core/cart/fly-to-cart.service';
 import { WishlistService } from '../../../../core/wishlist/wishlist.service';
 import { IconComponent } from '../../ui/icon/icon.component';
 import { CategoryMenuComponent } from '../category-menu/category-menu.component';
 import { SearchOverlayComponent } from '../../../user/search/search-overlay/search-overlay.component';
+import { CartDrawerComponent } from '../../cart/cart-drawer.component';
 
 @Component({
   selector: 'app-navbar',
-  imports: [RouterLink, IconComponent, SearchOverlayComponent, CategoryMenuComponent],
+  imports: [RouterLink, IconComponent, SearchOverlayComponent, CategoryMenuComponent, CartDrawerComponent],
   template: `
-    <header class="navbar" [class.scrolled]="scrolled()">
-      <!-- Announcement bar: slim, and every claim here links somewhere real. -->
-      <div class="announce">
-        <div class="container announce-inner">
+    <!-- Announcement bar: scrolls away with the page (not sticky) — only the
+         actual navigation below it stays pinned while browsing. -->
+    <div class="announce">
+      <div class="container announce-inner">
+        @if (sellerArea()) {
+          <span><ui-icon name="store" [size]="13" /> KhmerCraft for sellers</span>
+          <span class="dot">·</span>
+          <span><ui-icon name="banknote" [size]="13" /> No listing fees</span>
+        } @else {
+          <span><ui-icon name="truck" [size]="13" /> Free delivery over $50 in Phnom Penh</span>
+          <span class="dot">·</span>
+          <span><ui-icon name="shield" [size]="13" /> Secure checkout</span>
+        }
+        <div class="announce-links">
           @if (sellerArea()) {
-            <span><ui-icon name="store" [size]="13" /> KhmerCraft for sellers</span>
-            <span class="dot">·</span>
-            <span><ui-icon name="banknote" [size]="13" /> No listing fees</span>
+            <a routerLink="/seller/orders">Seller dashboard</a>
+            <a routerLink="/help">Seller support</a>
           } @else {
-            <span><ui-icon name="truck" [size]="13" /> Free delivery over $50 in Phnom Penh</span>
-            <span class="dot">·</span>
-            <span><ui-icon name="shield" [size]="13" /> Secure checkout</span>
+            <a routerLink="/orders">Track order</a>
+            <a routerLink="/help">Support</a>
+            <a href="http://localhost:4300/become-a-seller" target="_blank" rel="noopener">Seller portal</a>
           }
-          <div class="announce-links">
-            @if (sellerArea()) {
-              <a routerLink="/seller/orders">Seller dashboard</a>
-              <a routerLink="/help">Seller support</a>
-            } @else {
-              <a routerLink="/orders">Track order</a>
-              <a routerLink="/help">Support</a>
-              <a routerLink="/become-a-seller">Seller portal</a>
-            }
-          </div>
         </div>
       </div>
+    </div>
 
+    <header class="navbar" [class.scrolled]="scrolled()" [class.nav-hidden]="hidden()">
       <div class="navbar-inner container">
         <a routerLink="/" class="logo">
           <span class="logo-mark"
@@ -52,18 +58,52 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
           KhmerCraft
         </a>
 
-        <div class="nav-actions">
-          <button
-            type="button"
-            class="search-btn"
-            (click)="searchOpen.set(true)"
-            aria-label="Search"
-            [attr.aria-expanded]="searchOpen()"
-          >
-            <ui-icon name="search" [size]="16" />
-            <span class="search-label">Search</span>
-          </button>
+        <div class="search-group">
+          @if (!sellerArea()) {
+            <button
+              type="button"
+              class="search-bar"
+              (click)="searchOpen.set(true)"
+              aria-label="Search"
+              [attr.aria-expanded]="searchOpen()"
+            >
+              <ui-icon name="search" [size]="16" />
+              <span class="search-placeholder">Search products, brands...</span>
+            </button>
+          }
 
+          <div class="lang-wrap">
+            <button
+              type="button"
+              class="icon-btn lang-btn"
+              (click)="langMenuOpen.set(!langMenuOpen()); $event.stopPropagation()"
+              aria-label="Language"
+              [attr.aria-expanded]="langMenuOpen()"
+            >
+              <ui-icon name="globe" [size]="18" />
+            </button>
+            @if (langMenuOpen()) {
+              <div class="lang-menu" (click)="$event.stopPropagation()">
+                <button
+                  type="button"
+                  [class.active]="language() === 'en'"
+                  (click)="selectLanguage('en')"
+                >
+                  English
+                </button>
+                <button
+                  type="button"
+                  [class.active]="language() === 'km'"
+                  (click)="selectLanguage('km')"
+                >
+                  ភាសាខ្មែរ
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="nav-actions">
           @if (!sellerArea()) {
           <a class="icon-btn wishlist-btn" routerLink="/wishlist" aria-label="Wishlist">
             <ui-icon
@@ -77,12 +117,12 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
             }
           </a>
 
-          <a class="icon-btn cart-btn" routerLink="/cart" aria-label="Cart">
+          <button class="icon-btn cart-btn" #cartBtn type="button" aria-label="Open shopping bag" [attr.aria-expanded]="cartOpen()" aria-haspopup="dialog" (click)="openCart()">
             <ui-icon name="cart" [size]="19" />
             @if (cartCount()) {
               <span class="cart-badge">{{ cartCount() }}</span>
             }
-          </a>
+          </button>
           }
 
           @if (user(); as currentUser) {
@@ -103,15 +143,25 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
             </a>
           }
 
-          <button
-            type="button"
-            class="menu-btn"
-            aria-label="Menu"
-            [attr.aria-expanded]="menuOpen()"
-            (click)="menuOpen.set(!menuOpen())"
-          >
-            <ui-icon [name]="menuOpen() ? 'x' : 'menu'" [size]="20" />
-          </button>
+          <div class="menu-wrap">
+            <button
+              type="button"
+              class="menu-btn"
+              aria-label="Menu"
+              [attr.aria-expanded]="menuOpen()"
+              (click)="menuOpen.set(!menuOpen()); $event.stopPropagation()"
+            >
+              <ui-icon [name]="menuOpen() ? 'x' : 'menu'" [size]="20" />
+            </button>
+            @if (menuOpen()) {
+              <nav class="mobile-menu" (click)="$event.stopPropagation()">
+                <a routerLink="/" (click)="menuOpen.set(false)">Home</a>
+                <a routerLink="/products" (click)="menuOpen.set(false)">All products</a>
+                <a routerLink="/categories" (click)="menuOpen.set(false)">Categories</a>
+                <a routerLink="/stores" (click)="menuOpen.set(false)">All stores</a>
+              </nav>
+            }
+          </div>
         </div>
       </div>
 
@@ -143,19 +193,13 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
           </div>
         </nav>
       }
-
-      @if (menuOpen()) {
-        <nav class="mobile-menu">
-          <a routerLink="/" (click)="menuOpen.set(false)">Home</a>
-          <a routerLink="/products" (click)="menuOpen.set(false)">Products</a>
-          <a routerLink="/categories" (click)="menuOpen.set(false)">Categories</a>
-          <a routerLink="/stores" (click)="menuOpen.set(false)">Stores</a>
-        </nav>
-      }
     </header>
 
     @if (searchOpen()) {
       <app-search-overlay (close)="searchOpen.set(false)" />
+    }
+    @if (cartOpen()) {
+      <app-cart-drawer (closed)="closeCart()" />
     }
   `,
   styles: [
@@ -168,13 +212,26 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         position: sticky;
         top: 0;
         z-index: 50;
+        transform: translateY(0);
         transition:
           border-color var(--dur-base) var(--ease-standard),
-          box-shadow var(--dur-base) var(--ease-standard);
+          box-shadow var(--dur-base) var(--ease-standard),
+          transform 550ms ease;
       }
       .navbar.scrolled {
         border-bottom-color: var(--color-border);
         box-shadow: var(--shadow-xs);
+      }
+      /* Hidden while scrolling down, revealed the instant the user scrolls
+         back up — see NavbarComponent.onScroll(). Always visible near the
+         top regardless of direction. */
+      .navbar.nav-hidden {
+        transform: translateY(-100%);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .navbar {
+          transition: none;
+        }
       }
       .seller-row {
         border-top: 1px solid var(--color-border);
@@ -253,15 +310,21 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         text-decoration: underline;
       }
       .navbar-inner {
-        /* Logo left, actions right. The middle track carried the nav links
-           until the category row below took that job. */
+        /* Three tracks, outer two equal (1fr), so the middle one — the
+           search bar — sits dead centre no matter how wide the logo or the
+           actions on the right happen to be. */
         display: grid;
-        grid-template-columns: auto 1fr;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
         gap: clamp(18px, 2.4vw, 42px);
         padding-top: 8px;
         padding-bottom: 8px;
         height: var(--header-h);
+      }
+      .search-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
       .logo {
         font-family: var(--font-heading);
@@ -289,25 +352,65 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         justify-content: flex-end;
         gap: 6px;
       }
-      .search-btn {
+      .search-bar {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 9px;
+        width: clamp(320px, 34vw, 560px);
         height: 40px;
-        padding: 0 14px 0 12px;
-        margin-right: 4px;
-        border: 1px solid var(--color-border-strong);
+        padding: 0 16px;
+        border: 1px solid var(--color-border);
         border-radius: var(--radius-full);
-        background: rgba(255,255,255,.68);
+        background: var(--color-bg-alt);
         color: var(--color-muted);
-        font-size: 13px;
-        font-weight: 500;
+        font-size: 13.5px;
+        font-weight: 400;
       }
-      .search-btn:hover {
+      .search-placeholder {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .search-bar:hover {
         background: #fff;
         border-color: var(--color-muted);
         color: var(--color-text);
         box-shadow: var(--shadow-xs);
+      }
+      .lang-wrap {
+        position: relative;
+      }
+      .lang-btn {
+        border: 1px solid var(--color-border);
+      }
+      .lang-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        display: flex;
+        flex-direction: column;
+        min-width: 140px;
+        padding: 6px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        background: #fff;
+        box-shadow: var(--shadow-sm);
+        z-index: 60;
+      }
+      .lang-menu button {
+        padding: 8px 10px;
+        border-radius: var(--radius-xs, 6px);
+        font-size: 13px;
+        text-align: left;
+        color: var(--color-text-secondary);
+      }
+      .lang-menu button:hover {
+        background: var(--color-bg-alt);
+        color: var(--color-text);
+      }
+      .lang-menu button.active {
+        color: var(--color-accent);
+        font-weight: 600;
       }
       .icon-btn {
         background: none;
@@ -369,8 +472,11 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
       .signin-btn:hover {
         background: var(--color-accent-hover);
       }
+      .menu-wrap {
+        position: relative;
+      }
       .menu-btn {
-        display: none;
+        display: flex;
         background: none;
         border: none;
         color: var(--color-text);
@@ -383,30 +489,34 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
       .menu-btn:hover {
         background: var(--color-bg-alt);
       }
+      /* A compact dropdown anchored to the button, matching .lang-menu —
+         not a full-width bar that pushes the page down. */
       .mobile-menu {
-        display: none;
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        z-index: 60;
+        display: flex;
         flex-direction: column;
-        gap: 2px;
-        padding: 8px 20px 16px;
-        border-top: 1px solid var(--color-border);
+        min-width: 180px;
+        padding: 6px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
         background: #fff;
+        box-shadow: var(--shadow-sm);
       }
       .mobile-menu a {
-        padding: 11px 4px;
-        font-size: 14px;
+        padding: 9px 10px;
+        border-radius: var(--radius-xs, 6px);
+        font-size: 13.5px;
         font-weight: 550;
-        border-bottom: 1px solid var(--color-border);
+        color: var(--color-text-secondary);
       }
-      .mobile-menu a:last-child {
-        border-bottom: 0;
+      .mobile-menu a:hover {
+        background: var(--color-bg-alt);
+        color: var(--color-text);
       }
       @media (max-width: 1380px) {
-        .menu-btn {
-          display: flex;
-        }
-        .mobile-menu {
-          display: flex;
-        }
         .navbar-inner {
           gap: 14px;
         }
@@ -415,18 +525,21 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
         }
       }
       @media (max-width: 1180px) {
-        .search-label { display: none; }
-        .search-btn { width: 40px; padding: 0; justify-content: center; }
+        .search-placeholder { display: none; }
+        .search-bar { width: 40px; padding: 0; justify-content: center; }
       }
       @media (max-width: 700px) {
-        .search-label {
+        .search-placeholder {
           display: none;
         }
-        .search-btn {
+        .search-bar {
           width: 36px;
           padding: 0;
           justify-content: center;
           border-radius: var(--radius-sm);
+        }
+        .lang-menu {
+          right: -8px;
         }
       }
       /* Below ~420px the icon row plus a labelled Sign In button overflows the
@@ -446,7 +559,6 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
       @media (max-width: 560px) {
         .announce-inner { justify-content: center; font-size: 10.5px; }
         .announce .dot, .announce-inner > span:nth-of-type(2) { display: none; }
-        .navbar-inner { grid-template-columns: auto 1fr; }
         .logo { font-size: 18px; }
         .logo-mark { width: 32px; height: 32px; }
         .signin-label { display: none; }
@@ -457,19 +569,37 @@ import { SearchOverlayComponent } from '../../../user/search/search-overlay/sear
     `,
   ],
 })
-export class NavbarComponent {
+export class NavbarComponent implements AfterViewInit {
   private readonly router = inject(Router);
   private readonly cart = inject(CartService);
   private readonly wishlist = inject(WishlistService);
   private readonly auth = inject(AuthService);
+  private readonly flyToCart = inject(FlyToCartService);
+
+  @ViewChild('cartBtn') private readonly cartBtn?: ElementRef<HTMLElement>;
 
   protected readonly menuOpen = signal(false);
   protected readonly searchOpen = signal(false);
+  protected readonly cartOpen = signal(false);
   protected readonly scrolled = signal(false);
+  protected readonly hidden = signal(false);
+  protected readonly langMenuOpen = signal(false);
+  protected readonly language = signal<'en' | 'km'>('en');
 
   protected readonly cartCount = this.cart.count;
   protected readonly wishlistCount = this.wishlist.count;
   protected readonly user = this.auth.user;
+
+  protected openCart(): void {
+    this.menuOpen.set(false);
+    this.searchOpen.set(false);
+    this.cartOpen.set(true);
+  }
+
+  protected closeCart(): void {
+    this.cartOpen.set(false);
+    queueMicrotask(() => this.cartBtn?.nativeElement.focus());
+  }
 
   /** Active nav item, derived from the URL rather than passed in by each page. */
   private readonly url = signal(this.router.url);
@@ -497,6 +627,25 @@ export class NavbarComponent {
     // Resolve the session once so the header can show a profile link instead
     // of "Sign In" for a user who is already authenticated.
     this.auth.loadCurrentUser().subscribe();
+  }
+
+  ngAfterViewInit(): void {
+    if (this.cartBtn) {
+      this.flyToCart.registerCartTarget(
+        this.cartBtn.nativeElement,
+        () => this.revealForCartFlight(),
+      );
+    }
+  }
+
+  private cartFlightVisibleUntil = 0;
+
+  /** Keep the bag target visible for the entire fly-to-cart interaction. */
+  private revealForCartFlight(): boolean {
+    const wasHidden = this.hidden();
+    this.cartFlightVisibleUntil = Date.now() + 2600;
+    this.hidden.set(false);
+    return wasHidden;
   }
 
   /**
@@ -529,9 +678,38 @@ export class NavbarComponent {
     return name.split(' ')[0];
   }
 
+  /** No translation system yet — this just remembers the choice for the badge. */
+  protected selectLanguage(lang: 'en' | 'km'): void {
+    this.language.set(lang);
+    this.langMenuOpen.set(false);
+  }
 
+  private lastScrollY = 0;
+
+  /**
+   * Hides the header while scrolling down (reading/browsing), reveals it
+   * the instant the user scrolls up (they want navigation back) — the
+   * standard mobile-nav pattern. Near the very top it always stays visible;
+   * a small dead zone (4px) avoids flicker from sub-pixel scroll jitter.
+   */
   @HostListener('window:scroll')
   onScroll() {
-    this.scrolled.set((window.scrollY || 0) > 4);
+    const y = window.scrollY || 0;
+    this.scrolled.set(y > 4);
+
+    if (y < 80) {
+      this.hidden.set(false);
+    } else if (y > this.lastScrollY + 4 && Date.now() >= this.cartFlightVisibleUntil) {
+      this.hidden.set(true);
+    } else if (y < this.lastScrollY - 4) {
+      this.hidden.set(false);
+    }
+    this.lastScrollY = y;
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.langMenuOpen.set(false);
+    this.menuOpen.set(false);
   }
 }

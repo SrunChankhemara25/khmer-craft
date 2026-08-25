@@ -1,6 +1,5 @@
 import {
   Component,
-  ElementRef,
   inject,
   signal,
 } from '@angular/core';
@@ -57,30 +56,13 @@ const CLOSE_DELAY_MS = 220;
             </a>
           }
         </div>
-
-        <div class="cat-shortcuts">
-          <a class="cat-item all" routerLink="/products" (click)="close()">
-            All products
-          </a>
-          <a class="cat-item all" routerLink="/stores" (click)="close()">
-            All stores
-          </a>
-        </div>
       </nav>
 
       @if (activeCategory(); as cat) {
-        <div class="panel" [style.top.px]="panelTop()" role="menu">
+        <div class="panel" role="menu">
           <div class="panel-inner container">
             <div class="col by-type">
-              <h4>By type</h4>
-              <a
-                class="type-link"
-                [routerLink]="['/categories', cat.slug]"
-                (click)="close()"
-              >
-                All {{ cat.name }}
-                <em>{{ catalog.countByCategory(cat.slug) }}</em>
-              </a>
+              <h4>Subcategories</h4>
               @for (sub of cat.subcategories; track sub.slug) {
                 @let count = catalog.countBySubcategory(cat.slug, sub.slug);
                 <a
@@ -133,6 +115,7 @@ const CLOSE_DELAY_MS = 220;
         display: block;
       }
       .cat-bar {
+        position: relative;
         border-top: 1px solid var(--color-border);
       }
       /* Three tracks, matching the row above: the categories stay centred no
@@ -170,21 +153,11 @@ const CLOSE_DELAY_MS = 220;
         color: var(--color-text);
         border-bottom-color: var(--color-accent);
       }
-      .cat-shortcuts {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: clamp(12px, 1.2vw, 22px);
-        height: 100%;
-      }
-      .cat-item.all {
-        color: var(--color-accent);
-        font-weight: 600;
-      }
-
-      /* Full-bleed, anchored to the bottom of the whole header. */
+      /* Attach directly to the category row. Keeping this absolute inside the
+         row avoids a viewport measurement gap when the sticky header moves. */
       .panel {
-        position: fixed;
+        position: absolute;
+        top: 100%;
         left: 0;
         right: 0;
         z-index: 60;
@@ -203,28 +176,30 @@ const CLOSE_DELAY_MS = 220;
       }
       .panel-inner {
         display: grid;
-        grid-template-columns: 1.1fr 1fr 340px;
-        gap: 40px;
+        grid-template-columns: minmax(420px, 1.55fr) minmax(150px, .55fr) 340px;
+        align-items: start;
+        gap: 32px;
         /* padding-block, not the shorthand: this element is also .container,
            and a padding shorthand would reset the horizontal padding that
            keeps the columns aligned with the logo above. */
-        padding-block: 26px 30px;
+        padding-block: 13px 10px;
       }
       h4 {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.09em;
         text-transform: uppercase;
         color: var(--color-muted);
-        margin-bottom: 14px;
+        margin-bottom: 7px;
       }
       .type-link {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 8px 6px 8px 0;
+        min-height: 27px;
+        padding: 3px 6px 3px 0;
         color: var(--color-text);
-        font-size: 14.5px;
+        font-size: 13px;
       }
       .type-link:hover {
         color: var(--color-accent);
@@ -233,7 +208,7 @@ const CLOSE_DELAY_MS = 220;
         margin-left: auto;
         color: var(--color-muted-2);
         font-style: normal;
-        font-size: 11.5px;
+        font-size: 10.5px;
       }
       .type-link ui-icon {
         color: var(--color-muted-2);
@@ -246,35 +221,44 @@ const CLOSE_DELAY_MS = 220;
         display: flex;
         flex-direction: column;
       }
+      .by-type {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        column-gap: 18px;
+      }
+      .by-type h4 {
+        grid-column: 1 / -1;
+      }
 
       .promo {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        padding: 24px;
-        border-radius: var(--radius-lg);
+        min-height: 0;
+        padding: 18px 20px;
+        border-radius: var(--radius-md);
         background: var(--color-accent-soft);
       }
       .promo h3 {
         font-family: var(--font-heading);
-        font-size: 22px;
+        font-size: 19px;
       }
       .promo p {
-        margin: 8px 0 18px;
+        margin: 6px 0 12px;
         color: var(--color-text-secondary);
-        font-size: 13.5px;
-        line-height: 1.6;
+        font-size: 12.5px;
+        line-height: 1.45;
       }
       .promo-cta {
         display: inline-flex;
         align-items: center;
         gap: 7px;
         margin-top: auto;
-        padding: 10px 18px;
+        padding: 8px 14px;
         border-radius: var(--radius-full);
         background: var(--color-accent);
         color: #fff;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
       }
       .promo-cta:hover {
@@ -283,7 +267,7 @@ const CLOSE_DELAY_MS = 220;
 
       @media (max-width: 1100px) {
         .panel-inner {
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: minmax(0, 1.5fr) minmax(150px, .6fr);
           gap: 28px;
         }
         .promo {
@@ -310,9 +294,6 @@ const CLOSE_DELAY_MS = 220;
         .cat-items {
           justify-content: flex-start;
         }
-        .cat-shortcuts {
-          gap: clamp(12px, 1.2vw, 22px);
-        }
         .panel {
           display: none;
         }
@@ -326,20 +307,16 @@ const CLOSE_DELAY_MS = 220;
   ],
   host: {
     '(document:keydown.escape)': 'close()',
-    '(window:scroll)': 'onViewportChange()',
-    '(window:resize)': 'onViewportChange()',
   },
 })
 export class CategoryMenuComponent {
   protected readonly catalog = inject(CatalogService);
-  private readonly host = inject(ElementRef<HTMLElement>);
 
   protected readonly categories = this.catalog.categories;
   protected readonly shopBy = SHOP_BY;
 
   /** Slug of the category whose panel is open, or null. */
   protected readonly openSlug = signal<string | null>(null);
-  protected readonly panelTop = signal(0);
 
   private openTimer?: ReturnType<typeof setTimeout>;
   private closeTimer?: ReturnType<typeof setTimeout>;
@@ -357,17 +334,6 @@ export class CategoryMenuComponent {
     return { category: category.slug, ...params };
   }
 
-  /**
-   * The header is sticky and its announcement bar scrolls away, so its height
-   * is not a constant — measure rather than hardcode an offset.
-   */
-  private measureHeader(): void {
-    const header = (this.host.nativeElement as HTMLElement).closest('header');
-    this.panelTop.set(
-      header ? Math.round(header.getBoundingClientRect().bottom) : 0,
-    );
-  }
-
   protected scheduleOpen(slug: string): void {
     clearTimeout(this.closeTimer);
     clearTimeout(this.openTimer);
@@ -378,19 +344,12 @@ export class CategoryMenuComponent {
 
   protected open(slug: string): void {
     clearTimeout(this.closeTimer);
-    this.measureHeader();
     this.openSlug.set(slug);
   }
 
   protected scheduleClose(): void {
     clearTimeout(this.openTimer);
     this.closeTimer = setTimeout(() => this.openSlug.set(null), CLOSE_DELAY_MS);
-  }
-
-  protected onViewportChange(): void {
-    if (this.openSlug()) {
-      this.measureHeader();
-    }
   }
 
   protected close(): void {
