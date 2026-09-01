@@ -10,6 +10,7 @@ import {
   logout,
   refresh,
   register,
+  registerSeller,
   resendCode,
   resetPassword,
   verifyEmail,
@@ -19,6 +20,7 @@ import {
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  registerSellerSchema,
   resendCodeSchema,
   resetPasswordSchema,
   verifyEmailSchema,
@@ -36,6 +38,12 @@ router.post(
   registrationRateLimit,
   validate(registerSchema),
   register,
+);
+router.post(
+  '/register-seller',
+  registrationRateLimit,
+  validate(registerSellerSchema),
+  registerSeller,
 );
 router.post(
   '/verify-email',

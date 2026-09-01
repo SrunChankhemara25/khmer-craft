@@ -70,22 +70,6 @@ interface CategoryShelf {
     </div>
   </section>
 
-  @if (fashionEdit().length) {
-    <section class="container section fashion-edit">
-      <div class="fashion-intro">
-        <span>KhmerCraft style edit</span>
-        <p>Wearable pieces and accessories selected from live marketplace products.</p>
-      </div>
-      <app-product-rail
-        title="Fashion & Accessories"
-        [products]="fashionEdit()"
-        variant="editorial"
-        linkRoute="/products"
-        linkLabel="Explore products"
-      />
-    </section>
-  }
-
   <section class="container section">
     <app-product-rail
       title="Best sellers"
@@ -103,43 +87,6 @@ interface CategoryShelf {
       [linkParams]="{ sort: 'newest' }"
     />
   </section>
-
-  @if (categoryShelves().length) {
-    <section class="container section marketplace-explorer">
-      <div class="marketplace-heading">
-        <span class="marketplace-eyebrow">More ways to shop</span>
-        <h2>Explore the marketplace</h2>
-        <p>Browse real products by department, then narrow down to the type you need.</p>
-      </div>
-
-      @for (shelf of categoryShelves(); track shelf.slug) {
-        <div class="category-shelf">
-          <div class="shelf-context">
-            <p>{{ shelf.description }}</p>
-            @if (shelf.subcategories.length) {
-              <nav class="subcategory-links" [attr.aria-label]="shelf.name + ' subcategories'">
-                @for (subcategory of shelf.subcategories; track subcategory.slug) {
-                  <a
-                    routerLink="/products"
-                    [queryParams]="{ category: shelf.slug, subcategory: subcategory.slug }"
-                  >
-                    {{ subcategory.name }} <small>{{ subcategory.count }}</small>
-                  </a>
-                }
-              </nav>
-            }
-          </div>
-          <app-product-rail
-            [title]="shelf.name"
-            [products]="shelf.products"
-            linkRoute="/products"
-            [linkParams]="{ category: shelf.slug }"
-            linkLabel="Shop department"
-          />
-        </div>
-      }
-    </section>
-  }
 
   <section class="container section">
     <div class="section-head"><h2>Popular stores</h2><a routerLink="/stores" class="see-all">View all <ui-icon name="arrow-right" [size]="14"></ui-icon></a></div>
@@ -168,6 +115,57 @@ interface CategoryShelf {
       </div>
     </div>
   </section>
+
+  @if (fashionEdit().length) {
+    <section class="container section fashion-edit">
+      <div class="fashion-intro">
+        <span>KhmerCraft style edit</span>
+        <p>Wearable pieces and accessories selected from live marketplace products.</p>
+      </div>
+      <app-product-rail
+        title="Fashion & Accessories"
+        [products]="fashionEdit()"
+        variant="editorial"
+        linkRoute="/products"
+        linkLabel="Explore products"
+      />
+    </section>
+  }
+
+  @if (categoryShelves().length) {
+    <section class="container section marketplace-explorer">
+      <div class="marketplace-heading">
+        <span class="marketplace-eyebrow">More ways to shop</span>
+        <h2>Explore the marketplace</h2>
+      </div>
+
+      @for (shelf of categoryShelves(); track shelf.slug) {
+        <div class="category-shelf">
+          <div class="shelf-context">
+            @if (shelf.subcategories.length) {
+              <nav class="subcategory-links" [attr.aria-label]="shelf.name + ' subcategories'">
+                @for (subcategory of shelf.subcategories; track subcategory.slug) {
+                  <a
+                    routerLink="/products"
+                    [queryParams]="{ category: shelf.slug, subcategory: subcategory.slug }"
+                  >
+                    {{ subcategory.name }} <small>{{ subcategory.count }}</small>
+                  </a>
+                }
+              </nav>
+            }
+          </div>
+          <app-product-rail
+            [title]="shelf.name"
+            [products]="shelf.products"
+            linkRoute="/products"
+            [linkParams]="{ category: shelf.slug }"
+            linkLabel="Shop department"
+          />
+        </div>
+      }
+    </section>
+  }
 
   <section class="container section collections-section">
     <div class="section-head collections-head">
@@ -280,11 +278,9 @@ interface CategoryShelf {
     .marketplace-heading { border-bottom: 1px solid var(--color-border); padding-bottom: 17px; }
     .marketplace-eyebrow { color: var(--color-accent); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     .marketplace-heading h2 { font-size: clamp(26px, 2.4vw, 36px); margin-top: 5px; }
-    .marketplace-heading p { color: var(--color-text-muted); font-size: 13px; margin-top: 5px; }
     .category-shelf { padding: 23px 0 15px; }
     .category-shelf + .category-shelf { border-top: 1px solid var(--color-border); }
-    .shelf-context { align-items: center; display: flex; gap: 16px; justify-content: space-between; margin-bottom: 7px; }
-    .shelf-context > p { color: var(--color-text-muted); font-size: 12px; line-height: 1.45; margin: 0; max-width: 430px; }
+    .shelf-context { align-items: center; display: flex; gap: 16px; justify-content: flex-end; margin-bottom: 7px; }
     .subcategory-links { display: flex; gap: 7px; max-width: 62%; overflow-x: auto; padding: 2px 1px 5px; scrollbar-width: none; }
     .subcategory-links::-webkit-scrollbar { display: none; }
     .subcategory-links a { align-items: center; background: var(--color-bg-alt); border: 1px solid var(--color-border); border-radius: var(--radius-full); color: var(--color-text-secondary); display: inline-flex; flex: 0 0 auto; font-size: 10.5px; font-weight: 650; gap: 6px; padding: 6px 10px; transition: border-color .2s ease, color .2s ease, background .2s ease; }
@@ -425,8 +421,6 @@ interface CategoryShelf {
       .marketplace-explorer { padding-top: 20px; }
       .marketplace-heading { padding-bottom: 13px; }
       .category-shelf { padding: 18px 0 12px; }
-      .shelf-context { align-items: flex-start; flex-direction: column; gap: 9px; }
-      .shelf-context > p { font-size: 11.5px; }
       .subcategory-links { margin-inline: -16px; max-width: none; padding-inline: 16px; width: calc(100% + 32px); }
       .stores-marquee { padding-inline: 16px; }
       .store-chip { flex-basis: 250px; max-width: 250px; min-width: 250px; width: 250px; }
@@ -515,7 +509,7 @@ export class HomeComponent {
     const products = this.catalog.allProducts();
     if (!products.length) return [];
 
-    return this.categories
+    return this.categories()
       .map((category) => {
         const categoryProducts = products.filter(
           (product) => product.categorySlug === category.slug,

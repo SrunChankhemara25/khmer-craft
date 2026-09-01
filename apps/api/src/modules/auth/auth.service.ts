@@ -3,10 +3,12 @@ import mongoose from 'mongoose';
 import EmailVerificationCode from '../../../models/EmailVerificationCode';
 import PasswordResetToken from '../../../models/PasswordResetToken';
 import RefreshToken from '../../../models/RefreshToken';
+import Store from '../../../models/Store';
 import User, { IUser } from '../../../models/User';
 import { env } from '../../config/env';
 import { AppError } from '../../errors/app-error';
 import { signAccessToken } from '../../utils/jwt';
+import { slugify } from '../../utils/slugify';
 import {
   hashPassword,
   verifyPassword,
@@ -17,6 +19,7 @@ import {
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
+  RegisterSellerInput,
   ResendCodeInput,
   ResetPasswordInput,
   VerifyEmailInput,
@@ -60,6 +63,16 @@ const issueVerificationCode = async (user: IUser) => {
   }
 
   return env.nodeEnv === 'test' ? code : undefined;
+};
+
+/** Unique slug; suffix on collision so a second "Angkor Crafts" is not blocked. */
+const uniqueStoreSlug = async (name: string): Promise<string> => {
+  const base = slugify(name);
+  let slug = base;
+  for (let attempt = 2; await Store.exists({ slug }); attempt += 1) {
+    slug = `${base}-${attempt}`;
+  }
+  return slug;
 };
 
 export class AuthService {
@@ -155,6 +168,103 @@ export class AuthService {
       return { devCode };
     }
     return {};
+  }
+
+  /**
+   * Register-as-seller: create the account (or upgrade an existing buyer's)
+   * and its Store in one step, then sign in immediately.
+   *
+   * Ported from origin/develop's `registerSeller`, which predates this
+   * branch's email-verification requirement — it never set `email_verified`
+   * and had no `/verify-email` step to send anyone through, so a seller
+   * created there could sign in right away. There is still no email provider
+   * wired up here (see `issueVerificationCode`), so gating this path on a
+   * code that can never be delivered would just recreate the exact dead end
+   * `register` currently has. Marking the account pre-verified reproduces
+   * the working behavior this was pulled from, not a new exemption.
+   *
+   * No multi-document transaction: this deployment's test suite runs against
+   * a standalone (non-replica-set) MongoDB, which cannot start one, and the
+   * live database is a small Atlas cluster this project does not otherwise
+   * depend on transactions for (see `orders.service.ts`'s createOrder for
+   * the same reasoning). If store creation fails after a brand-new user was
+   * just created, that user is deleted rather than left as an orphaned,
+   * storeless "seller" account; an existing buyer being upgraded is rolled
+   * back to BUYER for the same reason.
+   */
+  async registerSeller(input: RegisterSellerInput) {
+    const email = normalizeEmail(input.email);
+    const existingUser = await User.findOne({ email }).select('+password_hash');
+
+    if (existingUser?.role === 'SELLER') {
+      throw new AppError(
+        409,
+        'An account with this email is already a seller. Please sign in.',
+        'EMAIL_IN_USE',
+      );
+    }
+
+    if (existingUser) {
+      const passwordMatches = await verifyPassword(
+        input.password,
+        existingUser.password_hash,
+      );
+      if (!passwordMatches) {
+        throw new AppError(
+          401,
+          'This email is already registered. Enter its correct password to upgrade it to a seller account.',
+          'INVALID_CREDENTIALS',
+        );
+      }
+    }
+
+    let user: IUser;
+    let createdNewUser = false;
+    const previousRole = existingUser?.role;
+    const previousEmailVerified = existingUser?.email_verified;
+
+    if (existingUser) {
+      user = existingUser;
+      user.role = 'SELLER';
+      user.email_verified = true;
+      await user.save();
+    } else {
+      user = await User.create({
+        name: input.name,
+        email,
+        password_hash: await hashPassword(input.password),
+        phone: input.phone,
+        role: 'SELLER',
+        status: 'ACTIVE',
+        email_verified: true,
+      });
+      createdNewUser = true;
+    }
+
+    try {
+      const store = await Store.create({
+        userId: user._id,
+        storeName: input.storeName,
+        slug: await uniqueStoreSlug(input.storeName),
+        category: input.category,
+        storeDescription: input.description ?? '',
+        phoneNumber: input.phone,
+        subscriptionPlan: 'STARTER',
+        onboardingStatus: 'COMPLETED',
+      });
+
+      return { user, store, ...(await this.createSession(user)) };
+    } catch (error) {
+      if (createdNewUser) {
+        await User.deleteOne({ _id: user._id });
+      } else if (previousRole) {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { role: previousRole, email_verified: previousEmailVerified } },
+        );
+      }
+      throw error;
+    }
   }
 
   /**

@@ -10,39 +10,31 @@
   background: var(--paper);
 }
 
+/* A flat colour rather than a shop photo, deliberately: a single craft-store
+   image overclaims "artisan boutique" when the marketplace actually spans
+   food, groceries, electronics, beauty — everything Khmer households shop
+   for. The diagonal weave (four thin line layers, no image asset) gives the
+   panel texture without picking one category to represent all of them. */
 .story-panel {
   position: relative;
   overflow: hidden;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: clamp(2rem, 5vw, 4.5rem);
-  color: #fffaf0;
+  padding: clamp(2rem, 4vw, 3.5rem);
+  color: #fff8ec;
   background:
-    linear-gradient(145deg, rgba(80, 28, 18, 0.9), rgba(128, 45, 26, 0.92)),
-    radial-gradient(circle at 22% 14%, #dca65f 0 1px, transparent 2px);
-}
-
-.story-panel::before,
-.story-panel::after {
-  content: '';
-  position: absolute;
-  border: 1px solid rgba(245, 218, 170, 0.16);
-  transform: rotate(45deg);
+    repeating-linear-gradient(45deg, rgba(255, 248, 236, 0.055) 0 1px, transparent 1px 46px),
+    repeating-linear-gradient(-45deg, rgba(255, 248, 236, 0.055) 0 1px, transparent 1px 46px),
+    linear-gradient(165deg, #8a3323 0%, #6f2519 46%, #4a170f 100%);
 }
 
 .story-panel::before {
-  width: 28rem;
-  height: 28rem;
-  right: -15rem;
-  top: 18%;
-}
-
-.story-panel::after {
-  width: 18rem;
-  height: 18rem;
-  left: -10rem;
-  bottom: 5%;
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 12% 8%, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, .3) 100%);
+  pointer-events: none;
 }
 
 .brand,
@@ -52,10 +44,12 @@
   gap: 0.75rem;
   color: inherit;
   font-family: var(--font-display);
-  font-size: 1.35rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 650;
   letter-spacing: -0.02em;
   text-decoration: none;
+  position: relative;
+  z-index: 2;
 }
 
 .brand-mark {
@@ -64,9 +58,10 @@
   display: grid;
   place-items: center;
   border-radius: 0.75rem;
-  color: var(--gold);
-  background: rgba(255, 250, 240, 0.1);
-  border: 1px solid rgba(255, 250, 240, 0.18);
+  color: #f0c778;
+  background: rgba(0, 0, 0, .18);
+  border: 1px solid rgba(255, 250, 240, 0.22);
+  backdrop-filter: blur(10px);
 }
 
 .brand-mark svg {
@@ -80,47 +75,51 @@
 .story-copy {
   position: relative;
   z-index: 1;
-  margin: auto 0;
-  max-width: 33rem;
+  margin: auto 0 2.25rem;
+  max-width: 25rem;
 }
 
 .story-kicker,
 .eyebrow {
   display: inline-block;
-  color: var(--gold);
-  font-size: 0.73rem;
+  color: #f0ca80;
+  font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .story-copy h2 {
-  max-width: 30rem;
-  margin: 1.25rem 0;
+  color: #fff8ec;
+  max-width: 22rem;
+  margin: .9rem 0 1rem;
   font-family: var(--font-display);
-  font-size: clamp(2.6rem, 5vw, 5rem);
-  font-weight: 600;
-  line-height: 0.98;
-  letter-spacing: -0.045em;
+  font-size: clamp(2.25rem, 3.4vw, 3.3rem);
+  font-weight: 580;
+  line-height: 1.01;
+  letter-spacing: -0.038em;
+  text-wrap: balance;
 }
 
 .story-copy p {
-  max-width: 29rem;
+  max-width: 24rem;
   margin: 0;
-  color: rgba(255, 250, 240, 0.75);
-  font-size: 1rem;
-  line-height: 1.7;
+  color: rgba(255, 248, 236, 0.78);
+  font-size: 0.88rem;
+  line-height: 1.65;
 }
 
 .weave {
   display: flex;
   gap: 0.45rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: .9rem;
+  position: relative;
+  z-index: 2;
 }
 
 .weave span {
-  width: 2.5rem;
-  height: 0.3rem;
+  width: 2rem;
+  height: 0.22rem;
   border-radius: 1rem;
   background: var(--gold);
 }
@@ -131,8 +130,11 @@
 
 .story-footer {
   margin: 0;
-  color: rgba(255, 250, 240, 0.62);
-  font-size: 0.8rem;
+  color: rgba(255, 248, 236, 0.64);
+  font-size: 0.7rem;
+  letter-spacing: .015em;
+  position: relative;
+  z-index: 2;
 }
 
 .form-panel {

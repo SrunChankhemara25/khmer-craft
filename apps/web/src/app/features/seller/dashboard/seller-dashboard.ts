@@ -122,9 +122,10 @@ interface DashboardMetric {
       margin-top: auto;
     }
 
-    .content {
-      min-width: 0;
-    }
+      .content {
+        min-width: 0;
+      }
+      .data-notice { align-items: center; background: #fff8e8; border-bottom: 1px solid #ead8af; color: #72511f; display: flex; font-size: 11.5px; gap: 8px; min-height: 38px; padding: 8px 24px; }
 
     .topbar {
       align-items: center;
@@ -688,8 +689,13 @@ interface DashboardMetric {
       gap: 14px;
     }
 
-    .review-actions a {
+    .review-actions a,
+    .review-actions button {
+      border: 0;
+      padding: 0;
+      background: transparent;
       color: #146242;
+      font: inherit;
       text-decoration: none;
     }
 
@@ -1886,20 +1892,25 @@ interface DashboardMetric {
             <input [placeholder]="view() === 'reviews' ? 'Search reviews...' : 'Search orders, ID, or customers...'" />
           </div>
           <div class="top-actions">
-            <a class="view-store" href="/">
-              View Store
+            <span class="view-store" title="The public store link will appear after this seller account is connected to its store">
+              Store preview pending
               <kc-icon name="external" [size]="15" />
-            </a>
+            </span>
             <kc-icon name="bell" [size]="18" style="color:#146242" />
             <div class="seller-mini">
               <div>
-                <strong>Artisan Craft Co.</strong>
-                <span>Premium Seller</span>
+                <strong>Seller workspace</strong>
+                <span>Plan status not connected</span>
               </div>
               <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=85" alt="Seller avatar" />
             </div>
           </div>
         </header>
+
+        <div class="data-notice" role="status">
+          <kc-icon name="info" [size]="15" />
+          Preview workspace: product, review, sales and profile examples remain sample data until their backend endpoints are connected.
+        </div>
 
         @if (view() === 'dashboard') {
           <main class="page">
@@ -1921,7 +1932,7 @@ interface DashboardMetric {
                 <article class="table-card">
                   <div class="payout-head">
                     <h2>Recent Orders</h2>
-                    <a class="view-all" href="#" style="color:#146242;font-size:12px;font-weight:900;text-decoration:none">View All</a>
+                    <button class="view-all" type="button" (click)="view.set('orders')" style="border:0;background:transparent;color:#146242;font-size:12px;font-weight:900">View All</button>
                   </div>
                   <table>
                     <thead>
@@ -2078,6 +2089,24 @@ interface DashboardMetric {
                     <label>Price (USD) <span class="required">*</span><input class="dash-input" placeholder="$ 0.00" /></label>
                     <label>Stock Quantity <span class="required">*</span><input class="dash-input" placeholder="1" /></label>
                     <label>Location<select class="dash-input"><option>Phnom Penh</option></select></label>
+                  </div>
+                </article>
+
+                <article class="form-card">
+                  <h2><kc-icon name="box" [size]="18" style="color:#146242" /> Product Options & Variants</h2>
+                  <p class="muted" style="font-size:12px;margin-bottom:16px">Prepare the exact option a buyer will purchase. Variant saving will activate when the product-variant API is connected.</p>
+                  <div class="two-cols">
+                    <label>Option type
+                      <select class="dash-input">
+                        <option>Size</option><option>Color</option><option>Weight</option><option>Pack size</option><option>Storage</option><option>Material</option>
+                      </select>
+                    </label>
+                    <label>Option values<input class="dash-input" placeholder="e.g. Small, Medium, Large" /></label>
+                  </div>
+                  <div class="two-cols" style="grid-template-columns:1fr 1fr 1fr">
+                    <label>Variant SKU<input class="dash-input" placeholder="STORE-PRODUCT-S" /></label>
+                    <label>Variant price<input class="dash-input" placeholder="$ 0.00" /></label>
+                    <label>Variant stock<input class="dash-input" placeholder="0" /></label>
                   </div>
                 </article>
 
@@ -2269,7 +2298,7 @@ interface DashboardMetric {
                     <div class="response"><strong>Your response:</strong>{{ review.response }}</div>
                   }
                   <div class="review-actions">
-                    <a href="#">Reply to buyer</a>
+                    <button type="button" (click)="startReviewReply(review.name)">Reply to buyer</button>
                     <span>Flag as inappropriate</span>
                   </div>
                 </article>
@@ -2290,7 +2319,7 @@ interface DashboardMetric {
                     <h2>Kosal's Khmer Creations</h2>
                     <div class="store-rating"><strong>★ 4.8</strong><span>Siem Reap, Cambodia</span></div>
                     <p>Bringing the soul of Angkor to your doorstep. We specialize in authentic, hand-woven silks and traditional...</p>
-                    <a class="visit" href="/"><kc-icon name="eye" [size]="15" /> View Store</a>
+                    <span class="visit" title="Available after this account is connected to a public store"><kc-icon name="eye" [size]="15" /> Public link pending</span>
                   </div>
                 </article>
 
@@ -2551,6 +2580,10 @@ export class SellerDashboardPage {
 
   protected setProductCategory(event: Event): void {
     this.selectedCategory.set((event.target as HTMLSelectElement).value);
+  }
+
+  protected startReviewReply(buyerName: string): void {
+    window.alert(`Reply editor for ${buyerName} is ready for backend integration.`);
   }
 
   protected updatePassword(): void {

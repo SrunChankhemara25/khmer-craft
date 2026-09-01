@@ -66,10 +66,14 @@ import { ProductCardComponent } from '../product-card/product-card.component';
         overflow-x: auto;
         overflow-y: hidden;
         scroll-snap-type: x proximity;
-        /* Room for the card's hover lift and focus ring, which the scroll
-           container would otherwise clip. */
-        padding: 4px 5px 8px;
-        margin: -4px -4px 0;
+        /* Room for the card's hover lift, focus ring and shadow, which the
+           scroll container would otherwise clip — a card's top edge was
+           getting cut off mid-hover. The negative margin cancels the added
+           padding exactly, so this only adds clip-safe headroom; nothing
+           else (the title above, the first row of cards, spacing below)
+           moves. */
+        padding: 18px 5px 8px;
+        margin: -18px -4px 0;
         scrollbar-width: none;
       }
       .rail::-webkit-scrollbar {

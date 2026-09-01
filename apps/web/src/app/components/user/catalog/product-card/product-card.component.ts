@@ -176,11 +176,13 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         color: #fff;
       }
       .product-card.editorial .stock-badge,
-      .product-card.editorial .discount-badge,
       .product-card.editorial .wish-btn {
         z-index: 2;
       }
       .product-card.editorial .badge-in-stock { display: none; }
+      /* A "-22%" sticker is a discount-shelf cue, not a lookbook one — the
+         same reasoning that hides the price hides this too. */
+      .product-card.editorial .discount-badge { display: none; }
       .product-card.editorial .product-body {
         background: transparent;
         color: #fff;
@@ -206,13 +208,13 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         color: rgba(255,255,255,.76);
         font-size: 11px;
       }
-      .product-card.editorial .price-row { padding-top: 3px; }
-      .product-card.editorial .price {
-        color: rgba(255,255,255,.82);
-        font-size: 12px;
-        font-weight: 550;
-      }
-      .product-card.editorial .was { color: rgba(255,255,255,.52); font-size: 10px; }
+      /* A lookbook tile, not a price tag: the point of this variant is the
+         photo and the name, the way a clothing brand's homepage teases a
+         piece without selling it outright. Price stays visible everywhere
+         else — the grid, the list view, the product page — this is the one
+         spot that's deliberately quiet about it. */
+      .product-card.editorial .price-row { justify-content: flex-end; padding-top: 3px; }
+      .product-card.editorial .prices { display: none; }
       .product-card.editorial .cart-add {
         background: rgba(255,255,255,.16);
         border: 1px solid rgba(255,255,255,.48);

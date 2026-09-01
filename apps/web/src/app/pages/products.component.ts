@@ -28,33 +28,29 @@ const SORTS: { value: ProductSort; label: string }[] = [
   template: `
     <app-navbar />
 
-    <section class="container head">
-      <nav class="crumbs">
-        <a routerLink="/">Home</a> <span>›</span> <span>Products</span>
-      </nav>
+    <header class="products-intro">
+      <div class="container products-intro-inner">
+        <nav class="crumbs">
+          <a routerLink="/">Home</a> <span>›</span> <span>Products</span>
+        </nav>
 
-      <div class="head-row">
-        <div>
-          <h1>{{ heading() }}</h1>
-          <p class="count">
+        <div class="intro-row">
+          <div>
+            <span class="products-label">Shop products</span>
+            <h1>{{ heading() }}</h1>
+          </div>
+          <span class="products-total">
             {{ results().length }}
             {{ results().length === 1 ? 'product' : 'products' }}
             @if (search()) {
               <span>for “{{ search() }}”</span>
             }
-          </p>
+          </span>
         </div>
-
-        <label class="sort">
-          <span>Sort</span>
-          <select [value]="sort()" (change)="setSort($event)">
-            @for (option of sorts; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
-            }
-          </select>
-        </label>
       </div>
+    </header>
 
+    <section class="container filters-bar">
       <!-- Category chips: the spec's primary filter affordance. -->
       <div class="chips">
         <button
@@ -75,38 +71,48 @@ const SORTS: { value: ProductSort; label: string }[] = [
         }
       </div>
 
-      <div class="quick-filters" aria-label="Product filters">
-        <label>
-          <span>Price</span>
-          <select [value]="priceBand()" (change)="setPriceBand($event)">
-            <option value="">Any price</option>
-            <option value="under-5">Under $5</option>
-            <option value="5-10">$5–$10</option>
-            <option value="10-20">$10–$20</option>
-            <option value="over-20">Over $20</option>
-          </select>
-        </label>
-        <label>
-          <span>Rating</span>
-          <select [value]="minRating() ?? ''" (change)="setRating($event)">
-            <option value="">Any rating</option>
-            <option value="4.5">4.5 & up</option>
-            <option value="4">4.0 & up</option>
-          </select>
-        </label>
-        <button type="button" class="toggle-filter" [class.active]="inStockOnly()" (click)="toggleInStock()">
-          <ui-icon name="check" [size]="12" /> In stock
-        </button>
-        <button type="button" class="toggle-filter" [class.active]="onSaleOnly()" (click)="toggleSale()">
-          <ui-icon name="percent" [size]="12" /> On sale
-        </button>
-      </div>
+      <div class="filters-row">
+        <div class="quick-filters" aria-label="Product filters">
+          <label>
+            <span>Price</span>
+            <select [value]="priceBand()" (change)="setPriceBand($event)">
+              <option value="">Any price</option>
+              <option value="under-5">Under $5</option>
+              <option value="5-10">$5–$10</option>
+              <option value="10-20">$10–$20</option>
+              <option value="over-20">Over $20</option>
+            </select>
+          </label>
+          <label>
+            <span>Rating</span>
+            <select [value]="minRating() ?? ''" (change)="setRating($event)">
+              <option value="">Any rating</option>
+              <option value="4.5">4.5 & up</option>
+              <option value="4">4.0 & up</option>
+            </select>
+          </label>
+          <button type="button" class="toggle-filter" [class.active]="inStockOnly()" (click)="toggleInStock()">
+            <ui-icon name="check" [size]="12" /> In stock
+          </button>
+          <button type="button" class="toggle-filter" [class.active]="onSaleOnly()" (click)="toggleSale()">
+            <ui-icon name="percent" [size]="12" /> On sale
+          </button>
+          @if (hasFilters()) {
+            <button class="clear" (click)="clearAll()">
+              <ui-icon name="x" [size]="13" /> Clear filters
+            </button>
+          }
+        </div>
 
-      @if (hasFilters()) {
-        <button class="clear" (click)="clearAll()">
-          <ui-icon name="x" [size]="13" /> Clear filters
-        </button>
-      }
+        <label class="sort">
+          <span>Sort</span>
+          <select [value]="sort()" (change)="setSort($event)">
+            @for (option of sorts; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+      </div>
     </section>
 
     <section class="container grid-section">
@@ -152,33 +158,64 @@ const SORTS: { value: ProductSort; label: string }[] = [
   `,
   styles: [
     `
-      .head {
-        padding: 26px 32px 0;
+      /* Same tinted banner treatment as the category page — a plain white
+         heading here was the odd one out next to every other listing page. */
+      .products-intro {
+        background: var(--color-bg-alt);
+        border-bottom: 1px solid var(--color-border);
+      }
+      .products-intro-inner {
+        padding: 18px 32px 20px;
       }
       .crumbs {
         display: flex;
         gap: 8px;
         font-size: 12.5px;
         color: var(--color-muted);
-        margin-bottom: 16px;
+        margin-bottom: 14px;
       }
       .crumbs a:hover {
         color: var(--color-accent);
       }
-      .head-row {
+      .intro-row {
         display: flex;
-        align-items: flex-end;
+        align-items: center;
         justify-content: space-between;
         gap: 20px;
         flex-wrap: wrap;
       }
-      h1 {
-        font-size: 26px;
+      .products-label {
+        display: block;
+        margin-bottom: 3px;
+        color: var(--color-accent);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .1em;
+        text-transform: uppercase;
       }
-      .count {
-        margin-top: 5px;
+      h1 {
+        font-size: clamp(22px, 2vw, 28px);
+        letter-spacing: -.02em;
+      }
+      .products-total {
+        padding: 7px 12px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-full);
+        background: var(--color-surface);
         color: var(--color-muted);
-        font-size: 13.5px;
+        font-size: 11.5px;
+        white-space: nowrap;
+      }
+      .filters-bar {
+        padding: 18px 32px 0;
+      }
+      .filters-row {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-top: 12px;
       }
       .sort {
         display: flex;
@@ -198,7 +235,6 @@ const SORTS: { value: ProductSort; label: string }[] = [
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-top: 20px;
       }
       .chip {
         padding: 7px 14px;
@@ -222,9 +258,9 @@ const SORTS: { value: ProductSort; label: string }[] = [
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        margin-top: 14px;
-        padding: 0;
+        padding: 0 0 0 4px;
         border: 0;
+        border-left: 1px solid var(--color-border);
         background: none;
         color: var(--color-accent);
         font-size: 12.5px;
@@ -233,7 +269,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
       .clear:hover {
         text-decoration: underline;
       }
-      .quick-filters { align-items: flex-end; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+      .quick-filters { align-items: flex-end; display: flex; flex-wrap: wrap; gap: 8px; }
       .quick-filters label { display: grid; gap: 4px; }
       .quick-filters label > span { color: var(--color-muted); font-size: 10px; font-weight: 650; }
       .quick-filters select, .toggle-filter { min-height: 34px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-full); background: #fff; color: var(--color-text-secondary); font: inherit; font-size: 11.5px; padding: 0 12px; }
@@ -297,7 +333,8 @@ const SORTS: { value: ProductSort; label: string }[] = [
         }
       }
       @media (max-width: 520px) {
-        .head { padding-inline: 16px; }
+        .products-intro-inner { padding-inline: 16px; }
+        .filters-bar { padding-inline: 16px; }
         .chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
         .chips::-webkit-scrollbar { display: none; }
         .chip { flex: 0 0 auto; }

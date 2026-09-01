@@ -28,6 +28,20 @@ export const register = async (request: Request, response: Response) => {
   });
 };
 
+export const registerSeller = async (request: Request, response: Response) => {
+  const result = await authService.registerSeller(request.body);
+  setSessionCookies(response, result.accessToken, result.refreshToken);
+  response.status(201).json({
+    message: 'Store created successfully',
+    user: result.user,
+    store: {
+      id: String(result.store._id),
+      slug: result.store.slug,
+      storeName: result.store.storeName,
+    },
+  });
+};
+
 export const verifyEmail = async (request: Request, response: Response) => {
   const result = await authService.verifyEmail(request.body);
   setSessionCookies(response, result.accessToken, result.refreshToken);

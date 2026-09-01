@@ -777,7 +777,7 @@ type PaymentKey = 'aba' | 'stripe' | 'free';
             </p>
             <div class="success-actions">
               <a class="btn btn-primary" routerLink="/seller/dashboard">Go to Dashboard</a>
-              <a class="btn btn-secondary" routerLink="/">View Store</a>
+              <a class="btn btn-secondary" [routerLink]="['/stores', 's001']">View Store</a>
             </div>
           </section>
         </main>
@@ -787,10 +787,10 @@ type PaymentKey = 'aba' | 'stripe' | 'free';
         <div class="footer-inner">
           <strong>KhmerCraft</strong>
           <nav class="footer-links">
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-            <a href="#">Shipping</a>
-            <a href="#">Contact</a>
+            <a routerLink="/privacy">Privacy</a>
+            <a routerLink="/terms">Terms</a>
+            <a routerLink="/shipping">Shipping</a>
+            <a routerLink="/contact">Contact</a>
           </nav>
           <span>&copy; 2024 KhmerCraft. Artisan excellence.</span>
         </div>

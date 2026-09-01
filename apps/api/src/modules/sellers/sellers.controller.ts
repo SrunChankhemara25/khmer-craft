@@ -1,113 +1,139 @@
 import { Request, Response } from 'express';
 import { AppError } from '../../errors/app-error';
-import Seller from '../../../models/Seller';
+import { param } from '../../utils/request-params';
+import { AUTH_COOKIE_NAME, authCookieOptions, signAccessToken } from '../../utils/jwt';
+import {
+  applyToBecomeSeller,
+  createStore,
+  flagReview,
+  getPublicStore,
+  getStoreOrders,
+  getStoreProfile,
+  getStoreReviews,
+  listMyStores,
+  listPublicStores,
+  listSellerApplications,
+  replyToReview,
+  reviewSellerApplication,
+  updateStoreProfile,
+} from './sellers.service';
+import {
+  CreateSellerApplicationInput,
+  CreateStoreInput,
+  ReplyToReviewInput,
+  ReviewSellerApplicationInput,
+  UpdateStoreProfileInput,
+  listStoreOrdersQuerySchema,
+  listStoreReviewsQuerySchema,
+  listStoresQuerySchema,
+} from './sellers.validation';
 
-export const getMyStores = async (req: Request, res: Response) => {
-  console.log('HIT getMyStores endpoint. Auth userId:', req.auth?.userId);
-  const userId = req.auth?.userId;
-  let stores = await Seller.find({ userId });
-  console.log('Found stores for user:', stores.length);
-  
-  if (stores.length === 0 && userId) {
-    console.log('Creating new store for user', userId);
-    try {
-      const newStore = await Seller.create({
-        userId,
-        storeName: 'My Awesome Store',
-        subscriptionPlan: 'STARTER',
-        onboardingStatus: 'PENDING'
-      });
-      stores = [newStore];
-      console.log('Created new store:', newStore._id);
-    } catch (err) {
-      console.error('Failed to create store:', err);
-    }
+const parseQuery = <T>(schema: { safeParse: (v: unknown) => { success: boolean; data?: T; error?: any } }, query: unknown): T => {
+  const parsed = schema.safeParse(query);
+  if (!parsed.success) {
+    throw new AppError(422, 'Invalid query parameters', 'VALIDATION_ERROR', parsed.error!.flatten().fieldErrors);
   }
-  
-  res.json(stores);
+  return parsed.data!;
 };
 
-export const getStoreProfile = async (req: Request, res: Response) => {
-  const { storeId } = req.params;
-  const store = await Seller.findById(storeId);
-  if (!store || store.userId.toString() !== req.auth?.userId) {
-    throw new AppError(404, 'Store not found', 'STORE_NOT_FOUND');
-  }
-  
-  // Return the mapped fields exactly as the frontend expects
-  res.json({
-    id: store._id,
-    storeName: store.storeName,
-    storeDescription: store.storeDescription,
-    location: store.location,
-    phoneNumber: store.phoneNumber,
-    logoUrl: store.storeAvatarUrl,
-    bannerUrl: store.storeCoverImages?.[0] || undefined
-  });
+// ------------------------------------------------------------------ public
+
+export const listStores = async (request: Request, response: Response) => {
+  response.json(await listPublicStores(parseQuery(listStoresQuerySchema, request.query)));
 };
 
-export const updateStoreProfile = async (req: Request, res: Response) => {
-  const { storeId } = req.params;
-  const store = await Seller.findById(storeId);
-  if (!store || store.userId.toString() !== req.auth?.userId) {
-    throw new AppError(404, 'Store not found', 'STORE_NOT_FOUND');
-  }
-
-  const { storeName, storeDescription, location, phoneNumber, logoUrl, bannerUrl } = req.body;
-  
-  if (storeName !== undefined) store.storeName = storeName;
-  if (storeDescription !== undefined) store.storeDescription = storeDescription;
-  if (location !== undefined) store.location = location;
-  if (phoneNumber !== undefined) store.phoneNumber = phoneNumber;
-  
-  if (logoUrl !== undefined) store.storeAvatarUrl = logoUrl;
-  
-  if (bannerUrl !== undefined) {
-    store.storeCoverImages = [bannerUrl];
-  }
-
-  await store.save();
-  res.json({
-    message: 'Profile updated successfully',
-    storeName: store.storeName,
-    storeDescription: store.storeDescription,
-    location: store.location,
-    phoneNumber: store.phoneNumber,
-    logoUrl: store.storeAvatarUrl,
-    bannerUrl: store.storeCoverImages?.[0]
-  });
+export const getStore = async (request: Request, response: Response) => {
+  response.json(await getPublicStore(param(request, 'storeId')));
 };
 
-export const getStoreOrders = async (req: Request, res: Response) => {
-  res.json({
-    metrics: { pendingOrders: 0, inTransit: 0, completed30d: 0, revenueMtd: 0 },
-    orders: [],
-    pagination: { total: 0, page: 1, limit: 10, totalPages: 0 }
-  });
+// ------------------------------------------------------------------- owner
+
+export const getMyStores = async (request: Request, response: Response) => {
+  response.json(await listMyStores(request.auth!.userId));
 };
 
-export const getStoreReviews = async (req: Request, res: Response) => {
-  res.json({ stats: {}, reviews: [] });
-};
+/**
+ * Creating a store is how a signed-in user becomes a seller. When that
+ * promotes their role, the access token already on the request was signed
+ * with the old one — reissue it here, exactly like login does, or the next
+ * request fails `authenticate`'s role check.
+ */
+export const create = async (request: Request, response: Response) => {
+  const { store, roleChanged } = await createStore(
+    request.auth!.userId,
+    request.body as CreateStoreInput,
+  );
 
-export const getPublicStores = async (req: Request, res: Response) => {
-  try {
-    const sellers = await Seller.find({}).populate('userId', 'name email status');
-    res.json(sellers);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch sellers' });
+  if (roleChanged) {
+    const user = request.auth!.user;
+    const token = signAccessToken(String(user._id), 'SELLER', user.token_version);
+    response.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
   }
+
+  response.status(201).json(store);
 };
 
-export const getPublicStoreProfile = async (req: Request, res: Response) => {
-  try {
-    const store = await Seller.findById(req.params.storeId);
-    if (!store) {
-      res.status(404).json({ error: 'Store not found' });
-      return;
-    }
-    res.json(store);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch store' });
-  }
+export const getProfile = async (request: Request, response: Response) => {
+  response.json(await getStoreProfile(param(request, 'storeId'), request.auth!.userId));
+};
+
+export const updateProfile = async (request: Request, response: Response) => {
+  response.json(
+    await updateStoreProfile(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      request.body as UpdateStoreProfileInput,
+    ),
+  );
+};
+
+export const getOrders = async (request: Request, response: Response) => {
+  const query = parseQuery(listStoreOrdersQuerySchema, request.query);
+  response.json(await getStoreOrders(param(request, 'storeId'), request.auth!.userId, query));
+};
+
+export const getReviews = async (request: Request, response: Response) => {
+  const query = parseQuery(listStoreReviewsQuerySchema, request.query);
+  response.json(await getStoreReviews(param(request, 'storeId'), request.auth!.userId, query));
+};
+
+export const replyReview = async (request: Request, response: Response) => {
+  response.json(
+    await replyToReview(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      param(request, 'reviewId'),
+      request.body as ReplyToReviewInput,
+    ),
+  );
+};
+
+export const flagReviewHandler = async (request: Request, response: Response) => {
+  response.json(
+    await flagReview(param(request, 'storeId'), request.auth!.userId, param(request, 'reviewId')),
+  );
+};
+
+// ------------------------------------------------------------ applications
+
+export const apply = async (request: Request, response: Response) => {
+  response
+    .status(201)
+    .json(await applyToBecomeSeller(request.auth!.userId, request.body as CreateSellerApplicationInput));
+};
+
+/** ADMIN-only — see the `authorize('ADMIN')` gate in sellers.routes.ts. */
+export const listApplications = async (_request: Request, response: Response) => {
+  response.json(await listSellerApplications());
+};
+
+/** ADMIN-only — approve, reject, start reviewing, or suspend an application. */
+export const reviewApplication = async (request: Request, response: Response) => {
+  response.json(
+    await reviewSellerApplication(
+      request.auth!.userId,
+      param(request, 'applicationId'),
+      request.body as ReviewSellerApplicationInput,
+    ),
+  );
 };
