@@ -148,7 +148,7 @@ export const routes: Routes = [
     path: 'seller/dashboard',
     canActivate: [sellerGuard],
     loadComponent: () =>
-      import('./features/seller/dashboard/seller-dashboard').then(
+      import('./pages/seller-dashboard/seller-dashboard').then(
         (m) => m.SellerDashboardPage,
       ),
     title: 'Seller dashboard | KhmerCraft',

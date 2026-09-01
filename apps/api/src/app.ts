@@ -21,7 +21,7 @@ import cartRoutes from './modules/cart/cart.routes';
 import catalogRoutes from './modules/catalog/catalog.routes';
 import taxonomyRoutes from './modules/catalog/taxonomy.routes';
 import orderRoutes from './modules/orders/orders.routes';
-import sellerRoutes from './modules/sellers/sellers.routes';
+import sellerRoutes from './routes/sellers';
 
 export const createApp = () => {
   const app = express();
@@ -102,7 +102,6 @@ export const createApp = () => {
   app.use('/api', taxonomyRoutes);
   app.use('/api/cart', cartRoutes);
   app.use('/api/orders', orderRoutes);
-  app.use('/api/sellers', sellerRoutes);
 
   // Interactive API docs. Disabled in production so the schema is not public.
   if (isDocsEnabled) {
