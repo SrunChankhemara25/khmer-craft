@@ -867,7 +867,7 @@ export class CategoryDetailComponent {
         .map((product) => product.storeId)
         .filter(Boolean),
     );
-    return this.catalog.stores.filter((store) => ids.has(store.id));
+    return this.catalog.stores().filter((store) => ids.has(store.id));
   });
   protected readonly sort = computed(
     () => (this.query().get('sort') as ProductSort | null) ?? 'featured',

@@ -66,7 +66,7 @@ import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-sl
   <section class="container section">
     <div class="section-head"><h2>Popular stores</h2><a routerLink="/stores" class="see-all">View all <ui-icon name="arrow-right" [size]="14"></ui-icon></a></div>
     <div class="stores-row">
-      @for (s of stores; track s.id) {
+      @for (s of stores(); track s.id) {
         <a class="store-chip" [routerLink]="['/stores', s.id]">
           <div class="store-logo img-placeholder">{{ initials(s.name) }}</div>
           <div>
@@ -285,7 +285,7 @@ export class HomeComponent {
   // Everything below is derived from CatalogService, so the homepage shows the
   // same catalog as the products page instead of its own hardcoded copy.
   readonly categories = this.catalog.categories;
-  readonly stores = this.catalog.stores;
+  readonly stores = computed(() => this.catalog.stores().slice(0, 4));
 
   // Computed, not plain fields: the catalog arrives from the API after this
   // component is constructed, so a snapshot taken here would stay empty.

@@ -9,6 +9,17 @@
 
 export type ApiStockStatus = 'ACTIVE' | 'DRAFT' | 'ARCHIVED';
 
+export interface ApiStore {
+  _id: string;
+  storeName?: string;
+  storeDescription?: string;
+  location?: string;
+  rating?: number;
+  reviewCount?: number;
+  storeAvatarUrl?: string;
+  category?: string;
+}
+
 export interface ApiProduct {
   id: string;
   name: string;

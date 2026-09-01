@@ -308,9 +308,9 @@ export class StoresComponent {
   protected readonly filtered = computed(() => {
     const needle = this.term().trim().toLowerCase();
     if (!needle) {
-      return this.catalog.stores;
+      return this.catalog.stores();
     }
-    return this.catalog.stores.filter((store) =>
+    return this.catalog.stores().filter((store) =>
       [store.name, store.location, store.categoryName]
         .join(' ')
         .toLowerCase()
@@ -319,7 +319,7 @@ export class StoresComponent {
   });
 
   protected readonly featuredStores = computed(() =>
-    this.catalog.stores.filter((store) => store.id === 's006' || store.id === 's007'),
+    this.catalog.stores().filter((store) => store.id === 's006' || store.id === 's007'),
   );
 
   protected initials(name: string): string {

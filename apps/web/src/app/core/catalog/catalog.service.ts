@@ -36,7 +36,7 @@ export class CatalogService {
   readonly usingFallback = signal(false);
 
   readonly categories: Category[] = CATEGORIES;
-  readonly stores: Store[] = STORES;
+  readonly stores = signal<Store[]>(STORES);
 
   constructor() {
     void this.load();
@@ -53,6 +53,23 @@ export class CatalogService {
         (product) => product.storeId === 's006' || product.storeId === 's007',
       );
       this.products.set([...apiProducts, ...showcaseProducts]);
+      
+      try {
+        const stores = await firstValueFrom(this.api.listStores());
+        this.stores.set(stores.map(s => ({
+          id: s._id,
+          name: s.storeName || 'Unknown Store',
+          description: s.storeDescription || '',
+          location: s.location || 'Cambodia',
+          rating: s.rating || 5.0,
+          reviewCount: s.reviewCount || 0,
+          logoUrl: s.storeAvatarUrl,
+          categoryName: s.category || 'Various Crafts',
+        })));
+      } catch (err) {
+        console.warn('Failed to load stores from API, using fallback');
+      }
+
       this.usingFallback.set(false);
     } catch {
       this.products.set(FALLBACK_PRODUCTS);
@@ -83,7 +100,7 @@ export class CatalogService {
   }
 
   store(id: string): Store | undefined {
-    return findStore(id);
+    return this.stores().find((store) => store.id === id);
   }
 
   countByCategory(slug: string): number {
@@ -256,7 +273,8 @@ export class CatalogService {
 const toProduct = (api: ApiProduct): Product => {
   const classification = classifyCategory(api.category);
 
-  const store = STORES.find((candidate) => candidate.name === api.sellerName);
+  // We no longer rely on STORES; we just use the ID from the API directly
+  // The UI will match it against the stores() signal when rendering store details
 
   return {
     id: api.id,
@@ -267,7 +285,7 @@ const toProduct = (api: ApiProduct): Product => {
     compareAtPrice: api.compareAtPrice ?? undefined,
     ...classification,
     sellerName: api.sellerName,
-    storeId: store?.id ?? api.sellerId ?? '',
+    storeId: api.sellerId ?? '',
     rating: api.rating,
     reviewCount: api.reviewCount,
     stock: api.stock,

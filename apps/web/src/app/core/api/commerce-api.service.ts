@@ -11,6 +11,7 @@ import {
   ApiProductDetail,
   ApiProductList,
   ApiSellerOrder,
+  ApiStore,
   OrderStatus,
   PaymentMethod,
 } from './api.models';
@@ -40,6 +41,11 @@ export interface ProductQuery {
 @Injectable({ providedIn: 'root' })
 export class CommerceApiService {
   private readonly http = inject(HttpClient);
+
+  // ------------------------------------------------------------- stores
+  listStores(): Observable<ApiStore[]> {
+    return this.http.get<ApiStore[]>(`${API_URL}/sellers/stores`);
+  }
 
   // ------------------------------------------------------------- products
   listProducts(query: ProductQuery = {}): Observable<ApiProductList> {
