@@ -86,16 +86,20 @@ describe('creating a product', () => {
     expect(String(stored!.sellerUserId)).toBe(seller.userId);
   });
 
-  it('refuses a payload that tries to name another store', async () => {
+  it('ignores an attempt to name another store', async () => {
     const seller = await signIn('SELLER', 'Real Store', 'real@khmercraft.test');
 
-    // This used to be accepted, publishing under someone else's name.
+    // `sellerName` is accepted in the payload (the seller dashboard sends
+    // its own copy for form state), but the service always overwrites it
+    // from the authenticated seller — sending someone else's name here must
+    // not publish under it.
     const response = await request(app)
       .post('/api/products')
       .set('Cookie', seller.cookie)
       .send({ ...newListing, sellerName: 'Somebody Else' });
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(201);
+    expect(response.body.sellerName).toBe('Real Store');
   });
 
   it('cannot be pointed at another seller via sellerUserId', async () => {
@@ -107,7 +111,10 @@ describe('creating a product', () => {
       .set('Cookie', seller.cookie)
       .send({ ...newListing, sellerUserId: victim.userId });
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(201);
+    const stored = await Product.findById(response.body.id);
+    expect(String(stored!.sellerUserId)).toBe(seller.userId);
+    expect(String(stored!.sellerUserId)).not.toBe(victim.userId);
   });
 
   it('makes the new listing reachable from the seller order desk', async () => {

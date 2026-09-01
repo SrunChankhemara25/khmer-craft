@@ -223,9 +223,9 @@ export const createProduct = async (seller: IUser, input: CreateProductInput) =>
     slug: await uniqueSlug(input.name),
     description: input.description ?? '',
     price: input.price,
-    compareAtPrice: input.compareAtPrice,
+    compareAtPrice: input.compareAtPrice ?? undefined,
     category: input.category,
-    subcategory: input.subcategory,
+    subcategory: input.subcategory ?? undefined,
     // Identity comes from the session, never the payload.
     sellerId: store?._id,
     sellerUserId: seller._id,
