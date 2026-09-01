@@ -1,0 +1,153 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "KhmerCraft API",
+    "version": "1.0.0",
+    "description": "API Documentation for the KhmerCraft Marketplace Backend"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/products": {
+      "get": {
+        "summary": "Get all featured products",
+        "tags": ["Products"],
+        "responses": {
+          "200": {
+            "description": "A list of products"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new product (Protected)",
+        "tags": ["Products"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "price": { "type": "number" },
+                  "category": { "type": "string" },
+                  "images": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/sellers/login": {
+      "post": {
+        "summary": "Login as an approved seller",
+        "tags": ["Sellers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in successfully (Returns Token)"
+          }
+        }
+      }
+    },
+    "/api/sellers/register": {
+      "post": {
+        "summary": "Register a new approved seller",
+        "tags": ["Sellers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string" },
+                  "password": { "type": "string" },
+                  "storeName": { "type": "string" },
+                  "storeDescription": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Seller created successfully"
+          }
+        }
+      }
+    },
+    "/api/sellers/stores": {
+      "get": {
+        "summary": "Get all approved seller stores",
+        "tags": ["Sellers"],
+        "responses": {
+          "200": {
+            "description": "A list of approved sellers"
+          }
+        }
+      }
+    },
+    "/api/sellers/apply": {
+      "get": {
+        "summary": "Get all seller applications",
+        "tags": ["Seller Applications"],
+        "responses": {
+          "200": {
+            "description": "A list of seller applications"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit a new seller application",
+        "tags": ["Seller Applications"],
+        "responses": {
+          "201": {
+            "description": "Application submitted successfully"
+          }
+        }
+      }
+    }
+  }
+}

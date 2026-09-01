@@ -73,7 +73,7 @@ import { AuthLayout } from '../../../../components/shared/authentication/auth-la
 
       <p class="auth-switch">
         Not selling yet?
-        <a href="http://localhost:4300/become-a-seller" target="_blank" rel="noopener">Become a seller</a>
+        <a routerLink="/become-a-seller">Become a seller</a>
       </p>
       <a class="admin-link" routerLink="/login">Buyer sign in</a>
     </app-auth-layout>
@@ -118,7 +118,7 @@ export class SellerLogin {
           this.success.set(`Signed in as ${user.name}.`);
           const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
           void this.router.navigateByUrl(
-            returnUrl && returnUrl.startsWith('/') ? returnUrl : '/seller/orders',
+            returnUrl && returnUrl.startsWith('/') ? returnUrl : '/seller/dashboard',
           );
         },
         error: (error) =>

@@ -37,11 +37,17 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
               @for (line of group.lines; track line.product.id) {
                 <div class="cart-item">
                   <div class="item-row">
-                    <a
-                      class="item-thumb img-placeholder"
-                      [routerLink]="['/product', line.product.id]"
-                      >{{ line.product.name }}</a
-                    >
+                    @if (line.product.image) {
+                      <a [routerLink]="['/product', line.product.id]">
+                        <img class="item-thumb" [src]="line.product.image" [alt]="line.product.name" />
+                      </a>
+                    } @else {
+                      <a
+                        class="item-thumb img-placeholder"
+                        [routerLink]="['/product', line.product.id]"
+                        >{{ line.product.name }}</a
+                      >
+                    }
                     <div class="item-main">
                       <a
                         class="item-name"
@@ -232,8 +238,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         height: 92px;
         border-radius: var(--radius-sm);
         flex-shrink: 0;
-        font-size: 10px;
-        text-align: center;
+        object-fit: cover;
       }
       .item-main {
         display: flex;

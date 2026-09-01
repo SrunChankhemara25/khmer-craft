@@ -1,7 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map, catchError, of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CatalogService } from '../core/catalog/catalog.service';
+import { CommerceApiService } from '../core/api/commerce-api.service';
 import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
 import { FooterComponent } from '../components/shared/layout/footer/footer.component';
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
@@ -79,10 +82,14 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         <div class="store-grid">
           @for (store of filtered(); track store.id) {
             <article class="store-card card card-hover">
-              <div class="store-logo img-placeholder">
-                <span class="card-initials">{{ initials(store.name) }}</span>
-                <span>{{ store.categoryName }}</span>
-              </div>
+              @if (store.logoUrl) {
+                <img class="store-logo" [src]="store.logoUrl" [alt]="store.name" />
+              } @else {
+                <div class="store-logo img-placeholder">
+                  <span class="card-initials">{{ initials(store.name) }}</span>
+                  <span>{{ store.categoryName }}</span>
+                </div>
+              }
               <div class="store-body">
                 <span class="badge badge-soft"><ui-icon name="check-circle" [size]="11" /> Verified seller</span>
                 <h2>{{ store.name }}</h2>
@@ -228,6 +235,8 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         letter-spacing: .08em;
         text-transform: uppercase;
         text-align: center;
+        width: 100%;
+        object-fit: cover;
       }
       .card-initials { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 20px 20px 29px 20px; background: rgba(255,255,255,.72); color: var(--color-accent); font-family: var(--font-heading); font-size: 21px; font-weight: 700; box-shadow: var(--shadow-sm); }
       .store-body {
@@ -303,14 +312,41 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
 })
 export class StoresComponent {
   protected readonly catalog = inject(CatalogService);
+  private readonly api = inject(CommerceApiService);
   protected readonly term = signal('');
+
+  private readonly apiStores = toSignal(
+    this.api.listStores().pipe(
+      map(sellers => sellers.map(apiStore => ({
+        id: apiStore._id,
+        name: apiStore.storeName || 'Artisan Store',
+        logoUrl: apiStore.storeAvatarUrl,
+        categoryName: apiStore.category || 'General Store',
+        description: apiStore.storeDescription || 'A local Cambodian artisan store.',
+        location: apiStore.location || 'Cambodia',
+        rating: apiStore.rating ?? 5.0,
+        reviewCount: apiStore.reviewCount ?? 0,
+      }))),
+      catchError(() => of([]))
+    ),
+    { initialValue: [] }
+  );
 
   protected readonly filtered = computed(() => {
     const needle = this.term().trim().toLowerCase();
-    if (!needle) {
-      return this.catalog.stores();
+    // Combine local mock stores with live API stores
+    const allStores = [...this.catalog.stores()];
+    for (const apiStore of this.apiStores()) {
+      if (!allStores.find((s) => s.id === apiStore.id)) {
+        allStores.push(apiStore);
+      }
     }
-    return this.catalog.stores().filter((store) =>
+
+    if (!needle) {
+      return allStores;
+    }
+
+    return allStores.filter((store) =>
       [store.name, store.location, store.categoryName]
         .join(' ')
         .toLowerCase()

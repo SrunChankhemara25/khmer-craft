@@ -31,6 +31,12 @@ const testUsers: Array<{
     phone: '012000003',
     role: 'ADMIN',
   },
+  {
+    name: 'Sothy Roth',
+    email: 'sothyroth1234@gmail.com',
+    phone: '012000004',
+    role: 'SELLER',
+  },
 ];
 
 const seed = async () => {
@@ -42,6 +48,8 @@ const seed = async () => {
   const passwordHash = await hashPassword(TEST_PASSWORD);
 
   for (const testUser of testUsers) {
+    const pwd = testUser.email === 'sothyroth1234@gmail.com' ? '123456789' : TEST_PASSWORD;
+    const passwordHash = await hashPassword(pwd);
     await User.updateOne(
       { email: testUser.email },
       {

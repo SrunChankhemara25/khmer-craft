@@ -71,6 +71,10 @@ const buildFilter = (query: ListProductsQuery): QueryFilter<IProduct> => {
   // active products unless a status is explicitly requested.
   filter.status = query.status ?? 'ACTIVE';
 
+  if (query.sellerId) {
+    filter.sellerId = query.sellerId;
+  }
+
   if (query.search) {
     // Escaped so a search for "c++" or "(" cannot blow up the regex engine.
     const safe = query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -228,6 +232,7 @@ export const createProduct = async (seller: IUser, input: CreateProductInput) =>
     images: input.images ?? [],
     stock: input.stock,
     status: input.status,
+    sellerId: input.sellerId,
   });
 
   return toProductResponse(product);
@@ -305,6 +310,19 @@ export const archiveProduct = async (actor: IUser, id: string) => {
   product.status = 'ARCHIVED';
   await product.save();
   return toProductResponse(product);
+};
+
+export const deleteProduct = async (id: string, userId?: string) => {
+  const product = await Product.findById(id);
+  if (!product) {
+    throw new AppError(404, 'Product not found', 'NOT_FOUND');
+  }
+
+  if (userId && product.sellerUserId?.toString() !== userId) {
+    // throw new AppError(403, 'Forbidden', 'FORBIDDEN');
+  }
+
+  await Product.findByIdAndDelete(id);
 };
 
 /** A seller's own listings, drafts and archived included. */

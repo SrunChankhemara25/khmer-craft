@@ -47,6 +47,10 @@ export class CommerceApiService {
     return this.http.get<ApiStore[]>(`${API_URL}/sellers/stores`);
   }
 
+  getStore(id: string): Observable<ApiStore> {
+    return this.http.get<ApiStore>(`${API_URL}/sellers/${id}`);
+  }
+
   // ------------------------------------------------------------- products
   listProducts(query: ProductQuery = {}): Observable<ApiProductList> {
     let params = new HttpParams();

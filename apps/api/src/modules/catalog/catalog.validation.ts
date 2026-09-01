@@ -56,6 +56,7 @@ export const listProductsQuerySchema = z
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(12),
     status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).optional(),
+    sellerId: z.string().optional(),
   })
   .strip()
   .refine(
@@ -87,10 +88,11 @@ export const createProductSchema = z
     subcategory: z.string().trim().max(80).optional(),
     storeName: z.string().trim().max(120).optional(),
     location: z.string().trim().max(80).optional(),
-    image: z.string().trim().url().max(2048).optional(),
-    images: z.array(z.string().trim().url().max(2048)).max(10).optional(),
+    image: z.string().trim().max(5_000_000).optional(),
+    images: z.array(z.string().trim().max(5_000_000)).max(10).optional(),
     stock: z.number().int().min(0).max(1_000_000).default(0),
     status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).default('ACTIVE'),
+    sellerId: z.string().optional(),
   })
   .strict();
 
@@ -109,6 +111,7 @@ export const updateProductSchema = z
     compareAtPrice: z.number().positive().max(1_000_000).nullable().optional(),
     category: z.string().trim().min(2).max(80).optional(),
     subcategory: z.string().trim().max(80).nullable().optional(),
+    sellerName: z.string().trim().min(2).max(120).optional(),
     storeName: z.string().trim().max(120).optional(),
     location: z.string().trim().max(80).optional(),
     image: z.string().trim().url().max(2048).nullable().optional(),

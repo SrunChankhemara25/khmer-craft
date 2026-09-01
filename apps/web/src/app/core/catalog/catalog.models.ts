@@ -58,6 +58,7 @@ export interface Category {
 export interface Store {
   id: string;
   name: string;
+  logoUrl?: string;
   location: string;
   rating: number;
   reviewCount: number;

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import PasswordResetToken from '../../../models/PasswordResetToken';
 import RefreshToken from '../../../models/RefreshToken';
 import User, { IUser } from '../../../models/User';
+import Seller from '../../../models/Seller';
 import { env } from '../../config/env';
 import { AppError } from '../../errors/app-error';
 import { signAccessToken } from '../../utils/jwt';
@@ -16,6 +17,7 @@ import {
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
+  RegisterSellerInput,
   ResetPasswordInput,
 } from './auth.validation';
 
@@ -53,7 +55,7 @@ export class AuthService {
     if (await User.exists({ email })) {
       throw new AppError(
         409,
-        'An account with this email already exists',
+        'An account with this email already exists. Try signing in instead.',
         'EMAIL_IN_USE',
       );
     }
@@ -68,6 +70,69 @@ export class AuthService {
     });
 
     return { user, ...(await this.createSession(user)) };
+  }
+
+  async registerSeller(input: RegisterSellerInput) {
+    const email = normalizeEmail(input.email);
+    const existingUser = await User.findOne({ email }).select('+password_hash');
+
+    const session = await mongoose.startSession();
+    let result: any;
+
+    try {
+      await session.withTransaction(async () => {
+        let user;
+
+        if (existingUser) {
+          if (existingUser.role === 'SELLER') {
+            throw new AppError(
+              409,
+              'An account with this email is already a seller. Please sign in.',
+              'EMAIL_IN_USE',
+            );
+          }
+
+          const passwordMatches = await verifyPassword(input.password, existingUser.password_hash);
+          if (!passwordMatches) {
+            throw new AppError(
+              401,
+              'This email is already registered. To upgrade your account to a Seller, please enter your correct password.',
+              'INVALID_CREDENTIALS',
+            );
+          }
+
+          existingUser.role = 'SELLER';
+          await existingUser.save({ session });
+          user = existingUser;
+        } else {
+          const created = await User.create([{
+            name: input.name,
+            email,
+            password_hash: await hashPassword(input.password),
+            phone: input.phone,
+            role: 'SELLER',
+            status: 'ACTIVE',
+          }], { session });
+          user = created[0];
+        }
+
+        await Seller.create([{
+          userId: user._id,
+          storeName: input.businessName,
+          category: input.category,
+          storeDescription: input.description || '',
+          subscriptionPlan: 'STARTER',
+          onboardingStatus: 'COMPLETED',
+          phoneNumber: input.phone,
+        }], { session });
+
+        result = { user, ...(await this.createSession(user)) };
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    return result;
   }
 
   /**
@@ -140,12 +205,18 @@ export class AuthService {
       throw new AppError(403, 'This account is not active', 'ACCOUNT_INACTIVE');
     }
 
-    if (input.expectedRole && user.role !== input.expectedRole) {
-      throw new AppError(
-        401,
-        'Email or password is incorrect',
-        'INVALID_CREDENTIALS',
-      );
+    if (input.expectedRole) {
+      const isAllowed = 
+        user.role === input.expectedRole || 
+        (input.expectedRole === 'BUYER' && user.role === 'SELLER');
+        
+      if (!isAllowed) {
+        throw new AppError(
+          401,
+          'Email or password is incorrect',
+          'INVALID_CREDENTIALS',
+        );
+      }
     }
 
     if (user.failed_login_attempts > 0 || user.locked_until) {
@@ -228,7 +299,7 @@ export class AuthService {
   async forgotPassword(input: ForgotPasswordInput) {
     const user = await User.findOne({
       email: normalizeEmail(input.email),
-      role: 'BUYER',
+      $or: [{ role: 'BUYER' }, { role: 'SELLER' }],
       status: 'ACTIVE',
     });
 
@@ -271,7 +342,7 @@ export class AuthService {
 
     const user = await User.findOne({
       _id: resetRecord.user_id,
-      role: 'BUYER',
+      $or: [{ role: 'BUYER' }, { role: 'SELLER' }],
       status: 'ACTIVE',
     });
     if (!user) {
@@ -297,7 +368,7 @@ export class AuthService {
   async changePassword(userId: string, input: ChangePasswordInput) {
     const user = await User.findOne({
       _id: userId,
-      role: 'BUYER',
+      $or: [{ role: 'BUYER' }, { role: 'SELLER' }],
       status: 'ACTIVE',
     }).select('+password_hash');
 

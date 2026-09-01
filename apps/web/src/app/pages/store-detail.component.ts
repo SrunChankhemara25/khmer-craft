@@ -1,8 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs';
+import { map, switchMap, catchError, of } from 'rxjs';
 import { CatalogService } from '../core/catalog/catalog.service';
+import { CommerceApiService } from '../core/api/commerce-api.service';
 import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
 import { FooterComponent } from '../components/shared/layout/footer/footer.component';
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
@@ -34,7 +35,11 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
                 </div>
               }
               <div class="identity" [class.campaign-identity]="s.id === 's006' || s.id === 's007'">
-                <div class="store-logo">{{ initials(s.name) }}</div>
+                @if (s.logoUrl) {
+                  <img class="store-logo" [src]="s.logoUrl" [alt]="s.name" />
+                } @else {
+                  <div class="store-logo">{{ initials(s.name) }}</div>
+                }
                 <div class="identity-copy">
                   <span class="verified"><ui-icon name="check-circle" [size]="13" /> Verified seller</span>
                   <h1>{{ s.name }}</h1>
@@ -143,7 +148,7 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
     .campaign-identity .verified { padding: 0; background: transparent; font-size: 9px; }
     .campaign-actions { display: none; }
     .identity { display: flex; align-items: center; gap: clamp(16px, 2vw, 24px); min-width: 0; }
-    .store-logo { display: grid; place-items: center; width: clamp(68px, 6vw, 82px); aspect-ratio: 1; flex: 0 0 auto; border: 1px solid var(--color-border); border-radius: 19px; background: linear-gradient(145deg,#f3e7d3,#fffdf8); color: var(--color-accent); font-family: var(--font-heading); font-size: clamp(22px,2vw,28px); font-weight: 700; }
+    .store-logo { display: grid; place-items: center; width: clamp(68px, 6vw, 82px); aspect-ratio: 1; flex: 0 0 auto; border: 1px solid var(--color-border); border-radius: 19px; background: linear-gradient(145deg,#f3e7d3,#fffdf8); color: var(--color-accent); font-family: var(--font-heading); font-size: clamp(22px,2vw,28px); font-weight: 700; object-fit: cover; }
     .identity-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; max-width: 760px; }
     .verified { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: var(--radius-full); background: var(--color-success-soft); color: var(--color-success); font-size: 9.5px; font-weight: 750; }
     .identity-copy h1 { font-size: clamp(25px,2.5vw,36px); line-height: 1.05; }
@@ -216,18 +221,66 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
 export class StoreDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly catalog = inject(CatalogService);
+  private readonly api = inject(CommerceApiService);
   protected readonly activeCategory = signal<string | null>(null);
   protected readonly activeSection = signal<'products' | 'about' | 'reviews'>('products');
-  private readonly storeId = toSignal(this.route.paramMap.pipe(map((params) => params.get('id') ?? '')), { initialValue: this.route.snapshot.paramMap.get('id') ?? '' });
-  protected readonly store = computed(() => this.catalog.store(this.storeId()));
-  protected readonly products = computed(() => this.catalog.search({ storeId: this.storeId() }));
-  protected readonly categories = computed(() => [...new Set(this.products().map((product) => product.categoryName))]);
+  private readonly storeId = toSignal(
+    this.route.paramMap.pipe(map((params) => params.get('id') ?? '')),
+    { initialValue: this.route.snapshot.paramMap.get('id') ?? '' }
+  );
+
+  protected readonly store = toSignal(
+    this.route.paramMap.pipe(
+      map((params) => params.get('id') ?? ''),
+      switchMap((id) => {
+        if (!id) return of(null);
+        const localStore = this.catalog.store(id);
+        if (localStore) return of(localStore);
+
+        return this.api.getStore(id).pipe(
+          map((apiStore) => ({
+            id: apiStore._id,
+            name: apiStore.storeName || 'Artisan Store',
+            logoUrl: apiStore.storeAvatarUrl,
+            categoryName: apiStore.category || 'General Store',
+            description: apiStore.storeDescription || 'A local Cambodian artisan store.',
+            location: apiStore.location || 'Cambodia',
+            rating: apiStore.rating ?? 5.0,
+            reviewCount: apiStore.reviewCount ?? 0,
+          })),
+          catchError(() => of(null)),
+        );
+      }),
+    ),
+    { initialValue: this.catalog.store(this.route.snapshot.paramMap.get('id') ?? '') ?? null },
+  );
+
+  protected readonly products = computed(() =>
+    this.catalog.search({ storeId: this.storeId() }),
+  );
+  protected readonly categories = computed(() => [
+    ...new Set(this.products().map((product) => product.categoryName)),
+  ]);
   protected readonly filteredProducts = computed(() => {
     const category = this.activeCategory();
-    return category ? this.products().filter((product) => product.categoryName === category) : this.products();
+    return category
+      ? this.products().filter((product) => product.categoryName === category)
+      : this.products();
   });
-  protected countCategory(category: string): number { return this.products().filter((product) => product.categoryName === category).length; }
-  protected initials(name: string): string { return name.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase(); }
+
+  protected countCategory(category: string): number {
+    return this.products().filter((product) => product.categoryName === category).length;
+  }
+
+  protected initials(name: string): string {
+    return name
+      .split(' ')
+      .slice(0, 2)
+      .map((word) => word[0])
+      .join('')
+      .toUpperCase();
+  }
+
   protected scrollToSection(
     section: 'products' | 'about' | 'reviews',
     event?: Event,

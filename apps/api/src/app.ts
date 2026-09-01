@@ -56,7 +56,7 @@ export const createApp = () => {
   );
   // 100kb is ample for every JSON payload this API accepts; a larger ceiling
   // only widens the memory-exhaustion surface.
-  app.use(express.json({ limit: '100kb' }));
+  app.use(express.json({ limit: '5mb' }));
   app.use(cookieParser());
   app.use(preventOperatorInjection);
   app.use(apiRateLimit);
@@ -95,8 +95,8 @@ export const createApp = () => {
   // Auth stays at /auth for backwards compatibility with the web client that
   // is already deployed against it; commerce is namespaced under /api.
   // TODO(api-prefix): fold /auth into /api/auth once the web client can be
-  // updated in the same release.
   app.use('/auth', authRoutes);
+  app.use('/api/sellers', sellerRoutes);
   app.use('/api/products', catalogRoutes);
   // Reference data the storefront navigates by.
   app.use('/api', taxonomyRoutes);

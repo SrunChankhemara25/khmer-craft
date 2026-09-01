@@ -48,6 +48,11 @@ router.patch(
   update,
 );
 
-router.delete('/:id', authenticate, authorize('SELLER', 'ADMIN'), remove);
+router.delete(
+  '/:id',
+  authenticate,
+  authorize('SELLER', 'ADMIN'),
+  remove,
+);
 
 export default router;
