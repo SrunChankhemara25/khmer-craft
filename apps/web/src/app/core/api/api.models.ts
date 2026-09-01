@@ -68,6 +68,34 @@ export interface ApiProductList {
   appliedFilters: Record<string, string | number | null>;
 }
 
+/** GET /api/products/mine has no filter echo — it's always "everything I own". */
+export interface ApiMyProductList {
+  products: ApiProduct[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/**
+ * Mirrors createProductSchema on the server. Ownership fields (sellerName,
+ * sellerUserId) are deliberately absent — the server stamps those from the
+ * session, and rejects a payload that tries to send them.
+ */
+export interface ApiCreateProductInput {
+  name: string;
+  description?: string;
+  price: number;
+  compareAtPrice?: number;
+  category: string;
+  subcategory?: string;
+  location?: string;
+  image?: string;
+  images?: string[];
+  stock: number;
+  status: ApiStockStatus;
+}
+
 export interface ApiCartItem {
   id: string;
   productId: string;

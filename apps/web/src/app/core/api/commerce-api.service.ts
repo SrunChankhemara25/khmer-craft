@@ -5,9 +5,12 @@ import { API_URL } from './api.config';
 import {
   ApiCart,
   ApiCreatedOrder,
+  ApiCreateProductInput,
   ApiDeliveryInfo,
+  ApiMyProductList,
   ApiOrder,
   ApiOrderList,
+  ApiProduct,
   ApiProductDetail,
   ApiProductList,
   ApiSellerOrder,
@@ -59,6 +62,18 @@ export class CommerceApiService {
     return this.http.get<ApiProductDetail>(
       `${API_URL}/products/${encodeURIComponent(idOrSlug)}`,
     );
+  }
+
+  /** SELLER/ADMIN only — the server stamps ownership from the session. */
+  createProduct(input: ApiCreateProductInput): Observable<ApiProduct> {
+    return this.http.post<ApiProduct>(`${API_URL}/products`, input);
+  }
+
+  /** The signed-in seller's own listings, drafts and archived included. */
+  myProducts(page = 1, limit = 20): Observable<ApiMyProductList> {
+    return this.http.get<ApiMyProductList>(`${API_URL}/products/mine`, {
+      params: new HttpParams().set('page', page).set('limit', limit),
+    });
   }
 
   // -------------------------------------------------------------- stores

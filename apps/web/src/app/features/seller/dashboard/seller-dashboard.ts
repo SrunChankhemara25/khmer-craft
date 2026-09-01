@@ -2,6 +2,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { KcIcon } from '../../../components/shared/ui/kc-icon/kc-icon';
 import { AuthService, apiErrorMessage } from '../../../core/auth/auth.service';
+import { CommerceApiService } from '../../../core/api/commerce-api.service';
+import { ApiProduct } from '../../../core/api/api.models';
 import { CATEGORIES } from '../../../core/data/categories.data';
 
 type DashboardView = 'dashboard' | 'products' | 'add' | 'orders' | 'profile' | 'sales' | 'reviews' | 'settings';
@@ -1996,70 +1998,76 @@ interface DashboardMetric {
               <button class="btn btn-primary" type="button" (click)="view.set('add')"><kc-icon name="plus" [size]="15" /> Add Product</button>
             </div>
 
-            <section class="product-filters">
-              <div class="field-control"><kc-icon name="search" [size]="15" /> Search by name or SKU</div>
-              <div class="field-control">All Categories</div>
-              <div class="field-control">Status: All</div>
-              <button class="btn btn-ghost" type="button" style="height:38px;padding:0"><kc-icon name="filter" [size]="16" /></button>
-            </section>
-
-            <section class="table-card">
-              <table>
-                <thead>
-                  <tr><th>Image</th><th>Product Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
-                </thead>
-                <tbody>
-                  @for (product of products; track product.sku) {
-                    <tr>
-                      <td><img class="product-thumb" [src]="product.image" [alt]="product.name" /></td>
-                      <td class="product-name"><strong>{{ product.name }}</strong><span>{{ product.sku }}</span></td>
-                      <td><span class="pill blue">{{ product.category }}</span></td>
-                      <td class="money">{{ product.price }}</td>
-                      <td [style.color]="product.stock === 0 ? '#c73030' : '#26302c'">{{ product.stock }}</td>
-                      <td><span class="pill" [class.green]="product.status === 'ACTIVE'" [class.yellow]="product.status === 'LOW STOCK'" [class.red]="product.status === 'OUT OF STOCK'">{{ product.status }}</span></td>
-                      <td>
-                        <div class="row-actions">
-                          <button class="icon-btn" type="button"><kc-icon name="edit" [size]="15" /></button>
-                          <button class="icon-btn" type="button"><kc-icon name="eye-off" [size]="15" /></button>
-                          <button class="icon-btn" type="button"><kc-icon name="trash" [size]="15" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-              <div class="table-foot">
-                <span>Showing 1 to 3 of 24 products</span>
-                <div class="pagination"><span>&lt;</span><span class="current">1</span><span>2</span><span>3</span><span>&gt;</span></div>
-              </div>
-            </section>
-
-            <section class="product-insights">
-              <article class="tip-card">
-                <div class="sparkle"><kc-icon name="sparkles" [size]="24" /></div>
-                <div>
-                  <h2>Product Optimization Tip</h2>
-                  <p>Your "Palm Sugar Pack" listing has high traffic but low stock. Restocking soon could increase your monthly revenue by approximately 15% based on seasonal demand.</p>
+            @if (loadingProducts()) {
+              <section class="table-card"><p class="muted" style="padding:24px">Loading your products…</p></section>
+            } @else if (productsError()) {
+              <section class="table-card">
+                <p class="muted" style="padding:24px;color:#c73030">{{ productsError() }}</p>
+                <button class="btn btn-ghost" type="button" (click)="loadMyProducts()" style="margin:0 24px 20px">Try again</button>
+              </section>
+            } @else if (!myProducts().length) {
+              <section class="table-card">
+                <p class="muted" style="padding:24px">You haven't listed any products yet. Click "Add Product" to publish your first one.</p>
+              </section>
+            } @else {
+              <section class="table-card">
+                <table>
+                  <thead>
+                    <tr><th>Image</th><th>Product Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (product of myProducts(); track product.id) {
+                      <tr>
+                        <td>
+                          @if (product.image) {
+                            <img class="product-thumb" [src]="product.image" [alt]="product.name" />
+                          } @else {
+                            <div class="product-thumb img-placeholder" style="display:flex;align-items:center;justify-content:center;font-size:9px">No image</div>
+                          }
+                        </td>
+                        <td class="product-name"><strong>{{ product.name }}</strong><span>{{ product.slug }}</span></td>
+                        <td><span class="pill blue">{{ product.category }}</span></td>
+                        <td class="money">\${{ product.price.toFixed(2) }}</td>
+                        <td [style.color]="product.stock === 0 ? '#c73030' : '#26302c'">{{ product.stock }}</td>
+                        <td><span class="pill" [class.green]="product.status === 'ACTIVE'" [class.yellow]="product.status === 'DRAFT'" [class.red]="product.status === 'ARCHIVED'">{{ product.status }}</span></td>
+                        <td>
+                          <div class="row-actions">
+                            <button class="icon-btn" type="button" disabled title="Editing from here is coming soon"><kc-icon name="edit" [size]="15" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                <div class="table-foot">
+                  <span>Showing {{ myProducts().length }} of {{ myProductsTotal() }} product{{ myProductsTotal() === 1 ? '' : 's' }}</span>
                 </div>
-              </article>
-              <article class="inventory-card">
-                <h2>Inventory Health <span style="float:right">18</span></h2>
-                <div class="progress-line"><span style="width:75%"></span></div>
-                <p>75% of your inventory is currently active and visible to customers.</p>
-              </article>
-            </section>
+              </section>
+
+              <section class="product-insights">
+                <article class="inventory-card">
+                  <h2>Inventory Health <span style="float:right">{{ activeProductCount() }} / {{ myProductsTotal() }}</span></h2>
+                  <div class="progress-line"><span [style.width.%]="myProductsTotal() ? (activeProductCount() / myProductsTotal() * 100) : 0"></span></div>
+                  <p>{{ activeProductPercent() }}% of your listings are active and visible to buyers right now.</p>
+                </article>
+              </section>
+            }
           </main>
         } @else if (view() === 'add') {
           <main class="page">
             <h1>Add New Product</h1>
             <p class="muted" style="max-width:690px">Create a new product listing for buyers to discover. Provide detailed information to increase your visibility in the KhmerCraft marketplace.</p>
 
+            @if (saveProductError()) {
+              <p class="muted" style="color:#c73030;font-weight:700">{{ saveProductError() }}</p>
+            }
+
             <section class="add-layout">
               <div class="add-main">
                 <article class="form-card">
                   <h2><kc-icon name="info" [size]="18" style="color:#146242" /> Basic Info</h2>
-                  <form class="dash-form">
-                    <label>Product Name <span class="required">*</span><input class="dash-input" placeholder="e.g., Handwoven Silk Krama" /></label>
+                  <div class="dash-form">
+                    <label>Product Name <span class="required">*</span><input class="dash-input" name="productName" [(ngModel)]="productForm.name" placeholder="e.g., Handwoven Silk Krama" /></label>
                     <div class="two-cols">
                       <label>Category <span class="required">*</span>
                         <select class="dash-input" [value]="selectedCategory()" (change)="setProductCategory($event)">
@@ -2069,8 +2077,8 @@ interface DashboardMetric {
                           }
                         </select>
                       </label>
-                      <label>Subcategory <span class="required">*</span>
-                        <select class="dash-input" [disabled]="!selectedCategory()">
+                      <label>Subcategory
+                        <select class="dash-input" [value]="subcategoryValue()" (change)="setProductSubcategory($event)" [disabled]="!selectedCategory()">
                           <option value="">{{ selectedCategory() ? 'Select Subcategory' : 'Choose a category first' }}</option>
                           @for (subcategory of selectedSubcategories(); track subcategory.slug) {
                             <option [value]="subcategory.slug">{{ subcategory.name }}</option>
@@ -2078,17 +2086,16 @@ interface DashboardMetric {
                         </select>
                       </label>
                     </div>
-                    <label>Material<input class="dash-input" placeholder="e.g., 100% Raw Silk" /></label>
-                    <label>Description <span class="required">*</span><textarea class="dash-textarea" placeholder="Tell the story of your product, how it's made, and its unique features..."></textarea></label>
-                  </form>
+                    <label>Description<textarea class="dash-textarea" name="productDescription" [(ngModel)]="productForm.description" placeholder="Tell the story of your product, how it's made, and its unique features..."></textarea></label>
+                  </div>
                 </article>
 
                 <article class="form-card">
                   <h2><kc-icon name="wallet" [size]="18" style="color:#146242" /> Pricing & Stock</h2>
                   <div class="two-cols" style="grid-template-columns:1fr 1fr 1fr">
-                    <label>Price (USD) <span class="required">*</span><input class="dash-input" placeholder="$ 0.00" /></label>
-                    <label>Stock Quantity <span class="required">*</span><input class="dash-input" placeholder="1" /></label>
-                    <label>Location<select class="dash-input"><option>Phnom Penh</option></select></label>
+                    <label>Price (USD) <span class="required">*</span><input class="dash-input" type="number" min="0.01" step="0.01" name="productPrice" [(ngModel)]="productForm.price" placeholder="$ 0.00" /></label>
+                    <label>Stock Quantity<input class="dash-input" type="number" min="0" step="1" name="productStock" [(ngModel)]="productForm.stock" placeholder="1" /></label>
+                    <label>Location<input class="dash-input" name="productLocation" [(ngModel)]="productForm.location" placeholder="e.g. Phnom Penh" /></label>
                   </div>
                 </article>
 
@@ -2097,59 +2104,58 @@ interface DashboardMetric {
                   <p class="muted" style="font-size:12px;margin-bottom:16px">Prepare the exact option a buyer will purchase. Variant saving will activate when the product-variant API is connected.</p>
                   <div class="two-cols">
                     <label>Option type
-                      <select class="dash-input">
+                      <select class="dash-input" disabled>
                         <option>Size</option><option>Color</option><option>Weight</option><option>Pack size</option><option>Storage</option><option>Material</option>
                       </select>
                     </label>
-                    <label>Option values<input class="dash-input" placeholder="e.g. Small, Medium, Large" /></label>
+                    <label>Option values<input class="dash-input" disabled placeholder="e.g. Small, Medium, Large" /></label>
                   </div>
                   <div class="two-cols" style="grid-template-columns:1fr 1fr 1fr">
-                    <label>Variant SKU<input class="dash-input" placeholder="STORE-PRODUCT-S" /></label>
-                    <label>Variant price<input class="dash-input" placeholder="$ 0.00" /></label>
-                    <label>Variant stock<input class="dash-input" placeholder="0" /></label>
+                    <label>Variant SKU<input class="dash-input" disabled placeholder="STORE-PRODUCT-S" /></label>
+                    <label>Variant price<input class="dash-input" disabled placeholder="$ 0.00" /></label>
+                    <label>Variant stock<input class="dash-input" disabled placeholder="0" /></label>
                   </div>
                 </article>
 
                 <article class="form-card">
-                  <h2><kc-icon name="image" [size]="18" style="color:#146242" /> Product Images</h2>
-                  <div class="upload-drop">
-                    <kc-icon name="upload-cloud" [size]="32" />
-                    <span>Click to upload or drag and drop</span>
-                    <small>PNG, JPG or WEBP (Max 5MB each)</small>
-                  </div>
-                  <button class="add-tile" type="button">+</button>
-                </article>
-
-                <article class="publish-card">
-                  <div><strong>Publish Immediately</strong><span>Make this product visible to buyers right away.</span></div>
-                  <span class="switch"></span>
+                  <h2><kc-icon name="image" [size]="18" style="color:#146242" /> Product Image</h2>
+                  <p class="muted" style="font-size:12px;margin-bottom:12px">File upload isn't wired up yet — paste a hosted image URL instead. Left blank, the listing uses a placeholder like the ones already in the marketplace.</p>
+                  <label>Image URL<input class="dash-input" name="productImage" [(ngModel)]="productForm.image" placeholder="https://..." /></label>
                 </article>
               </div>
 
               <aside class="add-side">
                 <span class="preview-label">Live Preview</span>
                 <article class="product-preview">
-                  <img src="https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=520&q=85" alt="Product preview" />
+                  @if (productForm.image) {
+                    <img [src]="productForm.image" alt="Product preview" />
+                  } @else {
+                    <div class="img-placeholder" style="height:180px;display:flex;align-items:center;justify-content:center;background:#eee6d8;color:#8b8175;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase">No image yet</div>
+                  }
                   <div class="preview-body">
-                    <small>Handicrafts <span style="float:right;color:#8b5f1a">★ 4.9</span></small>
-                    <h3>Product Name Preview</h3>
-                    <p>Store: Kosal's Khmer Creations</p>
-                    <div class="preview-price"><strong>$0.00 <span style="display:block;color:#6e7974;font-size:11px">Free Delivery</span></strong><span class="pill green">In Stock</span></div>
+                    <small>{{ selectedCategoryName() || 'Category' }}</small>
+                    <h3>{{ productForm.name || 'Product name preview' }}</h3>
+                    <div class="preview-price">
+                      <strong>{{ productForm.price ? ('$' + productForm.price.toFixed(2)) : '$0.00' }}</strong>
+                      <span class="pill" [class.green]="productForm.stock > 0" [class.red]="productForm.stock <= 0">{{ productForm.stock > 0 ? 'In stock' : 'Out of stock' }}</span>
+                    </div>
                   </div>
                 </article>
                 <article class="pro-tip">
                   <kc-icon name="lightbulb" [size]="22" />
-                  <p style="margin:0;font-size:12px;font-weight:800;line-height:1.45">Pro Tip<br /><span style="font-weight:650">Artisans who upload 3+ photos and detailed descriptions see 45% more sales.</span></p>
+                  <p style="margin:0;font-size:12px;font-weight:800;line-height:1.45">Pro Tip<br /><span style="font-weight:650">Clear photos and an honest description help buyers decide faster.</span></p>
                 </article>
               </aside>
             </section>
 
             <div class="sticky-save">
-              <span class="autosave"><kc-icon name="clock" [size]="14" /> Autosaved 2 minutes ago</span>
+              @if (savingProduct()) {
+                <span class="autosave"><kc-icon name="clock" [size]="14" /> Saving…</span>
+              }
               <div class="actions">
-                <button class="btn btn-ghost" type="button">Cancel</button>
-                <button class="btn btn-ghost" type="button">Save as Draft</button>
-                <button class="btn btn-primary" type="button">Save Product</button>
+                <button class="btn btn-ghost" type="button" (click)="view.set('products')" [disabled]="savingProduct()">Cancel</button>
+                <button class="btn btn-ghost" type="button" (click)="publishImmediately.set(false); saveProduct()" [disabled]="savingProduct()">Save as Draft</button>
+                <button class="btn btn-primary" type="button" (click)="publishImmediately.set(true); saveProduct()" [disabled]="savingProduct()">Save Product</button>
               </div>
             </div>
           </main>
@@ -2567,19 +2573,132 @@ interface DashboardMetric {
 })
 export class SellerDashboardPage {
   private readonly authService = inject(AuthService);
+  private readonly api = inject(CommerceApiService);
   protected readonly view = signal<DashboardView>('dashboard');
+
+  // ------------------------------------------------------------- products
+  // Real data from here down — everything above (metrics, orders, sales,
+  // reviews) is still the sample workspace preview; see the note at the top
+  // of the template.
+  protected readonly myProducts = signal<ApiProduct[]>([]);
+  protected readonly myProductsTotal = signal(0);
+  protected readonly loadingProducts = signal(false);
+  protected readonly productsError = signal('');
+
+  protected readonly activeProductCount = computed(
+    () => this.myProducts().filter((product) => product.status === 'ACTIVE').length,
+  );
+  protected readonly activeProductPercent = computed(() => {
+    const total = this.myProductsTotal();
+    return total ? Math.round((this.activeProductCount() / total) * 100) : 0;
+  });
+
+  constructor() {
+    this.loadMyProducts();
+  }
+
+  protected loadMyProducts(): void {
+    this.loadingProducts.set(true);
+    this.productsError.set('');
+    this.api.myProducts(1, 50).subscribe({
+      next: (result) => {
+        this.myProducts.set(result.products);
+        this.myProductsTotal.set(result.total);
+        this.loadingProducts.set(false);
+      },
+      error: (error) => {
+        this.productsError.set(apiErrorMessage(error, 'Could not load your products.'));
+        this.loadingProducts.set(false);
+      },
+    });
+  }
+
+  protected productForm = {
+    name: '',
+    description: '',
+    price: null as number | null,
+    stock: 0,
+    location: '',
+    image: '',
+  };
+  protected readonly publishImmediately = signal(true);
+  protected readonly savingProduct = signal(false);
+  protected readonly saveProductError = signal('');
+
+  protected togglePublishImmediately(): void {
+    this.publishImmediately.update((value) => !value);
+  }
+
+  protected saveProduct(): void {
+    const name = this.productForm.name.trim();
+    const category = this.selectedCategory();
+    const price = this.productForm.price;
+
+    if (!name || !category || price === null || price <= 0) {
+      this.saveProductError.set(
+        'Product name, category and a price greater than $0 are required.',
+      );
+      return;
+    }
+
+    this.savingProduct.set(true);
+    this.saveProductError.set('');
+
+    this.api
+      .createProduct({
+        name,
+        description: this.productForm.description.trim() || undefined,
+        price,
+        category,
+        subcategory: this.subcategoryValue() || undefined,
+        location: this.productForm.location.trim() || undefined,
+        image: this.productForm.image.trim() || undefined,
+        stock: this.productForm.stock,
+        status: this.publishImmediately() ? 'ACTIVE' : 'DRAFT',
+      })
+      .subscribe({
+        next: () => {
+          this.savingProduct.set(false);
+          this.resetProductForm();
+          this.loadMyProducts();
+          this.view.set('products');
+        },
+        error: (error) => {
+          this.saveProductError.set(apiErrorMessage(error, 'Could not create the product.'));
+          this.savingProduct.set(false);
+        },
+      });
+  }
+
+  private resetProductForm(): void {
+    this.productForm = { name: '', description: '', price: null, stock: 0, location: '', image: '' };
+    this.selectedCategory.set('');
+    this.subcategoryValue.set('');
+    this.publishImmediately.set(true);
+  }
   protected readonly selectedOrder = signal<SellerOrder | null>(null);
   protected readonly currentPassword = signal('');
   protected readonly newPassword = signal('');
   protected readonly confirmNewPassword = signal('');
   protected readonly productCategories = CATEGORIES;
   protected readonly selectedCategory = signal('');
+  protected readonly subcategoryValue = signal('');
   protected readonly selectedSubcategories = computed(
     () => CATEGORIES.find((category) => category.slug === this.selectedCategory())?.subcategories ?? [],
+  );
+  protected readonly selectedCategoryName = computed(
+    () => CATEGORIES.find((category) => category.slug === this.selectedCategory())?.name ?? '',
   );
 
   protected setProductCategory(event: Event): void {
     this.selectedCategory.set((event.target as HTMLSelectElement).value);
+    // A subcategory from the old category no longer makes sense once the
+    // category itself changes.
+    this.subcategoryValue.set('');
+  }
+
+  protected setProductSubcategory(event: Event): void {
+    this.subcategoryValue.set((event.target as HTMLSelectElement).value);
   }
 
   protected startReviewReply(buyerName: string): void {
