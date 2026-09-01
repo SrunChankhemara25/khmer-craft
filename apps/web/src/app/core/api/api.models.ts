@@ -17,6 +17,7 @@ export interface ApiProduct {
   price: number;
   compareAtPrice: number | null;
   category: string;
+  subcategory: string | null;
   sellerId: string | null;
   sellerName: string;
   storeName: string | null;

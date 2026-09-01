@@ -59,15 +59,6 @@ export class CommerceApiService {
     );
   }
 
-  // ----------------------------------------------------------------- stores
-  listStores(): Observable<any[]> {
-    return this.http.get<any[]>(`${API_URL}/sellers/stores`);
-  }
-
-  getStore(id: string): Observable<any> {
-    return this.http.get<any>(`${API_URL}/sellers/stores/${encodeURIComponent(id)}`);
-  }
-
   // ----------------------------------------------------------------- cart
   getCart(): Observable<ApiCart> {
     return this.http.get<ApiCart>(`${API_URL}/cart`);
@@ -147,6 +138,9 @@ export class CommerceApiService {
     return this.http.patch<ApiOrder>(
       `${API_URL}/orders/${orderId}/status`,
       note ? { status, note } : { status },
+    );
+  }
+}
     );
   }
 }
