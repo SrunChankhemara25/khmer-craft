@@ -244,7 +244,7 @@ export class StoresComponent {
   protected readonly catalog = inject(CatalogService);
   private readonly api = inject(CommerceApiService);
   protected readonly term = signal('');
-  
+
   private readonly apiStores = toSignal(
     this.api.listStores().pipe(
       map(sellers => sellers.map(apiStore => ({
@@ -264,7 +264,7 @@ export class StoresComponent {
 
   protected readonly filtered = computed(() => {
     const needle = this.term().trim().toLowerCase();
-    
+
     // Combine local mock stores with live API stores
     const allStores = [...this.catalog.stores];
     for (const apiStore of this.apiStores()) {
@@ -276,7 +276,7 @@ export class StoresComponent {
     if (!needle) {
       return allStores;
     }
-    
+
     return allStores.filter((store) =>
       [store.name, store.location, store.categoryName]
         .join(' ')
