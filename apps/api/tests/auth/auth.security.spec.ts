@@ -174,6 +174,7 @@ describe('authentication security', () => {
       name: 'Refresh Buyer',
       email: 'refresh@security.test',
       password: strongPassword,
+      confirmPassword: strongPassword,
     });
     const initialCookies = registration.headers['set-cookie'] as string[];
     const refreshCookie = initialCookies

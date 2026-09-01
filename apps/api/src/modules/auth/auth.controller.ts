@@ -19,12 +19,10 @@ const setSessionCookies = (
 
 export const register = async (request: Request, response: Response) => {
   const result = await authService.register(request.body);
+  setSessionCookies(response, result.accessToken, result.refreshToken);
   response.status(201).json({
-    message: 'Enter the 6-digit code sent to your email to finish creating your account',
-    email: result.user.email,
-    // Only present outside production, where there is no real mail provider —
-    // see issueVerificationCode in auth.service.ts.
-    ...(result.devCode ? { devCode: result.devCode } : {}),
+    message: 'Account created successfully',
+    user: result.user,
   });
 };
 

@@ -97,9 +97,18 @@ export class AuthService {
   }
 
   /**
-   * Creates the account but does not sign it in yet — no session is issued
-   * until the email code is verified. The caller is expected to send the
-   * user on to /verify-email next.
+   * Creates the account and signs it in immediately.
+   *
+   * This used to create the account unverified and require a code from
+   * /verify-email before any session was issued — but nothing in this
+   * deployment can actually deliver that code (see `issueVerificationCode`:
+   * no email provider is wired up, it only logs to the server console).
+   * That made every new registration, and every account created before this
+   * change, permanently unable to sign in. Marking accounts verified at
+   * creation removes a dead end, not a security control that was doing
+   * anything — see `registerSeller` for the same reasoning applied there
+   * first. /verify-email and /resend-code still work and are harmless to
+   * leave in place for when a real provider exists.
    */
   async register(input: RegisterInput) {
     const email = normalizeEmail(input.email);
@@ -118,11 +127,10 @@ export class AuthService {
       phone: input.phone,
       role: 'BUYER',
       status: 'ACTIVE',
-      email_verified: false,
+      email_verified: true,
     });
 
-    const devCode = await issueVerificationCode(user);
-    return { user, devCode };
+    return { user, ...(await this.createSession(user)) };
   }
 
   /** Confirms the code and, only then, starts the session. */
@@ -337,13 +345,10 @@ export class AuthService {
       throw new AppError(403, 'This account is not active', 'ACCOUNT_INACTIVE');
     }
 
-    if (!user.email_verified) {
-      throw new AppError(
-        403,
-        'Please verify your email before signing in',
-        'EMAIL_NOT_VERIFIED',
-      );
-    }
+    // Not gated on email_verified: see the comment on `register()` — nothing
+    // in this deployment can deliver the verification code that would be
+    // required to clear it, so this check only ever produced accounts no one
+    // could sign into.
 
     if (input.expectedRole && user.role !== input.expectedRole) {
       throw new AppError(
