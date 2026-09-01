@@ -1,6 +1,12 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
-export const PRODUCT_STATUSES = ['ACTIVE', 'DRAFT', 'ARCHIVED'] as const;
+export const PRODUCT_STATUSES = [
+  'ACTIVE',
+  'DRAFT',
+  'ARCHIVED',
+  'OUT OF STOCK',
+  'LOW STOCK',
+] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
 export interface IProduct extends Document {

@@ -1,10 +1,14 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { API_URL } from '../../core/api/api.config';
 import { KcIcon } from '../../components/ui/kc-icon';
 import { SellerService } from '../../core/api/seller.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { CommerceApiService } from '../../core/api/commerce-api.service';
+import { OrderStatus } from '../../core/api/api.models';
+import { cartErrorMessage } from '../../core/cart/cart.service';
 
 type DashboardView = 'dashboard' | 'products' | 'add' | 'orders' | 'profile' | 'sales' | 'reviews' | 'settings';
 type OrderStatusClass = 'pending' | 'shipped' | 'delivered';
@@ -21,6 +25,17 @@ interface SellerOrder {
   date: string;
   status: string;
   statusClass: OrderStatusClass;
+  phone: string;
+  note: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  items: {
+    name: string;
+    image: string | null;
+    qty: number;
+    price: number;
+    subtotal: number;
+  }[];
 }
 
 interface DashboardMetric {
@@ -2197,7 +2212,7 @@ interface DashboardMetric {
                 <tbody>
                   @for (order of filteredOrders(); track order.id) {
                     <tr>
-                      <td><span class="order-id" (click)="selectedOrder.set(order)">{{ order.id }}</span></td>
+                      <td><span class="order-id" (click)="openOrder(order)">{{ order.id }}</span></td>
                       <td>
                         <div class="buyer">
                           <span class="initial" [style.background]="order.color">{{ order.initials }}</span>
@@ -2538,51 +2553,83 @@ interface DashboardMetric {
     </div>
 
     @if (selectedOrder(); as order) {
-      <div class="backdrop" (click)="selectedOrder.set(null)">
+      <div class="backdrop" (click)="closeOrder()">
         <section class="modal" (click)="$event.stopPropagation()">
           <header class="modal-head">
-            <h2>Order Detail - {{ order.id }} <span class="status pending">Pending</span></h2>
-            <button type="button" class="close" (click)="selectedOrder.set(null)">×</button>
+            <h2>
+              Order Detail - {{ order.id }}
+              <span
+                class="status"
+                [class.pending]="order.statusClass === 'pending'"
+                [class.shipped]="order.statusClass === 'shipped'"
+                [class.delivered]="order.statusClass === 'delivered'"
+              >{{ order.status }}</span>
+            </h2>
+            <button type="button" class="close" (click)="closeOrder()">×</button>
           </header>
           <div class="modal-body">
             <div class="detail-grid">
               <article>
                 <div class="detail-title"><kc-icon name="user" [size]="14" /> Buyer Info</div>
                 <div class="detail-panel">
-                  <div class="info-line"><span>Name:</span><span>Dara</span></div>
-                  <div class="info-line"><span>Location:</span><span>Phnom Penh</span></div>
-                  <div class="info-line"><span>Phone:</span><span>012 345 678</span></div>
-                  <p class="note">"Please deliver after 5 PM if possible. Thank you!"</p>
+                  <div class="info-line"><span>Name:</span><span>{{ order.buyer }}</span></div>
+                  <div class="info-line"><span>Location:</span><span>{{ order.address }}</span></div>
+                  <div class="info-line"><span>Phone:</span><span>{{ order.phone }}</span></div>
+                  @if (order.note) {
+                    <p class="note">"{{ order.note }}"</p>
+                  }
                 </div>
               </article>
               <article>
                 <div class="detail-title"><kc-icon name="wallet" [size]="14" /> Payment Info</div>
                 <div class="detail-panel">
-                  <div class="info-line"><span>Method:</span><span>QR Payment</span></div>
-                  <div class="info-line"><span>Status:</span><span style="color:#146242">Paid</span></div>
-                  <div class="info-line"><span>Total Amount:</span><span style="color:#146242">$7.00</span></div>
+                  <div class="info-line"><span>Method:</span><span>{{ order.paymentMethod }}</span></div>
+                  <div class="info-line"><span>Status:</span><span style="color:#146242">{{ order.paymentStatus }}</span></div>
+                  <div class="info-line"><span>Total Amount:</span><span style="color:#146242">{{ order.total }}</span></div>
                 </div>
               </article>
             </div>
 
             <div class="detail-title"><kc-icon name="package" [size]="14" /> Product Details</div>
             <section class="product-detail">
-              <div class="product-line">
-                <img src="https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=160&q=85" alt="Palm sugar pack" />
-                <div>
-                  <h3>Palm Sugar Pack</h3>
-                  <p>Organic Khmer Sweetener</p>
-                  <p>Qty: 2 * $3.50 ea</p>
+              @for (item of order.items; track item.name) {
+                <div class="product-line">
+                  <img [src]="item.image || 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=160&q=85'" [alt]="item.name" />
+                  <div>
+                    <h3>{{ item.name }}</h3>
+                    <p>Qty: {{ item.qty }} * \${{ item.price.toFixed(2) }} ea</p>
+                  </div>
+                  <div class="subtotal">Subtotal<strong>\${{ item.subtotal.toFixed(2) }}</strong></div>
                 </div>
-                <div class="subtotal">Subtotal<strong>$7.00</strong></div>
-              </div>
+              }
             </section>
 
             <div class="detail-title">Update Order Status</div>
+            @if (statusUpdateError()) {
+              <p class="note" style="color:#b3261e">{{ statusUpdateError() }}</p>
+            }
             <div class="modal-actions">
-              <select><option>Pending</option><option>Shipped</option><option>Delivered</option></select>
-              <button class="btn btn-ghost" type="button" (click)="selectedOrder.set(null)">Close</button>
-              <button class="btn btn-primary" type="button" (click)="selectedOrder.set(null)">Update Status</button>
+              @if (nextStatusOptions(order.status).length) {
+                <select
+                  [ngModel]="statusChoice()"
+                  (ngModelChange)="statusChoice.set($event)"
+                  [disabled]="updatingStatus()"
+                >
+                  @for (opt of nextStatusOptions(order.status); track opt) {
+                    <option [value]="opt">{{ opt }}</option>
+                  }
+                </select>
+                <button class="btn btn-ghost" type="button" (click)="closeOrder()">Close</button>
+                <button
+                  class="btn btn-primary"
+                  type="button"
+                  [disabled]="updatingStatus() || !statusChoice()"
+                  (click)="submitStatusUpdate()"
+                >{{ updatingStatus() ? 'Updating…' : 'Update Status' }}</button>
+              } @else {
+                <span class="muted">This order is in a final state and cannot be updated.</span>
+                <button class="btn btn-ghost" type="button" (click)="closeOrder()">Close</button>
+              }
             </div>
           </div>
         </section>
@@ -2592,11 +2639,15 @@ interface DashboardMetric {
 })
 export class SellerDashboardPage implements OnInit {
   private readonly sellerService = inject(SellerService);
+  private readonly commerceApi = inject(CommerceApiService);
   protected readonly authService = inject(AuthService);
   protected readonly user = this.authService.user;
 
   protected readonly view = signal<DashboardView>('dashboard');
   protected readonly selectedOrder = signal<SellerOrder | null>(null);
+  protected readonly statusChoice = signal<OrderStatus | ''>('');
+  protected readonly updatingStatus = signal(false);
+  protected readonly statusUpdateError = signal('');
   protected readonly myStoreId = signal<string | null>(null);
 
   protected readonly currentPassword = signal('');
@@ -2733,7 +2784,18 @@ export class SellerDashboardPage implements OnInit {
             address: o.deliveryInfo?.address || 'No address',
             date: new Date(o.createdAt).toLocaleDateString(),
             status: o.orderStatus,
-            statusClass
+            statusClass,
+            phone: o.buyerPhone || o.deliveryInfo?.phone || '',
+            note: o.deliveryInfo?.note || '',
+            paymentMethod: o.paymentMethod,
+            paymentStatus: o.paymentStatus,
+            items: o.myItems.map((item: any) => ({
+              name: item.productName,
+              image: item.productImage ?? null,
+              qty: item.quantity,
+              price: item.price,
+              subtotal: item.subtotal,
+            })),
           };
         });
         this.orders.set(mappedOrders);
@@ -2992,6 +3054,64 @@ export class SellerDashboardPage implements OnInit {
 
   protected currentTitle(): string {
     return this.navItems.find((item) => item.view === this.view())?.label ?? 'Dashboard';
+  }
+
+  /** Mirrors the server's order-lifecycle rules so the dropdown never offers an illegal move. */
+  protected nextStatusOptions(status: string): OrderStatus[] {
+    switch (status) {
+      case 'PENDING':
+        return ['CONFIRMED', 'CANCELLED'];
+      case 'CONFIRMED':
+        return ['SHIPPED', 'CANCELLED'];
+      case 'SHIPPED':
+        return ['DELIVERED'];
+      default:
+        return [];
+    }
+  }
+
+  protected openOrder(order: SellerOrder): void {
+    this.statusUpdateError.set('');
+    const options = this.nextStatusOptions(order.status);
+    this.statusChoice.set(options[0] ?? '');
+    this.selectedOrder.set(order);
+  }
+
+  protected closeOrder(): void {
+    this.selectedOrder.set(null);
+    this.statusUpdateError.set('');
+  }
+
+  protected async submitStatusUpdate(): Promise<void> {
+    const order = this.selectedOrder();
+    const next = this.statusChoice();
+    if (!order || !next) {
+      return;
+    }
+
+    this.updatingStatus.set(true);
+    this.statusUpdateError.set('');
+    try {
+      await firstValueFrom(this.commerceApi.setOrderStatus(order.id, next));
+
+      const patch = (candidate: SellerOrder): SellerOrder =>
+        candidate.id === order.id
+          ? {
+              ...candidate,
+              status: next,
+              statusClass:
+                next === 'SHIPPED' ? 'shipped' : next === 'DELIVERED' ? 'delivered' : 'pending',
+            }
+          : candidate;
+      this.orders.update((orders) => orders.map(patch));
+      this.dashboardOrders.update((orders) => orders.map(patch));
+
+      this.closeOrder();
+    } catch (error: unknown) {
+      this.statusUpdateError.set(cartErrorMessage(error));
+    } finally {
+      this.updatingStatus.set(false);
+    }
   }
 
   onProfileImageSelected(event: any, field: 'logoUrl' | 'bannerUrl') {

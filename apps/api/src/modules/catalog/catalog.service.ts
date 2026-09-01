@@ -220,15 +220,15 @@ export const createProduct = async (seller: IUser, input: CreateProductInput) =>
     slug: await uniqueSlug(input.name),
     description: input.description ?? '',
     price: input.price,
-    compareAtPrice: input.compareAtPrice,
+    compareAtPrice: input.compareAtPrice ?? undefined,
     category: input.category,
-    subcategory: input.subcategory,
+    subcategory: input.subcategory ?? undefined,
     // Identity comes from the session, never the payload.
     sellerUserId: seller._id,
     sellerName: seller.name,
     storeName: input.storeName,
     location: input.location ?? '',
-    image: input.image,
+    image: input.image ?? undefined,
     images: input.images ?? [],
     stock: input.stock,
     status: input.status,
@@ -255,13 +255,30 @@ const loadOwned = async (actor: IUser, id: string) => {
     throw new AppError(404, 'Product not found', 'PRODUCT_NOT_FOUND');
   }
 
-  const isOwner =
-    product.sellerUserId && String(product.sellerUserId) === String(actor._id);
-  if (!isOwner && actor.role !== 'ADMIN') {
-    throw new AppError(404, 'Product not found', 'PRODUCT_NOT_FOUND');
+  if (actor.role === 'ADMIN') {
+    return product;
   }
 
-  return product;
+  const isOwnerUser =
+    product.sellerUserId && String(product.sellerUserId) === String(actor._id);
+  if (isOwnerUser) {
+    return product;
+  }
+
+  if (product.sellerId) {
+    if (String(product.sellerId) === String(actor._id)) {
+      return product;
+    }
+    const SellerModel = mongoose.models.Seller;
+    if (SellerModel) {
+      const seller = await SellerModel.findOne({ userId: actor._id });
+      if (seller && String(product.sellerId) === String(seller._id)) {
+        return product;
+      }
+    }
+  }
+
+  throw new AppError(404, 'Product not found', 'PRODUCT_NOT_FOUND');
 };
 
 export const updateProduct = async (

@@ -83,18 +83,19 @@ export const createProductSchema = z
     name: z.string().trim().min(2).max(200),
     description: z.string().trim().max(4000).optional(),
     price: z.number().positive().max(1_000_000),
-    compareAtPrice: z.number().positive().max(1_000_000).optional(),
+    compareAtPrice: z.number().positive().max(1_000_000).nullable().optional(),
     category: z.string().trim().min(2).max(80),
-    subcategory: z.string().trim().max(80).optional(),
+    subcategory: z.string().trim().max(80).nullable().optional(),
+    sellerName: z.string().trim().max(120).optional(),
     storeName: z.string().trim().max(120).optional(),
     location: z.string().trim().max(80).optional(),
     image: z.string().trim().max(5_000_000).optional(),
     images: z.array(z.string().trim().max(5_000_000)).max(10).optional(),
     stock: z.number().int().min(0).max(1_000_000).default(0),
-    status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).default('ACTIVE'),
+    status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED', 'OUT OF STOCK', 'LOW STOCK']).default('ACTIVE'),
     sellerId: z.string().optional(),
   })
-  .strict();
+  .strip();
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
@@ -114,12 +115,12 @@ export const updateProductSchema = z
     sellerName: z.string().trim().min(2).max(120).optional(),
     storeName: z.string().trim().max(120).optional(),
     location: z.string().trim().max(80).optional(),
-    image: z.string().trim().url().max(2048).nullable().optional(),
-    images: z.array(z.string().trim().url().max(2048)).max(10).optional(),
+    image: z.string().trim().max(5_000_000).nullable().optional(),
+    images: z.array(z.string().trim().max(5_000_000)).max(10).optional(),
     stock: z.number().int().min(0).max(1_000_000).optional(),
-    status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).optional(),
+    status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED', 'OUT OF STOCK', 'LOW STOCK']).optional(),
   })
-  .strict()
+  .strip()
   .refine((body) => Object.keys(body).length > 0, {
     message: 'Provide at least one field to update',
   });

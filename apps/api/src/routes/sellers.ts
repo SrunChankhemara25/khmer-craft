@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import SellerApplication from '../../models/SellerApplication';
 import Seller from '../../models/Seller';
 import Review from '../../models/Review';
@@ -69,7 +70,19 @@ router.get('/stores/:id', async (req: Request, res: Response): Promise<void> => 
 router.get('/my-stores', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = req.auth!.userId;
-    const stores = await Seller.find({ userId }).sort({ createdAt: -1 });
+    let stores = await Seller.find({ userId }).sort({ createdAt: -1 });
+    
+    if (stores.length === 0 && userId) {
+      const user = req.auth!.user;
+      const newStore = await Seller.create({
+        userId,
+        storeName: user.name ? `${user.name}'s Store` : 'My Artisan Store',
+        subscriptionPlan: 'STARTER',
+        onboardingStatus: 'COMPLETED'
+      });
+      stores = [newStore];
+    }
+    
     res.json(stores);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch your stores' });
@@ -82,15 +95,24 @@ router.get('/my-stores/:id', authenticate, async (req: Request, res: Response): 
     const userId = req.auth!.userId;
     const storeId = req.params.id;
     
-    const store = await Seller.findOne({ _id: storeId, userId });
-    
+    let store = await Seller.findOne({ _id: storeId, userId });
     if (!store) {
-      res.status(404).json({ error: 'Store not found or you do not have permission to view it' });
-      return;
+      store = await Seller.findById(storeId);
+      if (!store || (String(store.userId) !== String(userId) && req.auth?.user?.role !== 'ADMIN')) {
+        res.status(404).json({ error: 'Store not found or you do not have permission to view it' });
+        return;
+      }
     }
     
-    // In the future, we can add aggregated dashboard data here (e.g. orders, revenue)
-    res.json(store);
+    res.json({
+      id: store._id,
+      storeName: store.storeName,
+      storeDescription: store.storeDescription,
+      location: store.location,
+      phoneNumber: store.phoneNumber,
+      logoUrl: store.storeAvatarUrl,
+      bannerUrl: store.storeCoverImages?.[0]
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch store details' });
   }
@@ -101,22 +123,52 @@ router.put('/my-stores/:id/profile', authenticate, async (req: Request, res: Res
   try {
     const userId = req.auth!.userId;
     const storeId = req.params.id;
-    const { storeName, storeDescription, storeAvatarUrl, storeCoverImages, location, phoneNumber } = req.body;
+    const {
+      storeName,
+      storeDescription,
+      storeAvatarUrl,
+      storeCoverImages,
+      location,
+      phoneNumber,
+      logoUrl,
+      bannerUrl
+    } = req.body;
 
-    const store = await Seller.findOneAndUpdate(
-      { _id: storeId, userId },
-      { $set: { storeName, storeDescription, storeAvatarUrl, storeCoverImages, location, phoneNumber } },
-      { new: true }
-    );
-
+    let store = await Seller.findOne({ _id: storeId, userId });
     if (!store) {
-      res.status(404).json({ error: 'Store not found or you do not have permission to edit it' });
-      return;
+      store = await Seller.findById(storeId);
+      if (!store || (String(store.userId) !== String(userId) && req.auth?.user?.role !== 'ADMIN')) {
+        res.status(404).json({ error: 'Store not found or you do not have permission to edit it' });
+        return;
+      }
     }
 
-    res.json({ message: 'Store profile updated successfully', store });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update store profile' });
+    if (storeName !== undefined) store.storeName = storeName;
+    if (storeDescription !== undefined) store.storeDescription = storeDescription;
+    if (location !== undefined) store.location = location;
+    if (phoneNumber !== undefined) store.phoneNumber = phoneNumber;
+    if (logoUrl !== undefined) store.storeAvatarUrl = logoUrl;
+    if (storeAvatarUrl !== undefined) store.storeAvatarUrl = storeAvatarUrl;
+    if (bannerUrl !== undefined) store.storeCoverImages = [bannerUrl];
+    if (storeCoverImages !== undefined) {
+      store.storeCoverImages = Array.isArray(storeCoverImages) ? storeCoverImages : [storeCoverImages];
+    }
+
+    await store.save();
+
+    res.json({
+      message: 'Store profile updated successfully',
+      store,
+      id: store._id,
+      storeName: store.storeName,
+      storeDescription: store.storeDescription,
+      location: store.location,
+      phoneNumber: store.phoneNumber,
+      logoUrl: store.storeAvatarUrl,
+      bannerUrl: store.storeCoverImages?.[0]
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to update store profile' });
   }
 });
 
@@ -149,7 +201,7 @@ router.get('/my-stores/:id/orders', authenticate, async (req: Request, res: Resp
     const [pendingCount, transitCount, completed30dCount, revenueResult] = await Promise.all([
       Order.countDocuments({ 'items.sellerId': store._id, orderStatus: 'PENDING' }),
       Order.countDocuments({ 'items.sellerId': store._id, orderStatus: 'SHIPPED' }),
-      Order.countDocuments({ 'items.sellerId': store._id, orderStatus: 'DELIVERED', createdAt: { $gte: thirtyDaysAgo } }),
+      Order.countDocuments({ 'items.sellerId': store._id, orderStatus: 'DELIVERED', createdAt: mongoose.trusted({ $gte: thirtyDaysAgo }) }),
       // Calculate MTD Revenue: SUM(item.subtotal) where order is PAID and in current month
       Order.aggregate([
         { $match: { 'items.sellerId': store._id, paymentStatus: 'PAID', createdAt: { $gte: firstDayOfMonth } } },
@@ -178,11 +230,11 @@ router.get('/my-stores/:id/orders', authenticate, async (req: Request, res: Resp
 
     if (dateRange) {
       if (dateRange === 'Last 7 Days') {
-        filter.createdAt = { $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) };
+        filter.createdAt = mongoose.trusted({ $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) });
       } else if (dateRange === 'Last 30 Days') {
-        filter.createdAt = { $gte: thirtyDaysAgo };
+        filter.createdAt = mongoose.trusted({ $gte: thirtyDaysAgo });
       } else if (dateRange === 'This Month') {
-        filter.createdAt = { $gte: firstDayOfMonth };
+        filter.createdAt = mongoose.trusted({ $gte: firstDayOfMonth });
       }
     }
 

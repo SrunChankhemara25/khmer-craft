@@ -1,7 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
+import { CommerceApiService } from '../core/api/commerce-api.service';
+import { ApiOrder } from '../core/api/api.models';
+import { cartErrorMessage } from '../core/cart/cart.service';
 
 @Component({
   selector: 'app-order-success',
@@ -9,36 +13,51 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
   imports: [CommonModule, RouterLink, IconComponent],
   template: `
   <div class="page">
-    <div class="success-card animate-scale">
-      <div class="check-circle"><ui-icon name="check" [size]="26" [strokeWidth]="2.6"></ui-icon></div>
-      <h1>Order placed successfully</h1>
-      <p>Thank you for supporting Cambodian local sellers.<br>Your contribution helps preserve ancient traditions.</p>
-
-      <div class="order-meta">
-        <div><small>ORDER ID</small><strong>{{ order.id }}</strong></div>
-        <div><small>DATE</small><strong>{{ order.date }}</strong></div>
-        <div><small>PAYMENT</small><strong>{{ order.payment }}</strong></div>
-        <div><small>STATUS</small><span class="badge badge-gold">{{ order.status }}</span></div>
+    @if (loading()) {
+      <div class="success-card animate-scale">
+        <p class="muted">Loading your order…</p>
       </div>
-
-      <div class="order-summary">
-        <h4>Order Summary</h4>
-        <div class="order-item" *ngFor="let item of order.items">
-          <div class="thumb img-placeholder"></div>
-          <div class="info">
-            <strong>{{ item.name }}</strong>
-            <small>Qty: {{ item.qty }} &middot; {{ item.variant }}</small>
-          </div>
-          <span class="price">\${{ item.price.toFixed(2) }}</span>
+    } @else if (error(); as message) {
+      <div class="success-card animate-scale">
+        <p class="error-feedback">
+          <ui-icon name="alert-circle" [size]="14" /> {{ message }}
+        </p>
+        <div class="actions">
+          <button class="btn btn-outline" routerLink="/products">Continue Shopping</button>
         </div>
-        <div class="total-row"><span>Total</span><span>\${{ total.toFixed(2) }}</span></div>
       </div>
+    } @else if (order(); as order) {
+      <div class="success-card animate-scale">
+        <div class="check-circle"><ui-icon name="check" [size]="26" [strokeWidth]="2.6"></ui-icon></div>
+        <h1>Order placed successfully</h1>
+        <p>Thank you for supporting Cambodian local sellers.<br>Your contribution helps preserve ancient traditions.</p>
 
-      <div class="actions">
-        <button class="btn btn-primary">View My Orders</button>
-        <button class="btn btn-outline" routerLink="/products">Continue Shopping</button>
+        <div class="order-meta">
+          <div><small>ORDER ID</small><strong>{{ order.orderNumber }}</strong></div>
+          <div><small>DATE</small><strong>{{ order.createdAt | date: 'MMM d, y' }}</strong></div>
+          <div><small>PAYMENT</small><strong>{{ order.paymentMethod }}</strong></div>
+          <div><small>STATUS</small><span class="badge badge-gold">{{ order.orderStatus | titlecase }}</span></div>
+        </div>
+
+        <div class="order-summary">
+          <h4>Order Summary</h4>
+          <div class="order-item" *ngFor="let item of order.items">
+            <div class="thumb img-placeholder"></div>
+            <div class="info">
+              <strong>{{ item.productName }}</strong>
+              <small>Qty: {{ item.quantity }} &middot; {{ item.sellerName }}</small>
+            </div>
+            <span class="price">\${{ item.subtotal.toFixed(2) }}</span>
+          </div>
+          <div class="total-row"><span>Total</span><span>\${{ order.totalAmount.toFixed(2) }}</span></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" routerLink="/orders">View My Orders</button>
+          <button class="btn btn-outline" routerLink="/products">Continue Shopping</button>
+        </div>
       </div>
-    </div>
+    }
 
     <div class="info-strip animate-in delay-1">
       <div class="info-card">
@@ -62,6 +81,8 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
   styles: [`
     .page { background: var(--color-bg-alt); min-height: 100vh; padding: 56px 20px; display: flex; flex-direction: column; align-items: center; }
     .success-card { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); max-width: 460px; width: 100%; padding: 40px; text-align: center; }
+    .muted { color: var(--color-muted); font-size: 13.5px; }
+    .error-feedback { color: var(--color-danger); font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 6px; }
     .check-circle {
       width: 60px; height: 60px; border-radius: 50%; background: var(--color-success-soft); color: var(--color-success);
       display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;
@@ -94,18 +115,31 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
   `]
 })
 export class OrderSuccessComponent {
-  order = {
-    id: 'KC-000001',
-    date: 'Jul 28, 2026',
-    payment: 'COD',
-    status: 'Pending',
-    items: [
-      { name: 'Hand-woven Silk Scarf', variant: 'Indigo Gold', qty: 1, price: 45.00 },
-      { name: 'Ceramic Tea Bowl', variant: 'Celadon Glaze', qty: 2, price: 36.00 }
-    ]
-  };
+  private readonly route = inject(ActivatedRoute);
+  private readonly api = inject(CommerceApiService);
 
-  get total() {
-    return this.order.items.reduce((sum, i) => sum + i.price, 0);
+  protected readonly order = signal<ApiOrder | null>(null);
+  protected readonly loading = signal(true);
+  protected readonly error = signal('');
+
+  constructor() {
+    void this.load();
+  }
+
+  private async load(): Promise<void> {
+    const orderNumber = this.route.snapshot.queryParamMap.get('order');
+    if (!orderNumber) {
+      this.error.set('No order to show.');
+      this.loading.set(false);
+      return;
+    }
+
+    try {
+      this.order.set(await firstValueFrom(this.api.getOrder(orderNumber)));
+    } catch (error: unknown) {
+      this.error.set(cartErrorMessage(error));
+    } finally {
+      this.loading.set(false);
+    }
   }
 }
