@@ -56,8 +56,11 @@ export class SellerService {
     return this.http.get<any>(`${API_URL}/sellers/my-stores/${storeId}/reviews`);
   }
 
-  getStoreProducts(storeId: string) {
-    return this.http.get<any>(`${API_URL}/products?sellerId=${storeId}`);
+  getStoreProducts(_storeId: string) {
+    // The authenticated endpoint enforces ownership and also returns drafts
+    // and archived listings. A public sellerId query can never safely power
+    // a seller's management dashboard.
+    return this.http.get<any>(`${API_URL}/products/mine`);
   }
 
   createProduct(data: any) {

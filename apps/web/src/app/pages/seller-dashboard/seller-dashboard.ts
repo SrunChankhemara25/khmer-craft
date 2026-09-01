@@ -2733,7 +2733,9 @@ export class SellerDashboardPage implements OnInit {
     this.http.get<any[]>(`${API_URL}/sellers/my-stores`).subscribe({
       next: (stores) => {
         if (stores && stores.length > 0) {
-          const storeId = stores[0]._id;
+          // The current API intentionally exposes `id`, not MongoDB's `_id`.
+          // Keep the fallback so older deployments remain compatible.
+          const storeId = stores[0].id ?? stores[0]._id;
           this.myStoreId.set(storeId);
           this.loadDashboardData(storeId);
         } else {
@@ -2851,9 +2853,9 @@ export class SellerDashboardPage implements OnInit {
       next: (data) => {
         this.reviewsStats.set(data.stats || {});
         const mappedReviews = (data.reviews || []).map((r: any) => ({
-          id: r._id,
-          name: r.reviewerName || 'Anonymous',
-          initial: (r.reviewerName || 'A').substring(0, 1).toUpperCase(),
+          id: r.id ?? r._id,
+          name: r.buyerName || r.reviewerName || 'Anonymous',
+          initial: (r.buyerName || r.reviewerName || 'A').substring(0, 1).toUpperCase(),
           color: '#f0a36e',
           product: r.productName || 'Unknown Product',
           date: new Date(r.createdAt).toLocaleDateString(),
@@ -2930,7 +2932,7 @@ export class SellerDashboardPage implements OnInit {
     if (!q) return this.reviews();
     return this.reviews().filter(r => 
       r.name.toLowerCase().includes(q) || 
-      r.comment.toLowerCase().includes(q) ||
+      r.text.toLowerCase().includes(q) ||
       (r.product && r.product.toLowerCase().includes(q))
     );
   });
@@ -2943,7 +2945,7 @@ export class SellerDashboardPage implements OnInit {
   }
 
   toggleProductStatus(product: any) {
-    const newStatus = product.status === 'ACTIVE' ? 'OUT OF STOCK' : 'ACTIVE';
+    const newStatus = product.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE';
     this.sellerService.updateProduct(product.id, { status: newStatus }).subscribe({
       next: () => {
         if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
@@ -2972,12 +2974,12 @@ export class SellerDashboardPage implements OnInit {
 
     if (!data.name || !data.category || !data.price || isNaN(data.stock)) return;
 
-    data.sellerName = this.user()?.name || 'Sothy Roth';
-    data.storeName = this.storeProfile()?.storeName || 'Sothy Awesome Store';
-    data.sellerId = this.myStoreId() || undefined;
-
-    // Clean up fields that backend strict validation rejects
+    // Ownership and store identity always come from the signed-in account on
+    // the API; never send editable/fallback seller names from the browser.
     delete data.material;
+    delete data.sellerName;
+    delete data.storeName;
+    delete data.sellerId;
     if (!data.image) {
       delete data.image;
     }

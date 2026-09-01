@@ -10,7 +10,8 @@
     "test": "vitest run",
     "seed:auth": "ts-node scripts/seed-auth-test-users.ts",
     "seed:catalog": "ts-node scripts/seed-catalog.ts",
-    "seed:sellers": "ts-node scripts/seed-sellers.ts"
+    "seed:sellers": "ts-node scripts/seed-sellers.ts",
+    "migrate:legacy-seller": "ts-node scripts/migrate-legacy-seller.ts"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
