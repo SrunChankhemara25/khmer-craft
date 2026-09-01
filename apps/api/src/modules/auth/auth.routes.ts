@@ -75,7 +75,7 @@ router.post(
 router.patch(
   '/change-password',
   authenticate,
-  authorize('BUYER'),
+  authorize('BUYER', 'SELLER'),
   validate(changePasswordSchema),
   changePassword,
 );

@@ -75,7 +75,10 @@ describe('authentication security', () => {
     expect(response.body.error.code).toBe('UNAUTHENTICATED');
   });
 
-  it('rejects a valid seller token on a buyer-only route', async () => {
+  it('lets a seller change their own password too', async () => {
+    // change-password used to be BUYER-only, which meant a seller could
+    // never rotate their password — the account settings equivalent of the
+    // EMAIL_NOT_VERIFIED dead end. Sellers are account holders like buyers.
     const seller = await createUser('SELLER');
     const sellerToken = tokenFor(seller.id, 'SELLER', 60);
     const response = await request(securityApp)
@@ -87,8 +90,7 @@ describe('authentication security', () => {
         confirmPassword: 'DifferentPass456',
       });
 
-    expect(response.status).toBe(403);
-    expect(response.body.error.code).toBe('FORBIDDEN');
+    expect(response.status).toBe(200);
   });
 
   it('rejects a buyer token on a seller-or-admin route', async () => {

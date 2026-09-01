@@ -438,7 +438,7 @@ export class AuthService {
   async forgotPassword(input: ForgotPasswordInput) {
     const user = await User.findOne({
       email: normalizeEmail(input.email),
-      role: 'BUYER',
+      $or: [{ role: 'BUYER' }, { role: 'SELLER' }],
       status: 'ACTIVE',
     });
 
@@ -481,7 +481,7 @@ export class AuthService {
 
     const user = await User.findOne({
       _id: resetRecord.user_id,
-      role: 'BUYER',
+      $or: [{ role: 'BUYER' }, { role: 'SELLER' }],
       status: 'ACTIVE',
     });
     if (!user) {
@@ -507,7 +507,7 @@ export class AuthService {
   async changePassword(userId: string, input: ChangePasswordInput) {
     const user = await User.findOne({
       _id: userId,
-      role: 'BUYER',
+      $or: [{ role: 'BUYER' }, { role: 'SELLER' }],
       status: 'ACTIVE',
     }).select('+password_hash');
 
