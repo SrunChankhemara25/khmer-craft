@@ -79,8 +79,7 @@ const OrderItemSchema = new Schema<IOrderItem>(
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     productName: { type: String, required: true },
     productImage: { type: String },
-    // TODO(seller-branch): populate from Product.sellerId once Seller merges.
-    sellerId: { type: Schema.Types.ObjectId, ref: 'Seller' },
+    sellerId: { type: Schema.Types.ObjectId, ref: 'Store' },
     sellerUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     sellerName: { type: String, required: true },
     storeName: { type: String },

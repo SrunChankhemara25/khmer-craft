@@ -18,7 +18,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       </nav>
       <h1>Browse by category</h1>
       <p class="sub">
-        Eight collections spanning Cambodian craft and local agriculture.
+        Explore departments across KhmerCraft’s Cambodian local-first marketplace.
       </p>
     </section>
 
@@ -34,9 +34,15 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
             </span>
             <h2>{{ category.name }}</h2>
             <p>{{ category.description }}</p>
-            <span class="count"
-              >{{ catalog.countByCategory(category.slug) }} products</span
-            >
+            <span class="count">
+              @if (!catalog.loaded()) {
+                Loading products…
+              } @else if (catalog.productError()) {
+                Product count unavailable
+              } @else {
+                {{ catalog.countByCategory(category.slug) }} products
+              }
+            </span>
             <span class="subs">{{ subLabel(category) }}</span>
             <span class="cta">
               View products <ui-icon name="arrow-right" [size]="13" />

@@ -24,11 +24,10 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       </nav>
       <div class="head-row">
         <div>
-          <span class="eyebrow">Shop directly from Cambodian makers</span>
-          <h1>Meet our artisan stores</h1>
+          <span class="eyebrow">Cambodian stores, one marketplace</span>
+          <h1>Explore local stores</h1>
           <p class="sub">
-            {{ filtered().length }} sellers across Cambodia, each running their
-            own workshop.
+            Browse {{ filtered().length }} local sellers across marketplace categories.
           </p>
         </div>
         <label class="store-search">
@@ -44,19 +43,23 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       </div>
     </section>
 
-    @if (!term()) {
+    @if (!term() && featuredStores().length) {
       <section class="container featured">
         @for (store of featuredStores(); track store.id; let i = $index) {
           <a class="featured-store" target="_self" [class.alt]="i === 1" [routerLink]="['/stores', store.id]">
             <div class="feature-copy">
-              <span class="verified"><ui-icon name="check-circle" [size]="14" /> Verified artisan</span>
+              <span class="verified"><ui-icon name="sparkles" [size]="14" /> Featured store</span>
               <div class="feature-logo">{{ initials(store.name) }}</div>
               <p class="feature-category">{{ store.categoryName }}</p>
               <h2>{{ store.name }}</h2>
               <p>{{ store.description }}</p>
               <div class="feature-meta">
                 <span><ui-icon name="map-pin" [size]="14" /> {{ store.location }}</span>
-                <span><ui-icon name="star" [size]="14" [filled]="true" /> {{ store.rating }}</span>
+                @if (store.reviewCount > 0) {
+                  <span><ui-icon name="star" [size]="14" [filled]="true" /> {{ store.rating }}</span>
+                } @else {
+                  <span>New store</span>
+                }
                 <span>{{ catalog.countByStore(store.id) }} products</span>
               </div>
               <span class="visit">Visit storefront <ui-icon name="arrow-right" [size]="15" /></span>
@@ -75,7 +78,19 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         <div><span>Marketplace directory</span><h2>All stores</h2></div>
         <strong>{{ filtered().length }} active</strong>
       </div>
-      @if (filtered().length) {
+      @if (!catalog.storesLoaded()) {
+        <div class="store-state" aria-live="polite">
+          <ui-icon class="spin" name="loader" [size]="28" />
+          <h2>Loading stores</h2>
+        </div>
+      } @else if (catalog.storeError()) {
+        <div class="store-state" role="alert">
+          <ui-icon name="alert-circle" [size]="30" />
+          <h2>Stores are temporarily unavailable</h2>
+          <p>{{ catalog.storeError() }}</p>
+          <button class="btn btn-primary" type="button" (click)="catalog.loadStores()">Try again</button>
+        </div>
+      } @else if (filtered().length) {
         <div class="store-grid">
           @for (store of filtered(); track store.id) {
             <article class="store-card card card-hover">
@@ -84,17 +99,20 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
                 <span>{{ store.categoryName }}</span>
               </div>
               <div class="store-body">
-                <span class="badge badge-soft"><ui-icon name="check-circle" [size]="11" /> Verified seller</span>
                 <h2>{{ store.name }}</h2>
                 <div class="meta">
                   <span
                     ><ui-icon name="map-pin" [size]="13" />
                     {{ store.location }}</span
                   >
-                  <span
-                    ><ui-icon name="star" [size]="13" [filled]="true" />
-                    {{ store.rating }}</span
-                  >
+                  @if (store.reviewCount > 0) {
+                    <span
+                      ><ui-icon name="star" [size]="13" [filled]="true" />
+                      {{ store.rating }}</span
+                    >
+                  } @else {
+                    <span>New store</span>
+                  }
                   <span
                     ><ui-icon name="package" [size]="13" />
                     {{ catalog.countByStore(store.id) }} products</span
@@ -270,6 +288,11 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         padding: 50px 32px 70px;
         gap: 12px;
       }
+      .store-state { align-items: center; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 300px; padding: 42px 24px; text-align: center; }
+      .store-state > ui-icon { color: #9b6517; }
+      .store-state p { color: var(--color-muted); font-size: 13px; }
+      .store-state .spin { animation: spin 900ms linear infinite; color: var(--color-accent); }
+      @keyframes spin { to { transform: rotate(360deg); } }
       .empty-image {
         width: 140px;
         height: 140px;
@@ -318,9 +341,7 @@ export class StoresComponent {
     );
   });
 
-  protected readonly featuredStores = computed(() =>
-    this.catalog.stores.filter((store) => store.id === 's006' || store.id === 's007'),
-  );
+  protected readonly featuredStores = computed(() => this.catalog.stores.slice(0, 2));
 
   protected initials(name: string): string {
     return name.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase();

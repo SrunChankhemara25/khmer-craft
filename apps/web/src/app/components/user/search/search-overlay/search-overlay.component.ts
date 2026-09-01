@@ -55,7 +55,7 @@ const POPULAR_SEARCHES = [
             type="search"
             name="q"
             [(ngModel)]="term"
-            placeholder="Search handmade crafts, palm sugar, rice products…"
+            placeholder="Search products, stores and categories…"
             aria-label="Search products"
             autocomplete="off"
           />
@@ -75,7 +75,13 @@ const POPULAR_SEARCHES = [
         </form>
 
         <div class="body">
-          @if (term().trim()) {
+          @if (catalog.productError()) {
+            <div class="search-error" role="alert">
+              <ui-icon name="alert-circle" [size]="18" />
+              <span>{{ catalog.productError() }}</span>
+              <button type="button" (click)="catalog.load()">Try again</button>
+            </div>
+          } @else if (term().trim()) {
             <!-- Typing: live matches, so the panel is never a dead end. -->
             <section>
               <h3>
@@ -271,6 +277,9 @@ const POPULAR_SEARCHES = [
       section {
         padding: 14px 0;
       }
+      .search-error { align-items: center; background: #fff8ed; border: 1px solid #ead7b7; border-radius: 10px; color: #7b5317; display: flex; font-size: 12px; gap: 8px; margin-top: 14px; padding: 12px; }
+      .search-error span { flex: 1; }
+      .search-error button { background: transparent; border: 0; color: var(--color-accent); font-size: 12px; font-weight: 700; }
       section + section {
         border-top: 1px solid var(--color-border);
       }

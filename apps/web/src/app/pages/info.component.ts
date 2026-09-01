@@ -27,19 +27,19 @@ const PAGES: Record<string, InfoPage> = {
     sections: [
       {
         heading: 'How long does delivery take?',
-        body: 'Orders inside Phnom Penh usually arrive within two working days. Provincial delivery takes three to five, depending on the courier route.',
+        body: 'Delivery timing depends on the seller, destination and courier. The confirmed estimate will be shown for each seller shipment before ordering.',
       },
       {
         heading: 'How do I track my order?',
-        body: 'Open My Orders from your profile. Every order shows its current status and, once dispatched, the courier reference.',
+        body: 'Signed-in buyers can open My Orders to see the current order status. Courier tracking will appear when a seller provides it.',
       },
       {
         heading: 'Can I return an item?',
-        body: 'Unused items can be returned within seven days. Because most products are handmade, small variations in colour and weave are not considered faults.',
+        body: 'Eligible returns follow KhmerCraft’s marketplace return policy. Sellers handle eligible returns, while KhmerCraft support handles disputes.',
       },
       {
         heading: 'How do sellers get paid?',
-        body: 'Sellers are settled weekly for delivered orders, minus the marketplace fee shown in the seller dashboard.',
+        body: 'Seller payout timing and marketplace fees are shown in the applicable seller plan and dashboard once those payment operations are active.',
       },
     ],
   },
@@ -49,11 +49,11 @@ const PAGES: Record<string, InfoPage> = {
     sections: [
       {
         heading: 'Buyer support',
-        body: 'support@khmercraft.example — order issues, delivery questions, returns.',
+        body: 'Buyer support contact is being connected. For now, use My Orders to keep the relevant order number available.',
       },
       {
         heading: 'Seller support',
-        body: 'sellers@khmercraft.example — onboarding, listings, payouts.',
+        body: 'Seller support contact is being connected through the seller portal.',
       },
       {
         heading: 'Office',
@@ -63,19 +63,19 @@ const PAGES: Record<string, InfoPage> = {
   },
   shipping: {
     title: 'Shipping information',
-    intro: 'What delivery costs and how long it takes.',
+    intro: 'How seller-grouped delivery will work on KhmerCraft.',
     sections: [
       {
         heading: 'Delivery charges',
-        body: 'A flat $3.50 applies to orders under $50. Orders of $50 or more ship free inside Cambodia.',
+        body: 'Shipping is calculated separately for each seller shipment. Final fees must be confirmed during checkout.',
       },
       {
         heading: 'Delivery times',
-        body: 'Phnom Penh: one to two working days. Provinces: three to five working days.',
+        body: 'Delivery estimates depend on seller handling time, destination and courier. Avoid relying on an estimate until checkout confirms it.',
       },
       {
         heading: 'Multi-seller orders',
-        body: 'Items from different artisans may arrive separately, at no extra cost to you.',
+        body: 'Items from different sellers are separate shipment groups and may arrive at different times. Each group can have its own shipping fee.',
       },
     ],
   },

@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import mongoose from 'mongoose';
+import EmailVerificationCode from '../../../models/EmailVerificationCode';
 import PasswordResetToken from '../../../models/PasswordResetToken';
 import RefreshToken from '../../../models/RefreshToken';
 import User, { IUser } from '../../../models/User';
@@ -16,16 +17,50 @@ import {
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
+  ResendCodeInput,
   ResetPasswordInput,
+  VerifyEmailInput,
 } from './auth.validation';
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
-const hashResetToken = (token: string) =>
-  crypto.createHash('sha256').update(token).digest('hex');
-const hashRefreshToken = (token: string) =>
-  crypto.createHash('sha256').update(token).digest('hex');
+const sha256 = (value: string) =>
+  crypto.createHash('sha256').update(value).digest('hex');
+const hashResetToken = sha256;
+const hashRefreshToken = sha256;
+const hashVerificationCode = sha256;
 
 const createRefreshToken = () => crypto.randomBytes(48).toString('base64url');
+
+const VERIFICATION_CODE_EXPIRES_MINUTES = 10;
+const MAX_VERIFICATION_ATTEMPTS = 5;
+
+const generateVerificationCode = () =>
+  crypto.randomInt(100_000, 1_000_000).toString();
+
+/**
+ * Issues a fresh code for a user, replacing any still-live one. Logs it to
+ * the server console — same stopgap the codebase already uses for password
+ * reset links (see forgotPassword) until a transactional email provider is
+ * wired in.
+ */
+const issueVerificationCode = async (user: IUser) => {
+  await EmailVerificationCode.deleteMany({ user_id: user._id });
+  const code = generateVerificationCode();
+  await EmailVerificationCode.create({
+    user_id: user._id,
+    code_hash: hashVerificationCode(code),
+    expires_at: new Date(
+      Date.now() + VERIFICATION_CODE_EXPIRES_MINUTES * 60 * 1000,
+    ),
+  });
+
+  if (env.nodeEnv !== 'test') {
+    // This is the handoff point for a transactional email provider.
+    console.info(`Email verification code for ${user.email}: ${code}`);
+  }
+
+  return env.nodeEnv === 'test' ? code : undefined;
+};
 
 export class AuthService {
   private async createSession(user: IUser) {
@@ -48,6 +83,11 @@ export class AuthService {
     };
   }
 
+  /**
+   * Creates the account but does not sign it in yet — no session is issued
+   * until the email code is verified. The caller is expected to send the
+   * user on to /verify-email next.
+   */
   async register(input: RegisterInput) {
     const email = normalizeEmail(input.email);
     if (await User.exists({ email })) {
@@ -65,9 +105,56 @@ export class AuthService {
       phone: input.phone,
       role: 'BUYER',
       status: 'ACTIVE',
+      email_verified: false,
     });
 
+    const devCode = await issueVerificationCode(user);
+    return { user, devCode };
+  }
+
+  /** Confirms the code and, only then, starts the session. */
+  async verifyEmail(input: VerifyEmailInput) {
+    const user = await User.findOne({ email: normalizeEmail(input.email) });
+    if (!user) {
+      throw new AppError(400, 'Invalid or expired code', 'INVALID_CODE');
+    }
+
+    if (user.email_verified) {
+      return { user, ...(await this.createSession(user)) };
+    }
+
+    const record = await EmailVerificationCode.findOne({
+      user_id: user._id,
+      expires_at: mongoose.trusted({ $gt: new Date() }),
+    });
+
+    if (!record || record.attempts >= MAX_VERIFICATION_ATTEMPTS) {
+      throw new AppError(400, 'Invalid or expired code', 'INVALID_CODE');
+    }
+
+    if (record.code_hash !== hashVerificationCode(input.code)) {
+      await EmailVerificationCode.updateOne(
+        { _id: record._id },
+        { $inc: { attempts: 1 } },
+      );
+      throw new AppError(400, 'Invalid or expired code', 'INVALID_CODE');
+    }
+
+    user.email_verified = true;
+    await user.save();
+    await EmailVerificationCode.deleteMany({ user_id: user._id });
+
     return { user, ...(await this.createSession(user)) };
+  }
+
+  /** Same response whether or not the account exists — no account enumeration. */
+  async resendCode(input: ResendCodeInput) {
+    const user = await User.findOne({ email: normalizeEmail(input.email) });
+    if (user && !user.email_verified) {
+      const devCode = await issueVerificationCode(user);
+      return { devCode };
+    }
+    return {};
   }
 
   /**
@@ -138,6 +225,14 @@ export class AuthService {
 
     if (user.status !== 'ACTIVE') {
       throw new AppError(403, 'This account is not active', 'ACCOUNT_INACTIVE');
+    }
+
+    if (!user.email_verified) {
+      throw new AppError(
+        403,
+        'Please verify your email before signing in',
+        'EMAIL_NOT_VERIFIED',
+      );
     }
 
     if (input.expectedRole && user.role !== input.expectedRole) {

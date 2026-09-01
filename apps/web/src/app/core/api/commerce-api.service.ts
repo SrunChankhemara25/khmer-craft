@@ -11,6 +11,8 @@ import {
   ApiProductDetail,
   ApiProductList,
   ApiSellerOrder,
+  ApiStore,
+  ApiStoreList,
   OrderStatus,
   PaymentMethod,
 } from './api.models';
@@ -56,6 +58,19 @@ export class CommerceApiService {
   getProduct(idOrSlug: string): Observable<ApiProductDetail> {
     return this.http.get<ApiProductDetail>(
       `${API_URL}/products/${encodeURIComponent(idOrSlug)}`,
+    );
+  }
+
+  // -------------------------------------------------------------- stores
+  listStores(page = 1, limit = 20): Observable<ApiStoreList> {
+    return this.http.get<ApiStoreList>(`${API_URL}/sellers/stores`, {
+      params: new HttpParams().set('page', page).set('limit', limit),
+    });
+  }
+
+  getStore(storeId: string): Observable<ApiStore> {
+    return this.http.get<ApiStore>(
+      `${API_URL}/sellers/stores/${encodeURIComponent(storeId)}`,
     );
   }
 

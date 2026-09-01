@@ -1,4 +1,5 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
+import { slugify } from '../src/utils/slugify';
 
 export const PRODUCT_STATUSES = ['ACTIVE', 'DRAFT', 'ARCHIVED'] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
@@ -13,21 +14,18 @@ export interface IProduct extends Document {
   /** Second level of the tree, e.g. Pottery > Bowls & Plates. */
   subcategory?: string;
   /**
-   * TODO(seller-branch): `sellerId` matches the Seller model on
-   * origin/prototype and is left untouched for that developer. It stays
-   * optional and unused here.
+   * The Store this listing belongs to. Set from the seller's own Store at
+   * creation time (never trusted from the request) — see
+   * `catalog.service.ts#createProduct`. Optional because a seller can have a
+   * User(role=SELLER) account without having created a Store yet; once every
+   * seller is required to have a store before listing, this can become
+   * required.
    */
   sellerId?: mongoose.Types.ObjectId;
   /**
    * The seller account that owns this listing, as a User with role SELLER.
-   *
-   * This exists because seller identity currently lives in two places: the
-   * Seller collection on origin/prototype, which has no working login, and
-   * User(role=SELLER), which does. Order routing needs a seller who can
-   * actually authenticate, so it points here for now.
-   *
-   * TODO(seller-branch): collapse into a single link once the two branches
-   * agree on which collection owns a seller.
+   * This is the field ownership checks and order routing key off of — it is
+   * always set, unlike `sellerId`.
    */
   sellerUserId?: mongoose.Types.ObjectId;
   sellerName: string;
@@ -54,7 +52,7 @@ const ProductSchema = new Schema<IProduct>(
     category: { type: String, required: true, trim: true, index: true },
     subcategory: { type: String, trim: true, index: true },
 
-    sellerId: { type: Schema.Types.ObjectId, ref: 'Seller' },
+    sellerId: { type: Schema.Types.ObjectId, ref: 'Store' },
     sellerUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     sellerName: { type: String, required: true, trim: true },
     storeName: { type: String, trim: true },
@@ -97,10 +95,7 @@ const ProductModel: Model<IProduct> =
 
 export default ProductModel;
 
-/** Derive a URL slug from a product name. */
-export const slugify = (value: string): string =>
-  value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
+// Re-exported so existing callers importing `slugify` from this file keep
+// working — the implementation now lives in `src/utils/slugify.ts`, shared
+// with the Store model.
+export { slugify } from '../src/utils/slugify';

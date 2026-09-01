@@ -30,20 +30,20 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         @if (sellerArea()) {
           <span><ui-icon name="store" [size]="13" /> KhmerCraft for sellers</span>
           <span class="dot">·</span>
-          <span><ui-icon name="banknote" [size]="13" /> No listing fees</span>
+          <span><ui-icon name="banknote" [size]="13" /> Seller plans from $0</span>
         } @else {
-          <span><ui-icon name="truck" [size]="13" /> Free delivery over $50 in Phnom Penh</span>
+          <span><ui-icon name="truck" [size]="13" /> Seller-grouped delivery</span>
           <span class="dot">·</span>
           <span><ui-icon name="shield" [size]="13" /> Secure checkout</span>
         }
         <div class="announce-links">
           @if (sellerArea()) {
-            <a routerLink="/seller/orders">Seller dashboard</a>
+            <a routerLink="/seller/dashboard">Seller dashboard</a>
             <a routerLink="/help">Seller support</a>
           } @else {
             <a routerLink="/orders">Track order</a>
             <a routerLink="/help">Support</a>
-            <a href="http://localhost:4300/become-a-seller" target="_blank" rel="noopener">Seller portal</a>
+            <a href="/become-a-seller" target="_blank" rel="noopener">Seller portal</a>
           }
         </div>
       </div>
@@ -93,10 +93,10 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
                 </button>
                 <button
                   type="button"
-                  [class.active]="language() === 'km'"
-                  (click)="selectLanguage('km')"
+                  disabled
+                  title="Khmer translation is being prepared"
                 >
-                  ភាសាខ្មែរ
+                  ភាសាខ្មែរ · Coming soon
                 </button>
               </div>
             }
@@ -128,7 +128,7 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
           @if (user(); as currentUser) {
             <a
               class="signin-btn"
-              [routerLink]="isSeller() ? '/seller/orders' : '/profile'"
+              [routerLink]="isSeller() ? '/seller/dashboard' : '/profile'"
             >
               <ui-icon name="user" [size]="15" />
               <span class="signin-label">{{ firstName(currentUser.name) }}</span>
@@ -159,6 +159,13 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
                 <a routerLink="/products" (click)="menuOpen.set(false)">All products</a>
                 <a routerLink="/categories" (click)="menuOpen.set(false)">Categories</a>
                 <a routerLink="/stores" (click)="menuOpen.set(false)">All stores</a>
+                <!-- Same shortcuts the category bar shows on wide screens —
+                     the bar hides them below 1400px since there isn't room
+                     to fit them without clipping off-screen. -->
+                <a routerLink="/products" [queryParams]="{ collection: 'new-arrivals' }" (click)="menuOpen.set(false)">New Arrivals</a>
+                <a routerLink="/products" [queryParams]="{ collection: 'best-sellers' }" (click)="menuOpen.set(false)">Best Sellers</a>
+                <a routerLink="/categories/arts-culture" [queryParams]="{ sub: 'souvenirs-gifts' }" (click)="menuOpen.set(false)">Gifts</a>
+                <a class="sale" routerLink="/products" [queryParams]="{ sale: '1' }" (click)="menuOpen.set(false)">Sale</a>
               </nav>
             }
           </div>
@@ -176,8 +183,11 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
               <ui-icon name="store" [size]="13" /> Seller portal
             </span>
             @if (isSeller()) {
+              <a routerLink="/seller/dashboard" [class.on]="isPath('/seller/dashboard')">
+                Dashboard
+              </a>
               <a routerLink="/seller/orders" [class.on]="isPath('/seller/orders')">
-                Orders
+                Incoming orders
               </a>
               <a routerLink="/become-a-seller" [class.on]="isPath('/become-a-seller')">
                 Selling guide
@@ -205,9 +215,9 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
   styles: [
     `
       .navbar {
-        background: rgba(255, 253, 248, 0.91);
-        backdrop-filter: blur(14px) saturate(1.6);
-        -webkit-backdrop-filter: blur(14px) saturate(1.6);
+        background: rgba(255, 253, 248, 0.72);
+        backdrop-filter: blur(22px) saturate(1.25);
+        -webkit-backdrop-filter: blur(22px) saturate(1.25);
         border-bottom: 1px solid transparent;
         position: sticky;
         top: 0;
@@ -219,8 +229,9 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
           transform 550ms ease;
       }
       .navbar.scrolled {
-        border-bottom-color: var(--color-border);
-        box-shadow: var(--shadow-xs);
+        background: rgba(255, 253, 248, 0.84);
+        border-bottom-color: rgba(111, 91, 67, .14);
+        box-shadow: 0 5px 18px rgba(62, 46, 31, .055);
       }
       /* Hidden while scrolling down, revealed the instant the user scrolls
          back up — see NavbarComponent.onScroll(). Always visible near the
@@ -283,15 +294,15 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
       }
 
       .announce {
-        background: #6f271c;
-        color: rgba(255, 255, 255, 0.92);
-        font-size: 12px;
+        background: rgba(75, 48, 38, .9);
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 10.5px;
       }
       .announce-inner {
         display: flex;
         align-items: center;
         gap: 10px;
-        height: 32px;
+        height: 26px;
       }
       .announce-inner span {
         display: inline-flex;
@@ -317,8 +328,8 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         grid-template-columns: 1fr auto 1fr;
         align-items: center;
         gap: clamp(18px, 2.4vw, 42px);
-        padding-top: 8px;
-        padding-bottom: 8px;
+        padding-top: 6px;
+        padding-bottom: 6px;
         height: var(--header-h);
       }
       .search-group {
@@ -359,9 +370,9 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         width: clamp(320px, 34vw, 560px);
         height: 40px;
         padding: 0 16px;
-        border: 1px solid var(--color-border);
+        border: 1px solid rgba(115, 93, 69, .15);
         border-radius: var(--radius-full);
-        background: var(--color-bg-alt);
+        background: rgba(255,255,255,.46);
         color: var(--color-muted);
         font-size: 13.5px;
         font-weight: 400;
@@ -372,8 +383,8 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         white-space: nowrap;
       }
       .search-bar:hover {
-        background: #fff;
-        border-color: var(--color-muted);
+        background: rgba(255,255,255,.78);
+        border-color: rgba(142,48,33,.28);
         color: var(--color-text);
         box-shadow: var(--shadow-xs);
       }
@@ -412,6 +423,8 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         color: var(--color-accent);
         font-weight: 600;
       }
+      .lang-menu button:disabled { color: var(--color-muted-2); cursor: not-allowed; opacity: .7; }
+      .lang-menu button:disabled:hover { background: transparent; }
       .icon-btn {
         background: none;
         border: none;
@@ -455,9 +468,9 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         background: var(--color-accent);
       }
       .signin-btn {
-        background: var(--color-accent);
-        color: #fff;
-        border: none;
+        background: rgba(142, 48, 33, .08);
+        color: var(--color-accent);
+        border: 1px solid rgba(142, 48, 33, .18);
         border-radius: var(--radius-full);
         min-height: 40px;
         padding: 9px 17px;
@@ -470,7 +483,8 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         white-space: nowrap;
       }
       .signin-btn:hover {
-        background: var(--color-accent-hover);
+        background: rgba(142, 48, 33, .14);
+        border-color: rgba(142, 48, 33, .3);
       }
       .menu-wrap {
         position: relative;
@@ -515,6 +529,12 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
       .mobile-menu a:hover {
         background: var(--color-bg-alt);
         color: var(--color-text);
+      }
+      .mobile-menu a.sale {
+        color: var(--color-danger, #b92a2a);
+      }
+      .mobile-menu a.sale:hover {
+        color: var(--color-danger, #b92a2a);
       }
       @media (max-width: 1380px) {
         .navbar-inner {

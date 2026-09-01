@@ -28,13 +28,14 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
             <p class="sub">
               {{ wishlist.count() }} saved
               {{ wishlist.count() === 1 ? 'item' : 'items' }}
+              <span>· Saved on this device</span>
             </p>
           </div>
           <div class="head-actions">
             <button class="btn btn-outline btn-sm" (click)="moveAllToCart()">
               <ui-icon name="cart" [size]="14" /> Move all to cart
             </button>
-            <button class="btn btn-ghost btn-sm" (click)="wishlist.clear()">
+            <button class="btn btn-ghost btn-sm" (click)="clearWishlist()">
               Clear wishlist
             </button>
           </div>
@@ -92,6 +93,7 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
         color: var(--color-muted);
         font-size: 13.5px;
       }
+      .sub span { color: var(--color-muted-2); }
       .head-actions {
         display: flex;
         gap: 10px;
@@ -162,6 +164,12 @@ export class WishlistComponent {
   private readonly cart = inject(CartService);
 
   protected readonly movedCount = signal(0);
+
+  protected clearWishlist(): void {
+    if (window.confirm('Remove every saved item from this device?')) {
+      this.wishlist.clear();
+    }
+  }
 
   protected async moveAllToCart(): Promise<void> {
     const saved: Product[] = [...this.wishlist.products()];

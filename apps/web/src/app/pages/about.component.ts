@@ -12,25 +12,6 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
   template: `
   <app-navbar></app-navbar>
 
-  <section class="hero">
-    <div class="container hero-inner">
-      <div class="hero-copy animate-in">
-        <span class="badge badge-soft"><ui-icon name="sparkles" [size]="13"></ui-icon> Our Story</span>
-        <h1>Preserving Cambodian craft, one artisan at a time</h1>
-        <p>KhmerCraft began with a simple idea: the world should know the hands behind Cambodia's textiles, ceramics, and flavors — not just the products they make.</p>
-      </div>
-      <div class="hero-image img-placeholder dark animate-scale delay-1">Artisan at work</div>
-    </div>
-  </section>
-
-  <section class="container stats-row animate-in">
-    <div class="stat" *ngFor="let s of stats">
-      <div class="stat-icon"><ui-icon [name]="s.icon" [size]="20" color="var(--color-accent)"></ui-icon></div>
-      <strong>{{ s.value }}</strong>
-      <small>{{ s.label }}</small>
-    </div>
-  </section>
-
   <section class="container mission-section">
     <div class="mission-grid">
       <div class="mission-card">
@@ -88,26 +69,14 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
     </div>
     <div class="cta-actions">
       <button class="btn btn-primary btn-lg" routerLink="/products">Shop the Collection</button>
-      <a class="btn btn-outline-light btn-lg" href="http://localhost:4300/become-a-seller" target="_blank" rel="noopener">Become a Seller</a>
+      <a class="btn btn-outline-light btn-lg" routerLink="/become-a-seller">Become a Seller</a>
     </div>
   </section>
 
   <app-footer></app-footer>
   `,
   styles: [`
-    .hero { background: var(--color-bg-alt); padding: 56px 0; }
-    .hero-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
-    .hero-copy h1 { font-size: 38px; line-height: 1.15; margin: 16px 0 18px; }
-    .hero-copy p { color: var(--color-muted); font-size: 15px; max-width: 480px; line-height: 1.65; }
-    .hero-image { height: 320px; border-radius: var(--radius-lg); }
-
-    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 20px; padding: 44px 32px; text-align: center; }
-    .stat { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-    .stat-icon { width: 44px; height: 44px; border-radius: 50%; background: var(--color-accent-soft); display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
-    .stat strong { font-size: 26px; font-family: var(--font-heading); }
-    .stat small { color: var(--color-muted); font-size: 12.5px; }
-
-    .mission-section { padding: 20px 32px 48px; }
+    .mission-section { padding: 48px 32px; }
     .mission-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
     .mission-card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 28px; background: #fff; }
     .mission-icon { width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--color-accent-soft); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
@@ -145,19 +114,12 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
     .btn-outline-light:hover { background: rgba(255,255,255,0.1); }
 
     @media (max-width: 980px) {
-      .hero-inner, .mission-grid, .timeline-section .timeline { grid-template-columns: 1fr; }
-      .stats-row, .values-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+      .mission-grid, .timeline-section .timeline { grid-template-columns: 1fr; }
+      .values-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
     }
   `]
 })
 export class AboutComponent {
-  stats = [
-    { icon: 'users', value: '1,200+', label: 'Local artisans' },
-    { icon: 'map-pin', value: '25', label: 'Provinces reached' },
-    { icon: 'package', value: '48,000+', label: 'Orders delivered' },
-    { icon: 'star', value: '4.8', label: 'Average rating' }
-  ];
-
   timeline = [
     { year: '2021', title: 'A small idea in Siem Reap', desc: 'Founded to help three weaving families sell directly to travelers, skipping unfair middlemen.' },
     { year: '2023', title: 'Opening the marketplace nationwide', desc: 'Expanded to 25 provinces, onboarding potters, farmers, and woodworkers across Cambodia.' },

@@ -155,14 +155,16 @@ const SORTS: { value: ProductSort; label: string }[] = [
               <span class="n">{{ countIf({ subcategory: undefined }) }}</span>
             </button>
             @for (sub of cat.subcategories; track sub.slug) {
-              <button
-                class="filter-row"
-                [class.active]="activeSub() === sub.slug"
-                (click)="setSub(sub.slug)"
-              >
-                <span>{{ sub.name }}</span>
-                <span class="n">{{ countIf({ subcategory: sub.slug }) }}</span>
-              </button>
+              @if (countIf({ subcategory: sub.slug }) > 0 || activeSub() === sub.slug) {
+                <button
+                  class="filter-row"
+                  [class.active]="activeSub() === sub.slug"
+                  (click)="setSub(sub.slug)"
+                >
+                  <span>{{ sub.name }}</span>
+                  <span class="n">{{ countIf({ subcategory: sub.slug }) }}</span>
+                </button>
+              }
             }
           </div>
 
@@ -242,19 +244,21 @@ const SORTS: { value: ProductSort; label: string }[] = [
           <div class="filter-group">
             <h4>Seller</h4>
             @for (store of storesInCategory(); track store.id) {
-              <button
-                class="filter-row"
-                [class.active]="storeId() === store.id"
-                (click)="setStore(store.id)"
-              >
-                <span class="check" [class.on]="storeId() === store.id">
-                  @if (storeId() === store.id) {
-                    <ui-icon name="check" [size]="11" color="#fff" />
-                  }
-                </span>
-                <span class="grow">{{ store.name }}</span>
-                <span class="n">{{ countIf({ storeId: store.id }) }}</span>
-              </button>
+              @if (countIf({ storeId: store.id }) > 0 || storeId() === store.id) {
+                <button
+                  class="filter-row"
+                  [class.active]="storeId() === store.id"
+                  (click)="setStore(store.id)"
+                >
+                  <span class="check" [class.on]="storeId() === store.id">
+                    @if (storeId() === store.id) {
+                      <ui-icon name="check" [size]="11" color="#fff" />
+                    }
+                  </span>
+                  <span class="grow">{{ store.name }}</span>
+                  <span class="n">{{ countIf({ storeId: store.id }) }}</span>
+                </button>
+              }
             }
           </div>
 
@@ -283,7 +287,22 @@ const SORTS: { value: ProductSort; label: string }[] = [
         </aside>
 
         <div class="results">
-          @if (results().length) {
+          @if (!catalog.loaded()) {
+            <div class="catalog-state" aria-live="polite">
+              <ui-icon class="spin" name="loader" [size]="28" />
+              <h2>Loading {{ cat.name }}</h2>
+              <p>We’re checking current products and availability.</p>
+            </div>
+          } @else if (catalog.productError()) {
+            <div class="catalog-state" role="alert">
+              <ui-icon name="alert-circle" [size]="30" />
+              <h2>Products are temporarily unavailable</h2>
+              <p>{{ catalog.productError() }}</p>
+              <button class="btn btn-primary" type="button" (click)="catalog.load()">
+                Try again
+              </button>
+            </div>
+          } @else if (results().length) {
             <div [class]="view() === 'grid' ? 'product-grid' : 'product-list'">
               @for (product of results(); track product.id) {
                 <app-product-card [product]="product" />
@@ -349,6 +368,21 @@ const SORTS: { value: ProductSort; label: string }[] = [
         border-bottom: 1px solid var(--color-border);
         background: var(--color-bg-alt);
       }
+      .catalog-state {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 330px;
+        gap: 10px;
+        padding: 36px 20px;
+        text-align: center;
+      }
+      .catalog-state > ui-icon { color: #9b6517; }
+      .catalog-state h2 { font-size: 19px; }
+      .catalog-state p { color: var(--color-muted); font-size: 13px; }
+      .catalog-state .spin { animation: spin 900ms linear infinite; color: var(--color-accent); }
+      @keyframes spin { to { transform: rotate(360deg); } }
       .category-intro-inner {
         display: grid;
         grid-template-columns: minmax(230px, .8fr) minmax(280px, 1.2fr) auto;
@@ -624,6 +658,13 @@ const SORTS: { value: ProductSort; label: string }[] = [
       .filters {
         max-height: calc(100vh - 130px);
         overflow-y: auto;
+        /* The list still scrolls — just without a visible scrollbar cluttering
+           the sidebar. */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .filters::-webkit-scrollbar {
+        display: none;
       }
       .filter-actions {
         display: none;

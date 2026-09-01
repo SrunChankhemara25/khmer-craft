@@ -7,58 +7,85 @@ import {
   classifyCategory,
   findCategory,
 } from '../data/categories.data';
-import { PRODUCTS as FALLBACK_PRODUCTS } from '../data/products.data';
-import { STORES, findStore } from '../data/stores.data';
 import { Category, Product, ProductQuery, Store } from './catalog.models';
+import { ApiStore } from '../api/api.models';
 
 /**
  * The catalog the UI reads.
  *
- * Products come from the API and are held in a signal, so every derived view
- * (homepage rails, the products grid, related items) recomputes when they
- * load. The identifiers therefore match the server's, which is what makes
- * add-to-cart work — the previous mock ids would have 404'd.
+ * Products and stores both come from the API and are held in signals, so
+ * every derived view (homepage rails, the products grid, related items,
+ * the store directory) recomputes when they load. Product identifiers
+ * therefore match the server's, which is what makes add-to-cart work — the
+ * previous mock ids would have 404'd.
  *
- * If the API cannot be reached the bundled fixtures are used instead, so the
- * storefront still renders something during a backend outage. That is a
- * display-only fallback: those ids are not real, so cart actions against them
- * will fail, and `usingFallback` is exposed so the UI can say so.
+ * API failures stay failures. Rendering local fixture products as live stock
+ * creates broken cart actions and misleading availability, so callers receive
+ * an empty result plus an explicit error signal that they can retry.
  *
- * TODO(api): categories and stores are still local fixtures — there are no
- * endpoints for them yet.
+ * TODO(api): categories are still a local fixture — there is no endpoint for
+ * them yet.
  */
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
   private readonly api = inject(CommerceApiService);
 
   private readonly products = signal<Product[]>([]);
+  private readonly _stores = signal<Store[]>([]);
   readonly loaded = signal(false);
-  readonly usingFallback = signal(false);
+  readonly storesLoaded = signal(false);
+  readonly productError = signal('');
+  readonly storeError = signal('');
 
   readonly categories: Category[] = CATEGORIES;
-  readonly stores: Store[] = STORES;
 
   constructor() {
     void this.load();
+    void this.loadStores();
+  }
+
+  /** Live store list. Fixtures are intentionally never exposed as inventory. */
+  get stores(): Store[] {
+    return this._stores();
+  }
+
+  allStores(): Store[] {
+    return this._stores();
   }
 
   /** Fetch the whole catalog once. It is small; pagination is a UI concern. */
   async load(): Promise<void> {
+    this.loaded.set(false);
+    this.productError.set('');
     try {
       const response = await firstValueFrom(
         this.api.listProducts({ limit: 60 }),
       );
-      const apiProducts = response.products.map(toProduct);
-      const showcaseProducts = FALLBACK_PRODUCTS.filter(
-        (product) => product.storeId === 's006' || product.storeId === 's007',
-      );
-      this.products.set([...apiProducts, ...showcaseProducts]);
-      this.usingFallback.set(false);
+      this.products.set(response.products.map(toProduct));
     } catch {
-      this.products.set(FALLBACK_PRODUCTS);
-      this.usingFallback.set(true);
+      this.products.set([]);
+      this.productError.set(
+        'We could not load the marketplace right now. Please try again.',
+      );
     } finally {
       this.loaded.set(true);
+    }
+  }
+
+  /** Fetch the store directory once, same fallback pattern as products. */
+  async loadStores(): Promise<void> {
+    this.storesLoaded.set(false);
+    this.storeError.set('');
+    try {
+      const response = await firstValueFrom(this.api.listStores(1, 60));
+      this._stores.set(response.stores.map(toStore));
+    } catch {
+      this._stores.set([]);
+      this.storeError.set(
+        'We could not load stores right now. Please try again.',
+      );
+    } finally {
+      this.storesLoaded.set(true);
     }
   }
 
@@ -83,7 +110,7 @@ export class CatalogService {
   }
 
   store(id: string): Store | undefined {
-    return findStore(id);
+    return this._stores().find((candidate) => candidate.id === id);
   }
 
   countByCategory(slug: string): number {
@@ -256,8 +283,6 @@ export class CatalogService {
 const toProduct = (api: ApiProduct): Product => {
   const classification = classifyCategory(api.category);
 
-  const store = STORES.find((candidate) => candidate.name === api.sellerName);
-
   return {
     id: api.id,
     name: api.name,
@@ -267,7 +292,10 @@ const toProduct = (api: ApiProduct): Product => {
     compareAtPrice: api.compareAtPrice ?? undefined,
     ...classification,
     sellerName: api.sellerName,
-    storeId: store?.id ?? api.sellerId ?? '',
+    // The product's own sellerId now points at a real Seller/store document
+    // (see sellers.service.ts) — no more guessing the store by matching names
+    // against a fixture.
+    storeId: api.sellerId ?? '',
     rating: api.rating,
     reviewCount: api.reviewCount,
     stock: api.stock,
@@ -279,6 +307,17 @@ const toProduct = (api: ApiProduct): Product => {
     collections: collectionsFor(api),
   };
 };
+
+/** Map a server store onto the shape the UI renders. */
+const toStore = (api: ApiStore): Store => ({
+  id: api.id,
+  name: api.name,
+  location: api.location ?? '',
+  rating: api.rating,
+  reviewCount: api.reviewCount,
+  categoryName: api.categoryName ?? '',
+  description: api.description ?? '',
+});
 
 /**
  * Collections are computed client-side from the category and sales figures,

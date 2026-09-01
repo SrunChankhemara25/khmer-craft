@@ -11,6 +11,7 @@ import { CommerceApiService } from '../core/api/commerce-api.service';
 import { PaymentMethod } from '../core/api/api.models';
 import { AuthService } from '../core/auth/auth.service';
 import { CartService, cartErrorMessage } from '../core/cart/cart.service';
+import { CartLine } from '../core/catalog/catalog.models';
 import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
 import { FooterComponent } from '../components/shared/layout/footer/footer.component';
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
@@ -28,18 +29,6 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
     label: 'Cash on delivery',
     hint: 'Pay the courier when your order arrives.',
     icon: 'banknote',
-  },
-  {
-    value: 'ABA_DEMO',
-    label: 'ABA Pay (demo)',
-    hint: 'Sandbox only — no real payment is taken.',
-    icon: 'credit-card',
-  },
-  {
-    value: 'STRIPE_SANDBOX',
-    label: 'Card via Stripe (sandbox)',
-    hint: 'Sandbox only — no real payment is taken.',
-    icon: 'credit-card',
   },
 ];
 
@@ -157,26 +146,30 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
                 }
               </div>
 
-              @if (method() !== 'COD') {
-                <p class="sandbox-note">
-                  <ui-icon name="info" [size]="13" />
-                  This is a sandbox method — the order is marked paid immediately
-                  and no money moves.
-                </p>
-              }
+              <p class="sandbox-note">
+                <ui-icon name="info" [size]="13" />
+                ABA/KHQR will appear here after the real payment integration is ready.
+              </p>
             </section>
           </form>
 
           <aside class="summary card">
             <h2>Order summary</h2>
 
-            <div class="lines">
-              @for (line of cart.lines(); track line.product.id) {
-                <div class="line">
-                  <span class="qty">{{ line.quantity }}×</span>
-                  <span class="name">{{ line.product.name }}</span>
-                  <span class="amount">\${{ line.lineTotal.toFixed(2) }}</span>
-                </div>
+            <div class="shipments">
+              @for (group of shipmentGroups(); track group.storeId) {
+                <section class="shipment">
+                  <header><ui-icon name="store" [size]="13" /> {{ group.sellerName }} <span>Separate delivery</span></header>
+                  <div class="lines">
+                    @for (line of group.lines; track line.product.id) {
+                      <div class="line">
+                        <span class="qty">{{ line.quantity }}×</span>
+                        <span class="name">{{ line.product.name }}</span>
+                        <span class="amount">\${{ line.lineTotal.toFixed(2) }}</span>
+                      </div>
+                    }
+                  </div>
+                </section>
               }
             </div>
 
@@ -358,6 +351,11 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
         padding-bottom: 12px;
         border-bottom: 1px solid var(--color-border);
       }
+      .shipments { display: grid; gap: 11px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); }
+      .shipment { display: grid; gap: 6px; }
+      .shipment header { align-items: center; color: var(--color-text); display: flex; font-size: 11.5px; font-weight: 700; gap: 6px; }
+      .shipment header span { color: var(--color-muted); font-size: 9.5px; font-weight: 500; margin-left: auto; }
+      .shipment .lines { border: 0; padding: 0 0 0 19px; }
       .line {
         display: grid;
         grid-template-columns: auto 1fr auto;
@@ -436,6 +434,19 @@ export class CheckoutComponent {
   protected readonly method = signal<PaymentMethod>('COD');
   protected readonly submitting = signal(false);
   protected readonly error = signal('');
+  protected readonly shipmentGroups = computed(() => {
+    const groups = new Map<string, { storeId: string; sellerName: string; lines: CartLine[] }>();
+    for (const line of this.cart.lines()) {
+      const key = line.product.storeId;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.lines.push(line);
+      } else {
+        groups.set(key, { storeId: key, sellerName: line.product.sellerName, lines: [line] });
+      }
+    }
+    return [...groups.values()];
+  });
 
   protected readonly form = new FormGroup({
     // Prefilled from the signed-in profile; the guard guarantees there is one.

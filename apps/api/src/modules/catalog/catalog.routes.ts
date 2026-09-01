@@ -14,6 +14,7 @@ import {
   createProductSchema,
   updateProductSchema,
 } from './catalog.validation';
+import { listForProduct } from '../reviews/reviews.controller';
 
 const router = Router();
 
@@ -29,6 +30,7 @@ router.get(
 );
 
 router.get('/:id', detail);
+router.get('/:id/reviews', listForProduct);
 
 // Sellers manage their own listings. Ownership is enforced in the service,
 // not here, because an admin is allowed past it for support work.

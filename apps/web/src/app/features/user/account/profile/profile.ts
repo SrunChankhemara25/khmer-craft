@@ -1,8 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { CartService } from '../../../../core/cart/cart.service';
-import { WishlistService } from '../../../../core/wishlist/wishlist.service';
 import { NavbarComponent } from '../../../../components/shared/layout/navbar/navbar.component';
 import { FooterComponent } from '../../../../components/shared/layout/footer/footer.component';
 import { IconComponent } from '../../../../components/shared/ui/icon/icon.component';
@@ -29,11 +27,12 @@ import { IconComponent } from '../../../../components/shared/ui/icon/icon.compon
                 <dt>Phone</dt>
                 <dd>{{ currentUser.phone }}</dd>
               }
-              <dt>Role</dt>
-              <dd>{{ currentUser.role }}</dd>
             </dl>
 
             <div class="actions">
+              <button class="btn btn-primary btn-sm" routerLink="/orders">
+                View my orders
+              </button>
               <button
                 class="btn btn-outline btn-sm"
                 routerLink="/account/change-password"
@@ -50,28 +49,31 @@ import { IconComponent } from '../../../../components/shared/ui/icon/icon.compon
             </div>
           </article>
 
-          <div class="links">
-            <a class="card link-card card-hover" routerLink="/orders">
-              <ui-icon name="package" [size]="18" />
+          <div class="account-info">
+            <article class="card info-card">
+              <span class="info-icon"><ui-icon name="map-pin" [size]="17" /></span>
               <div>
-                <strong>My orders</strong>
-                <span>Track and review past orders</span>
+                <strong>Delivery location</strong>
+                <span>No saved address yet</span>
+                <small>Address management will appear after account sync is connected.</small>
               </div>
-            </a>
-            <a class="card link-card card-hover" routerLink="/wishlist">
-              <ui-icon name="heart" [size]="18" />
+            </article>
+            <article class="card info-card">
+              <span class="info-icon"><ui-icon name="phone" [size]="17" /></span>
               <div>
-                <strong>Wishlist</strong>
-                <span>{{ wishlistCount() }} saved items</span>
+                <strong>Contact for order updates</strong>
+                <span>{{ currentUser.phone || 'No phone number added' }}</span>
+                <small>{{ currentUser.email }}</small>
               </div>
-            </a>
-            <a class="card link-card card-hover" routerLink="/cart">
-              <ui-icon name="cart" [size]="18" />
+            </article>
+            <article class="card info-card security-card">
+              <span class="info-icon"><ui-icon name="shield" [size]="17" /></span>
               <div>
-                <strong>Cart</strong>
-                <span>{{ cartCount() }} items ready to check out</span>
+                <strong>Account security</strong>
+                <span>Password-protected buyer account</span>
+                <a routerLink="/account/change-password">Manage password</a>
               </div>
-            </a>
+            </article>
           </div>
         </div>
       }
@@ -120,27 +122,52 @@ import { IconComponent } from '../../../../components/shared/ui/icon/icon.compon
         gap: 10px;
         flex-wrap: wrap;
       }
-      .links {
+      .account-info {
         display: grid;
         gap: 12px;
       }
-      .link-card {
+      .info-card {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 14px;
         padding: 16px 18px;
         color: var(--color-text);
       }
-      .link-card div {
+      .info-icon {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
+        border-radius: 10px;
+        background: var(--color-accent-soft);
+        color: var(--color-accent);
+      }
+      .info-card div {
         display: flex;
         flex-direction: column;
+        gap: 2px;
       }
-      .link-card strong {
+      .info-card strong {
         font-size: 14px;
       }
-      .link-card span {
+      .info-card div > span {
         color: var(--color-muted);
         font-size: 12.5px;
+      }
+      .info-card small {
+        color: var(--color-muted-2);
+        font-size: 11px;
+      }
+      .info-card a {
+        width: fit-content;
+        margin-top: 3px;
+        color: var(--color-accent);
+        font-size: 11.5px;
+        font-weight: 700;
+      }
+      .info-card a:hover {
+        text-decoration: underline;
       }
       @media (max-width: 860px) {
         .grid {
@@ -153,12 +180,8 @@ import { IconComponent } from '../../../../components/shared/ui/icon/icon.compon
 export class Profile {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly cart = inject(CartService);
-  private readonly wishlist = inject(WishlistService);
 
   protected readonly user = this.auth.user;
-  protected readonly cartCount = this.cart.count;
-  protected readonly wishlistCount = this.wishlist.count;
   protected readonly signingOut = signal(false);
 
   protected signOut(): void {

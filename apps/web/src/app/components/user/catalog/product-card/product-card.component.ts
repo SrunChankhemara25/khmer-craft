@@ -27,6 +27,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
   template: `
     <article
       class="product-card card card-hover"
+      [class.editorial]="variant() === 'editorial'"
       (click)="open()"
       (keydown.enter)="open()"
       tabindex="0"
@@ -75,11 +76,15 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       <div class="product-body">
         <div class="product-kicker">
           <span class="tag">{{ product().categoryName }}</span>
-          <div class="rating-row" [attr.aria-label]="product().rating + ' out of 5 stars, ' + product().reviewCount + ' reviews'">
-            <ui-icon name="star" [size]="12" [filled]="true" class="stars" />
-            <span>{{ product().rating }}</span>
-            <span class="count">({{ product().reviewCount }})</span>
-          </div>
+          @if (product().reviewCount > 0) {
+            <div class="rating-row" [attr.aria-label]="product().rating + ' out of 5 stars, ' + product().reviewCount + ' reviews'">
+              <ui-icon name="star" [size]="12" [filled]="true" class="stars" />
+              <span>{{ product().rating }}</span>
+              <span class="count">({{ product().reviewCount }})</span>
+            </div>
+          } @else {
+            <span class="no-reviews">No reviews</span>
+          }
         </div>
         <h3 class="name">{{ product().name }}</h3>
         <a
@@ -126,25 +131,120 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         height: 100%;
         cursor: pointer;
         outline: none;
+        transform: translateZ(0);
+        transition:
+          transform 320ms cubic-bezier(.2,.75,.25,1),
+          box-shadow 320ms cubic-bezier(.2,.75,.25,1),
+          border-color 220ms ease;
+        will-change: transform;
       }
       .product-card:focus-visible {
         border-color: var(--color-accent);
         box-shadow: var(--shadow-focus);
       }
+      .product-card.editorial {
+        background: #302a24;
+        border: 0;
+        border-radius: 18px;
+        min-height: clamp(350px, 30vw, 430px);
+        overflow: hidden;
+        position: relative;
+      }
+      .product-card.editorial .thumb-wrap {
+        inset: 0;
+        position: absolute;
+      }
+      .product-card.editorial .thumb-wrap::after {
+        background: linear-gradient(0deg, rgba(18, 15, 12, .78) 0%, rgba(18, 15, 12, .2) 48%, transparent 72%);
+        content: '';
+        inset: 0;
+        pointer-events: none;
+        position: absolute;
+        z-index: 1;
+      }
+      .product-card.editorial .product-thumb {
+        aspect-ratio: auto;
+        height: 100%;
+        min-height: 100%;
+        width: 100%;
+      }
+      .product-card.editorial .img-placeholder {
+        background: linear-gradient(145deg, #8d7764, #3f352d);
+      }
+      .product-card.editorial .craft-mark,
+      .product-card.editorial .thumb-label {
+        color: #fff;
+      }
+      .product-card.editorial .stock-badge,
+      .product-card.editorial .discount-badge,
+      .product-card.editorial .wish-btn {
+        z-index: 2;
+      }
+      .product-card.editorial .badge-in-stock { display: none; }
+      .product-card.editorial .product-body {
+        background: transparent;
+        color: #fff;
+        flex: 0 0 auto;
+        gap: 6px;
+        justify-content: flex-end;
+        margin-top: auto;
+        padding: 22px 20px 19px;
+        position: relative;
+        z-index: 2;
+      }
+      .product-card.editorial .product-kicker { display: none; }
+      .product-card.editorial .name {
+        color: #fff;
+        font-family: var(--font-heading);
+        font-size: clamp(21px, 1.65vw, 27px);
+        font-weight: 600;
+        line-height: 1.08;
+        min-height: 0;
+        text-shadow: 0 2px 14px rgba(0,0,0,.34);
+      }
+      .product-card.editorial .seller {
+        color: rgba(255,255,255,.76);
+        font-size: 11px;
+      }
+      .product-card.editorial .price-row { padding-top: 3px; }
+      .product-card.editorial .price {
+        color: rgba(255,255,255,.82);
+        font-size: 12px;
+        font-weight: 550;
+      }
+      .product-card.editorial .was { color: rgba(255,255,255,.52); font-size: 10px; }
+      .product-card.editorial .cart-add {
+        background: rgba(255,255,255,.16);
+        border: 1px solid rgba(255,255,255,.48);
+        backdrop-filter: blur(8px);
+      }
       .thumb-wrap {
         position: relative;
         overflow: hidden;
+        background: var(--color-bg-alt);
       }
       .product-thumb {
         aspect-ratio: 4 / 3.15;
         min-height: clamp(176px, 12vw, 222px);
         flex-direction: column;
         gap: 12px;
-        transition: transform 500ms var(--ease-out);
+        transition: transform 420ms cubic-bezier(.2,.75,.25,1), filter 320ms ease;
       }
       .product-photo { width: 100%; object-fit: cover; object-position: center; display: block; }
-      .product-card:hover .product-thumb {
-        transform: scale(1.025);
+      @media (hover: hover) and (pointer: fine) {
+        .product-card:hover {
+          border-color: rgba(142, 48, 33, .26);
+          box-shadow: 0 15px 34px rgba(60, 43, 28, .12);
+          transform: translateY(-5px);
+        }
+        .product-card:hover .product-thumb {
+          filter: saturate(1.035) contrast(1.015);
+          transform: scale(1.045);
+        }
+        .product-card:hover .cart-add:not(:disabled) {
+          box-shadow: 0 7px 16px rgba(142, 48, 33, .22);
+          transform: translateY(-1px);
+        }
       }
       .craft-mark {
         display: grid;
@@ -191,6 +291,17 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         border-radius: var(--radius-full);
         background: rgba(255, 255, 255, 0.92);
         color: var(--color-muted);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-5px) scale(.94);
+        transition: opacity 160ms ease, transform 160ms ease, color 160ms ease, border-color 160ms ease;
+      }
+      .product-card:hover .wish-btn,
+      .product-card:focus-within .wish-btn,
+      .wish-btn.saved {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0) scale(1);
       }
       .wish-btn:hover {
         color: var(--color-danger);
@@ -216,6 +327,13 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       @media (prefers-reduced-motion: reduce) {
         .wish-btn.bounce ui-icon {
           animation: none;
+        }
+      }
+      @media (hover: none), (pointer: coarse) {
+        .wish-btn {
+          opacity: 1;
+          pointer-events: auto;
+          transform: none;
         }
       }
       .product-body {
@@ -255,6 +373,11 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       }
       .rating-row .count {
         color: var(--color-muted);
+      }
+      .no-reviews {
+        flex: 0 0 auto;
+        color: var(--color-muted);
+        font-size: 10.5px;
       }
       .name {
         min-height: 2.4em;
@@ -310,6 +433,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         border-radius: 12px;
         background: var(--color-accent);
         overflow: visible;
+        transition: background 180ms ease, box-shadow 220ms ease, transform 220ms ease;
       }
       .cart-label {
         display: none;
@@ -351,6 +475,12 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         100% { opacity: 0; transform: scale(1.9); }
       }
       @media (prefers-reduced-motion: reduce) {
+        .product-card,
+        .product-thumb,
+        .cart-add,
+        .wish-btn {
+          transition-duration: 0.01ms;
+        }
         .cart-add.popped,
         .cart-add.popped .ring {
           animation: none;
@@ -383,6 +513,48 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       :host-context(.product-grid) .wish-btn {
         width: 32px;
         height: 32px;
+      }
+
+      /* Homepage and related-product rails favor rapid comparison. The same
+         product information remains available, but decorative space is lower
+         so six or more products fit across a typical desktop viewport. */
+      :host-context(app-product-rail) .product-thumb {
+        min-height: clamp(132px, 9vw, 158px);
+      }
+      :host-context(app-product-rail) .product-body {
+        gap: 3px;
+        padding: 9px 10px 10px;
+      }
+      :host-context(app-product-rail) .stock-badge {
+        top: 7px;
+        left: 7px;
+        font-size: 9px;
+        padding: 4px 7px;
+      }
+      :host-context(app-product-rail) .wish-btn {
+        top: 7px;
+        right: 7px;
+        width: 30px;
+        height: 30px;
+      }
+      :host-context(app-product-rail) .name {
+        font-size: 13px;
+        min-height: 2.35em;
+      }
+      :host-context(app-product-rail) .seller {
+        font-size: 10px;
+      }
+      :host-context(app-product-rail) .rating-row {
+        font-size: 10px;
+        gap: 3px;
+      }
+      :host-context(app-product-rail) .price {
+        font-size: 15px;
+      }
+      :host-context(app-product-rail) .cart-add {
+        border-radius: 9px;
+        width: 31px;
+        height: 31px;
       }
 
       /* Category list view: a marketplace search-result row with a strong
@@ -493,14 +665,19 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         }
       }
       @media (max-width: 520px) {
-        .product-thumb { min-height: 190px; }
-        .product-body { padding: 12px 13px 13px; }
+        :host-context(.product-grid) .product-thumb { min-height: 142px; }
+        :host-context(.product-grid) .product-body { padding: 9px 9px 10px; }
+        :host-context(.product-grid) .name { font-size: 12.5px; }
+        :host-context(.product-grid) .seller { font-size: 9.5px; }
+        :host-context(.product-grid) .price { font-size: 14px; }
+        :host-context(.product-grid) .cart-add { height: 31px; width: 31px; }
       }
     `,
   ],
 })
 export class ProductCardComponent {
   readonly product = input.required<Product>();
+  readonly variant = input<'default' | 'editorial'>('default');
 
   private readonly cart = inject(CartService);
   private readonly wishlist = inject(WishlistService);

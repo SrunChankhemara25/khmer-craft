@@ -6,6 +6,8 @@ import {
   AuthResponse,
   AuthUser,
   MessageResponse,
+  RegisterResponse,
+  ResendCodeResponse,
   UserRole,
 } from './auth.models';
 import { AUTH_URL as API_URL } from '../api/api.config';
@@ -19,15 +21,28 @@ export class AuthService {
   readonly user = this.userState.asReadonly();
   readonly isAuthenticated = computed(() => Boolean(this.userState()));
 
+  /** Creates the account and sends a 6-digit code — no session yet. */
   register(payload: {
     name: string;
     email: string;
     password: string;
+    confirmPassword: string;
     phone?: string;
   }) {
+    return this.http.post<RegisterResponse>(`${API_URL}/register`, payload);
+  }
+
+  /** Confirms the code and starts the session, same as login. */
+  verifyEmail(email: string, code: string) {
     return this.http
-      .post<AuthResponse>(`${API_URL}/register`, payload)
+      .post<AuthResponse>(`${API_URL}/verify-email`, { email, code })
       .pipe(tap(({ user }) => this.setUser(user)));
+  }
+
+  resendCode(email: string) {
+    return this.http.post<ResendCodeResponse>(`${API_URL}/resend-code`, {
+      email,
+    });
   }
 
   login(email: string, password: string, expectedRole: UserRole) {

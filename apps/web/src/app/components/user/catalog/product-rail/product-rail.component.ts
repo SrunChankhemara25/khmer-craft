@@ -26,9 +26,9 @@ import { ProductCardComponent } from '../product-card/product-card.component';
       }
     </div>
 
-    <div class="rail" tabindex="0" role="region" [attr.aria-label]="title()">
+    <div class="rail" [class.editorial-rail]="variant() === 'editorial'" tabindex="0" role="region" [attr.aria-label]="title()">
       @for (product of products(); track product.id) {
-        <app-product-card [product]="product" />
+        <app-product-card [product]="product" [variant]="variant()" />
       }
     </div>
   `,
@@ -42,10 +42,10 @@ import { ProductCardComponent } from '../product-card/product-card.component';
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        margin-bottom: 22px;
+        margin-bottom: 9px;
       }
       .section-head h2 {
-        font-size: clamp(25px, 2vw, 34px);
+        font-size: clamp(22px, 1.6vw, 28px);
       }
       .see-all {
         display: inline-flex;
@@ -62,16 +62,18 @@ import { ProductCardComponent } from '../product-card/product-card.component';
 
       .rail {
         display: flex;
-        gap: clamp(16px, 1.6vw, 26px);
+        gap: clamp(11px, 1vw, 16px);
         overflow-x: auto;
         overflow-y: hidden;
         scroll-snap-type: x proximity;
         /* Room for the card's hover lift and focus ring, which the scroll
            container would otherwise clip. */
-        padding: 5px 5px 18px;
+        padding: 4px 5px 8px;
         margin: -4px -4px 0;
-        scrollbar-width: thin;
-        scrollbar-color: var(--color-border-strong) transparent;
+        scrollbar-width: none;
+      }
+      .rail::-webkit-scrollbar {
+        display: none;
       }
       .rail:focus-visible {
         outline: 2px solid var(--color-accent);
@@ -94,20 +96,30 @@ import { ProductCardComponent } from '../product-card/product-card.component';
         background: var(--color-muted-2);
       }
 
-      /* Fluid cards remain comfortably readable at every zoom level. */
+      /* Dense discovery rails expose more choices before the shopper needs to
+         scroll, while each card still has enough room for two-line names. */
       .rail app-product-card {
-        flex: 0 0 clamp(230px, 15.5vw, 292px);
+        flex: 0 0 clamp(190px, 13vw, 224px);
         scroll-snap-align: start;
+      }
+      .rail.editorial-rail app-product-card {
+        flex-basis: clamp(260px, 20vw, 320px);
       }
 
       @media (max-width: 700px) {
         .rail app-product-card {
+          flex-basis: min(62vw, 240px);
+        }
+        .rail.editorial-rail app-product-card {
           flex-basis: min(76vw, 300px);
         }
       }
       @media (max-width: 420px) {
         .rail app-product-card {
-          flex-basis: min(82vw, 288px);
+          flex-basis: min(72vw, 232px);
+        }
+        .rail.editorial-rail app-product-card {
+          flex-basis: min(82vw, 292px);
         }
       }
     `,
@@ -116,6 +128,7 @@ import { ProductCardComponent } from '../product-card/product-card.component';
 export class ProductRailComponent {
   readonly title = input.required<string>();
   readonly products = input.required<Product[]>();
+  readonly variant = input<'default' | 'editorial'>('default');
   readonly linkLabel = input('See all');
   readonly linkRoute = input<string | null>(null);
   readonly linkParams = input<Record<string, string>>({});

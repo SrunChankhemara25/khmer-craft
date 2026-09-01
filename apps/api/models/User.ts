@@ -13,6 +13,7 @@ export interface IUser extends Document {
   phone?: string;
   role: UserRole;
   status: UserStatus;
+  email_verified: boolean;
   /**
    * Bumped on password change, password reset, and suspension. Access tokens
    * carry the value they were signed with, so raising it invalidates every
@@ -41,6 +42,7 @@ const UserSchema = new Schema<IUser>(
     phone: { type: String, trim: true, maxlength: 30 },
     role: { type: String, enum: USER_ROLES, default: 'BUYER', required: true },
     status: { type: String, enum: USER_STATUSES, default: 'ACTIVE', required: true },
+    email_verified: { type: Boolean, default: false, required: true },
     token_version: { type: Number, default: 0, required: true },
     failed_login_attempts: { type: Number, default: 0, required: true },
     locked_until: { type: Date, default: null },

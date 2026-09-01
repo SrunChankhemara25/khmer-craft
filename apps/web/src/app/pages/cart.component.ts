@@ -32,16 +32,19 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
             <div class="store-group card">
               <a class="store-label" [routerLink]="['/stores', group.storeId]">
                 <ui-icon name="store" [size]="14" /> {{ group.sellerName }}
+                <span>Separate shipment</span>
               </a>
 
               @for (line of group.lines; track line.product.id) {
                 <div class="cart-item">
                   <div class="item-row">
-                    <a
-                      class="item-thumb img-placeholder"
-                      [routerLink]="['/product', line.product.id]"
-                      >{{ line.product.name }}</a
-                    >
+                    <a class="item-thumb img-placeholder" [routerLink]="['/product', line.product.id]">
+                      @if (line.product.image) {
+                        <img [src]="line.product.image" [alt]="line.product.name" />
+                      } @else {
+                        {{ line.product.name }}
+                      }
+                    </a>
                     <div class="item-main">
                       <a
                         class="item-name"
@@ -114,7 +117,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
             <span>\${{ cart.subtotal().toFixed(2) }}</span>
           </div>
           <div class="row">
-            <span>Delivery</span>
+            <span>Current delivery estimate</span>
             @if (cart.shipping() === 0) {
               <span class="free">Free</span>
             } @else {
@@ -122,12 +125,9 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
             }
           </div>
 
-          @if (cart.freeShippingRemaining() > 0) {
-            <p class="ship-hint">
-              Spend \${{ cart.freeShippingRemaining().toFixed(2) }} more for free
-              delivery.
-            </p>
-          }
+          <p class="ship-hint">
+            Final shipping will be confirmed for each seller shipment at checkout.
+          </p>
 
           <div class="row total">
             <span>Total</span>
@@ -144,13 +144,13 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
           @if (!isAuthenticated()) {
             <p class="login-note">
               <ui-icon name="lock" [size]="13" />
-              You'll be asked to sign in before payment.
+              Guest checkout is being connected. This version currently asks you to sign in.
             </p>
           }
 
           <div class="trust-list">
-            <div><ui-icon name="shield" [size]="14" /> Secure checkout</div>
-            <div><ui-icon name="truck" [size]="14" /> Free delivery over $50</div>
+            <div><ui-icon name="package" [size]="14" /> Items stay grouped by seller</div>
+            <div><ui-icon name="info" [size]="14" /> Totals are checked before ordering</div>
           </div>
         </aside>
       </section>
@@ -161,8 +161,8 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         </div>
         <h1>Your cart is empty</h1>
         <p>
-          Browse handmade crafts, palm sugar and rice products from Cambodian
-          artisans.
+          Explore products from Cambodian stores across fashion, food,
+          electronics, home, beauty and more.
         </p>
         <div class="empty-actions">
           <button class="btn btn-primary btn-lg" routerLink="/products">
@@ -216,6 +216,12 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
       }
       .store-label:hover {
         color: var(--color-accent);
+      }
+      .store-label span {
+        margin-left: auto;
+        color: var(--color-muted-2);
+        font-size: 10.5px;
+        font-weight: 600;
       }
       .cart-item + .cart-item {
         border-top: 1px solid var(--color-border);
@@ -287,6 +293,8 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         align-items: flex-end;
         gap: 8px;
       }
+      .item-thumb { overflow: hidden; }
+      .item-thumb img { height: 100%; object-fit: cover; width: 100%; }
       .line-total {
         font-size: 16px;
         font-weight: 700;

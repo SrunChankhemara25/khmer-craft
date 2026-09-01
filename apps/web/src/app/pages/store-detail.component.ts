@@ -14,7 +14,19 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
   template: `
     <app-navbar />
 
-    @if (store(); as s) {
+    @if (!catalog.storesLoaded()) {
+      <section class="container missing" aria-live="polite">
+        <ui-icon class="spin" name="loader" [size]="30" />
+        <h1>Loading store</h1>
+      </section>
+    } @else if (catalog.storeError()) {
+      <section class="container missing" role="alert">
+        <ui-icon name="alert-circle" [size]="32" />
+        <h1>We couldn’t load this store</h1>
+        <p>{{ catalog.storeError() }}</p>
+        <button class="btn btn-primary" type="button" (click)="catalog.loadStores()">Try again</button>
+      </section>
+    } @else if (store(); as s) {
       <main>
         <section class="store-intro">
           <div class="container">
@@ -24,32 +36,28 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
               <span>{{ s.name }}</span>
             </nav>
 
-            <div class="store-banner" [class.fashion-store]="s.id === 's006'" [class.fruit-store]="s.id === 's007'">
-              @if (s.id === 's006' || s.id === 's007') {
-                <div class="campaign-copy">
-                  <span>{{ s.id === 's006' ? 'New Khmer collection' : 'Farm fresh every morning' }}</span>
-                  <h1>{{ s.id === 's006' ? 'Cambodian craft, modern style.' : 'Fresh from the Mekong.' }}</h1>
-                  <p>{{ s.id === 's006' ? 'Contemporary silhouettes shaped by Khmer textiles.' : 'Seasonal Cambodian fruit selected at peak freshness.' }}</p>
-                  <a class="btn btn-primary" href="#products" (click)="scrollToSection('products', $event)">Shop collection <ui-icon name="arrow-right" [size]="14" /></a>
-                </div>
-              }
-              <div class="identity" [class.campaign-identity]="s.id === 's006' || s.id === 's007'">
+            <div class="store-banner">
+              <div class="identity">
                 <div class="store-logo">{{ initials(s.name) }}</div>
                 <div class="identity-copy">
-                  <span class="verified"><ui-icon name="check-circle" [size]="13" /> Verified seller</span>
+                  <span class="verified"><ui-icon name="store" [size]="13" /> Marketplace store</span>
                   <h1>{{ s.name }}</h1>
                   <p>{{ s.description }}</p>
                   <div class="meta">
                     <span><ui-icon name="map-pin" [size]="14" /> {{ s.location }}</span>
-                    <span><ui-icon name="star" [size]="14" [filled]="true" /> {{ s.rating }} · {{ s.reviewCount }} reviews</span>
+                    @if (s.reviewCount > 0) {
+                      <span><ui-icon name="star" [size]="14" [filled]="true" /> {{ s.rating }} · {{ s.reviewCount }} reviews</span>
+                    } @else {
+                      <span>No customer reviews yet</span>
+                    }
                     <span><ui-icon name="package" [size]="14" /> {{ products().length }} products</span>
                   </div>
                 </div>
               </div>
 
-              <div class="store-actions" [class.campaign-actions]="s.id === 's006' || s.id === 's007'">
+              <div class="store-actions">
                 <a class="btn btn-primary" href="#products" (click)="scrollToSection('products', $event)">Shop store</a>
-                <button type="button" class="btn btn-outline"><ui-icon name="heart" [size]="15" /> Follow</button>
+                <button type="button" class="btn btn-outline" disabled title="Store following will be available when account sync is ready"><ui-icon name="heart" [size]="15" /> Follow soon</button>
               </div>
             </div>
           </div>
@@ -60,7 +68,7 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
             <button type="button" [class.active]="activeSection() === 'products'" (click)="scrollToSection('products')">Products</button>
             <button type="button" [class.active]="activeSection() === 'about'" (click)="scrollToSection('about')">About</button>
             <button type="button" [class.active]="activeSection() === 'reviews'" (click)="scrollToSection('reviews')">Reviews</button>
-            <span class="store-status"><i></i> Accepting orders</span>
+            <span class="store-status"><i></i> {{ products().length ? 'Products available' : 'No active listings' }}</span>
           </div>
         </nav>
 
@@ -98,19 +106,24 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
         <section class="container about-section" id="about">
           <div class="story">
             <span class="eyebrow">Behind the store</span>
-            <h2>Made with purpose in {{ s.location }}</h2>
-            <p>{{ s.description }} Every order supports independent Cambodian producers and helps traditional knowledge remain economically sustainable.</p>
+            <h2>About {{ s.name }}</h2>
+            <p>{{ s.description || 'This seller has not added a full store story yet.' }}</p>
           </div>
           <div class="facts">
-            <div><span>01</span><strong>Authentic origin</strong><small>Made and sourced in Cambodia</small></div>
-            <div><span>02</span><strong>Direct from maker</strong><small>Your purchase supports the workshop</small></div>
-            <div><span>03</span><strong>KhmerCraft protected</strong><small>Secure marketplace checkout</small></div>
+            <div><span>01</span><strong>Store-owned listings</strong><small>Products on this page are listed under this seller.</small></div>
+            <div><span>02</span><strong>Clear order records</strong><small>Signed-in purchases appear in My Orders.</small></div>
+            <div><span>03</span><strong>Marketplace support</strong><small>Contact KhmerCraft when an order needs attention.</small></div>
           </div>
         </section>
 
         <section class="container reviews-section" id="reviews">
-          <div><span class="rating-number">{{ s.rating }}</span><span class="stars">★★★★★</span><small>Based on {{ s.reviewCount }} customer reviews</small></div>
-          <blockquote>“Beautifully made, carefully packed, and even better knowing it came directly from a Cambodian maker.”</blockquote>
+          @if (s.reviewCount > 0) {
+            <div><span class="rating-number">{{ s.rating }}</span><span class="stars">★★★★★</span><small>Based on {{ s.reviewCount }} customer reviews</small></div>
+            <div class="review-note"><strong>Customer review details are being connected.</strong><p>Only completed-order reviews will be labeled Verified Purchase.</p></div>
+          } @else {
+            <div><span class="rating-number">New</span><small>No customer reviews yet</small></div>
+            <div class="review-note"><strong>Be the first to review this store’s products.</strong><p>Review eligibility will be available after a completed order.</p></div>
+          }
         </section>
       </main>
     } @else {
@@ -168,7 +181,10 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
     .eyebrow { color: var(--color-accent); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     h2 { margin-top: 3px; font-size: clamp(23px,2.2vw,31px); }
     .products-head > span { color: var(--color-muted); font-size: 13px; }
-    .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 3px; }
+    /* Still scrolls when it overflows — just without a visible scrollbar
+       cluttering the row underneath it. */
+    .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 3px; scrollbar-width: none; }
+    .category-tabs::-webkit-scrollbar { display: none; }
     .category-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 11px; border: 1px solid var(--color-border); border-radius: var(--radius-full); background: #fff; color: var(--color-text-secondary); font-size: 11.5px; white-space: nowrap; }
     .category-tabs button span { color: var(--color-muted); font-size: 11px; }
     .category-tabs button.active { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
@@ -189,6 +205,11 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
     .reviews-section small { margin-top: 7px; color: var(--color-muted); }
     blockquote { margin: 0; font-family: var(--font-heading); font-size: clamp(20px,2.5vw,34px); line-height: 1.35; }
     .missing { display: grid; place-items: center; gap: 14px; min-height: 60vh; text-align: center; }
+    .missing > ui-icon { color: var(--color-accent); }
+    .spin { animation: spin 900ms linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .review-note strong { color: var(--color-text); font-size: 16px; }
+    .review-note p { color: var(--color-muted); font-size: 13px; margin-top: 7px; }
     @media (max-width: 850px) {
       .store-banner { align-items: flex-start; flex-direction: column; }
       .store-actions { flex-direction: row; }
@@ -202,7 +223,7 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
       .store-actions .btn { flex: 1; }
       .store-nav-inner { gap: 18px; }
       .store-status { display: none; }
-      .product-grid { grid-template-columns: 1fr; }
+      .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
       .reviews-section { border-radius: 18px; }
       .store-banner.fashion-store, .store-banner.fruit-store { align-items: flex-end; min-height: 300px; background-position: 62% center; }
       .store-banner.fruit-store { background-position: 58% center; }
@@ -211,11 +232,12 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
       .campaign-copy h1 { font-size: 30px; }
       .campaign-identity { display: none; }
     }
+    @media (max-width: 370px) { .product-grid { grid-template-columns: 1fr; } }
   `],
 })
 export class StoreDetailComponent {
   private readonly route = inject(ActivatedRoute);
-  private readonly catalog = inject(CatalogService);
+  protected readonly catalog = inject(CatalogService);
   protected readonly activeCategory = signal<string | null>(null);
   protected readonly activeSection = signal<'products' | 'about' | 'reviews'>('products');
   private readonly storeId = toSignal(this.route.paramMap.pipe(map((params) => params.get('id') ?? '')), { initialValue: this.route.snapshot.paramMap.get('id') ?? '' });

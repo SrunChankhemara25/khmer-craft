@@ -11,7 +11,7 @@ import { RouterLink } from '@angular/router';
 import { PROMOTIONS, Promotion } from '../../../../core/data/promotions.data';
 import { IconComponent } from '../../../shared/ui/icon/icon.component';
 
-const AUTOPLAY_MS = 6000;
+const AUTOPLAY_MS = 5000;
 
 /**
  * Promotion carousel for the top of the homepage.
@@ -33,8 +33,6 @@ const AUTOPLAY_MS = 6000;
       class="slider"
       aria-roledescription="carousel"
       aria-label="Promotions"
-      (mouseenter)="paused.set(true)"
-      (mouseleave)="paused.set(false)"
       (focusin)="paused.set(true)"
       (focusout)="paused.set(false)"
     >
@@ -43,10 +41,36 @@ const AUTOPLAY_MS = 6000;
           <article
             class="slide"
             [class]="'slide theme-' + promo.theme"
+            [class.active]="i === index()"
             role="group"
             aria-roledescription="slide"
             [attr.aria-label]="i + 1 + ' of ' + promotions.length"
           >
+            @if (promo.video || promo.image) {
+              <a
+                class="campaign-stage"
+                [routerLink]="promo.ctaRoute"
+                [queryParams]="promo.ctaParams ?? {}"
+                [attr.aria-label]="promo.ctaLabel + ': ' + promo.headline"
+                [style.background-image]="'url(' + (promo.poster || promo.image) + ')'"
+              >
+                @if (promo.video) {
+                  <video class="campaign-video" autoplay muted loop playsinline preload="metadata" [poster]="promo.poster" aria-label="KhmerCraft category advertisement">
+                    @if (promo.videoWebm) { <source [src]="promo.videoWebm" type="video/webm" /> }
+                    <source [src]="promo.video" type="video/mp4" />
+                  </video>
+                }
+
+                <span class="sponsored-badge">{{ promo.sponsoredLabel }}</span>
+
+                <div class="campaign-shade" aria-hidden="true"></div>
+                <div class="campaign-offer">
+                  <span class="offer-kicker">{{ promo.eyebrow }}</span>
+                  <strong>{{ promo.offer }}</strong>
+                  <span class="campaign-link">{{ promo.ctaLabel }} <ui-icon name="arrow-right" [size]="14" /></span>
+                </div>
+              </a>
+            } @else {
             <div class="container slide-inner">
               <div class="copy">
                 <span class="eyebrow">
@@ -70,20 +94,25 @@ const AUTOPLAY_MS = 6000;
                 </div>
               </div>
 
-              <div class="visual img-placeholder dark">
-                <div class="woven-disc" aria-hidden="true"></div>
-                <div class="visual-frame">
-                  <span class="frame-kicker">KhmerCraft collection</span>
-                  <strong>{{ promo.visual }}</strong>
-                  <span class="frame-detail">Made in Cambodia · Crafted by hand</span>
-                </div>
-                <span class="craft-chip chip-one">Local makers</span>
-                <span class="craft-chip chip-two">Authentic craft</span>
-                @if (promo.flash) {
-                  <span class="flash">{{ promo.flash }}</span>
-                }
+              <div
+                class="visual img-placeholder dark"
+                [class.campaign-image-visual]="promo.image"
+                [style.background-image]="promo.image ? 'url(' + promo.image + ')' : null"
+              >
+                  <div class="woven-disc" aria-hidden="true"></div>
+                  <div class="visual-frame">
+                    <span class="frame-kicker">KhmerCraft collection</span>
+                    <strong>{{ promo.visual }}</strong>
+                    <span class="frame-detail">Made in Cambodia · Crafted by hand</span>
+                  </div>
+                  <span class="craft-chip chip-one">Local makers</span>
+                  <span class="craft-chip chip-two">Authentic craft</span>
+                  @if (promo.flash) {
+                    <span class="flash">{{ promo.flash }}</span>
+                  }
               </div>
             </div>
+            }
           </article>
         }
       </div>
@@ -126,8 +155,130 @@ const AUTOPLAY_MS = 6000;
       }
       .slide {
         flex: 0 0 100%;
+        opacity: .45;
         scroll-snap-align: start;
         scroll-snap-stop: always;
+        transition: opacity 700ms cubic-bezier(.22,.7,.2,1);
+      }
+      .slide.active { opacity: 1; }
+      .campaign-stage {
+        background-position: center;
+        background-size: cover;
+        color: inherit;
+        display: block;
+        height: clamp(300px, 29vw, 410px);
+        isolation: isolate;
+        overflow: hidden;
+        position: relative;
+        text-decoration: none;
+      }
+      .campaign-stage::after {
+        background: linear-gradient(180deg, rgba(10,14,11,.08), transparent 45%, rgba(10,14,11,.28));
+        content: '';
+        inset: 0;
+        pointer-events: none;
+        position: absolute;
+        z-index: 1;
+      }
+      .campaign-video {
+        height: 100%;
+        inset: 0;
+        object-fit: cover;
+        opacity: 1;
+        position: absolute;
+        transition: opacity 650ms ease;
+        width: 100%;
+      }
+      .campaign-video.finished { opacity: 0; }
+      .sponsored-badge {
+        color: rgba(255,255,255,.8);
+        font-size: 9px;
+        font-weight: 800;
+        left: clamp(18px, 4vw, 64px);
+        letter-spacing: .14em;
+        position: absolute;
+        text-shadow: 0 2px 12px rgba(5,10,7,.55);
+        text-transform: uppercase;
+        top: clamp(22px, 3vw, 38px);
+        z-index: 3;
+      }
+      .campaign-shade {
+        background:
+          linear-gradient(90deg, rgba(9,16,12,.78) 0%, rgba(9,16,12,.54) 30%, rgba(9,16,12,.12) 62%, transparent 78%),
+          linear-gradient(0deg, rgba(8,13,10,.22), transparent 45%);
+        inset: 0;
+        position: absolute;
+        z-index: 2;
+      }
+      .campaign-offer {
+        animation: offer-in 600ms cubic-bezier(.2,.75,.25,1) both;
+        backdrop-filter: none !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        bottom: clamp(34px, 4vw, 54px);
+        box-shadow: none !important;
+        left: clamp(18px, 5vw, 78px);
+        max-width: min(510px, calc(100% - 36px));
+        padding: 0 !important;
+        position: absolute;
+        z-index: 4;
+      }
+      .offer-kicker {
+        color: #e7c98f;
+        display: block;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .15em;
+        margin-bottom: 11px;
+        text-shadow: 0 2px 12px rgba(5,10,7,.5);
+        text-transform: uppercase;
+      }
+      .campaign-offer strong {
+        color: #fffdf7;
+        display: block;
+        font-family: var(--font-heading);
+        font-size: clamp(30px, 3.2vw, 48px);
+        font-weight: 600;
+        letter-spacing: -.035em;
+        line-height: .98;
+        max-width: 10em;
+        text-wrap: balance;
+        text-shadow: 0 3px 24px rgba(4,9,6,.48);
+      }
+      .campaign-offer p {
+        color: rgba(255,255,255,.78);
+        font-size: 13px;
+        font-weight: 500;
+        margin: 13px 0 21px;
+        max-width: 38em;
+        text-shadow: 0 2px 14px rgba(4,9,6,.55);
+      }
+      .campaign-link {
+        align-items: center;
+        color: rgba(255,255,255,.9);
+        display: inline-flex;
+        font-size: 11px;
+        font-weight: 750;
+        gap: 7px;
+        margin-top: 17px;
+        padding-bottom: 3px;
+        position: relative;
+      }
+      .campaign-link::after {
+        background: rgba(255,255,255,.6);
+        bottom: 0;
+        content: '';
+        height: 1px;
+        left: 0;
+        position: absolute;
+        transition: width 220ms ease;
+        width: 28px;
+      }
+      .campaign-stage:hover .campaign-link::after { width: 100%; }
+      @keyframes offer-in {
+        from { opacity: 0; transform: translateY(18px) scale(.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
       }
       .slide-inner {
         display: grid;
@@ -181,6 +332,23 @@ const AUTOPLAY_MS = 6000;
         border: 1px solid rgba(255,255,255,.1);
         box-shadow: inset 0 1px rgba(255,255,255,.08), 0 24px 54px rgba(28,20,14,.16);
       }
+      .campaign-image-visual {
+        background-position: center;
+        background-size: cover;
+      }
+      .campaign-image-visual::after {
+        background: linear-gradient(90deg, rgba(14,20,16,.66), rgba(14,20,16,.08));
+        border-radius: 0;
+        bottom: 0;
+        height: auto;
+        left: 0;
+        right: 0;
+        top: 0;
+        width: auto;
+        z-index: 0;
+      }
+      .campaign-image-visual .woven-disc,
+      .campaign-image-visual .craft-chip { display: none; }
       .visual::before,
       .visual::after {
         content: '';
@@ -439,6 +607,9 @@ const AUTOPLAY_MS = 6000;
         .actions .btn { flex: 1 1 150px; }
         .visual-frame { max-width: 72%; padding: 14px 16px; }
         .craft-chip { display: none; }
+        .campaign-stage { height: 400px; }
+        .campaign-offer { bottom: 34px; }
+        .campaign-offer strong { font-size: clamp(32px, 10vw, 44px); }
       }
 
       @media (prefers-reduced-motion: reduce) {

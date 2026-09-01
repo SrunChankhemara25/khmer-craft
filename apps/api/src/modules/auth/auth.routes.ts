@@ -10,14 +10,18 @@ import {
   logout,
   refresh,
   register,
+  resendCode,
   resetPassword,
+  verifyEmail,
 } from './auth.controller';
 import {
   changePasswordSchema,
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  resendCodeSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
 } from './auth.validation';
 import {
   loginRateLimit,
@@ -32,6 +36,18 @@ router.post(
   registrationRateLimit,
   validate(registerSchema),
   register,
+);
+router.post(
+  '/verify-email',
+  loginRateLimit,
+  validate(verifyEmailSchema),
+  verifyEmail,
+);
+router.post(
+  '/resend-code',
+  passwordResetRateLimit,
+  validate(resendCodeSchema),
+  resendCode,
 );
 router.post('/login', loginRateLimit, validate(loginSchema), login);
 router.post('/refresh', refresh);

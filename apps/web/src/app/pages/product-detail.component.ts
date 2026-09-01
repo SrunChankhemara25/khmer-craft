@@ -22,7 +22,19 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
   template: `
     <app-navbar />
 
-    @if (product(); as p) {
+    @if (!catalog.loaded()) {
+      <section class="container missing" aria-live="polite">
+        <ui-icon class="spin" name="loader" [size]="30" />
+        <h1>Loading product</h1>
+      </section>
+    } @else if (catalog.productError()) {
+      <section class="container missing" role="alert">
+        <ui-icon name="alert-circle" [size]="32" />
+        <h1>We couldn’t load this product</h1>
+        <p>{{ catalog.productError() }}</p>
+        <button class="btn btn-primary" type="button" (click)="catalog.load()">Try again</button>
+      </section>
+    } @else if (product(); as p) {
       <section class="container detail">
         <nav class="crumbs">
           <a routerLink="/">Home</a> <span>›</span>
@@ -35,18 +47,26 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
 
         <div class="product-layout">
           <div class="gallery">
-            <div class="main-image img-placeholder">{{ p.name }}</div>
+            @if (p.image) {
+              <img class="main-image product-photo" [src]="p.image" [alt]="p.name" />
+            } @else {
+              <div class="main-image img-placeholder">{{ p.name }}</div>
+            }
           </div>
 
           <div class="info">
             <span class="badge badge-soft">{{ p.categoryName }}</span>
             <h1>{{ p.name }}</h1>
 
-            <div class="rating-row">
-              <ui-icon name="star" [size]="15" [filled]="true" class="stars" />
-              <span>{{ p.rating }}</span>
-              <span class="count">({{ p.reviewCount }} reviews)</span>
-            </div>
+            @if (p.reviewCount > 0) {
+              <div class="rating-row">
+                <ui-icon name="star" [size]="15" [filled]="true" class="stars" />
+                <span>{{ p.rating }}</span>
+                <span class="count">({{ p.reviewCount }} reviews)</span>
+              </div>
+            } @else {
+              <div class="rating-row no-reviews">No customer reviews yet</div>
+            }
 
             <a class="store-row card" [routerLink]="['/stores', p.storeId]">
               <div class="store-avatar img-placeholder"></div>
@@ -66,6 +86,11 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
             </div>
 
             <p class="desc">{{ p.description }}</p>
+
+            <div class="purchase-info" aria-label="Order information">
+              <div><ui-icon name="store" [size]="16" /><span><strong>Ships from this seller</strong><small>Items from other stores may arrive separately.</small></span></div>
+              <div><ui-icon name="credit-card" [size]="16" /><span><strong>Total confirmed at checkout</strong><small>Availability and pricing are checked again before ordering.</small></span></div>
+            </div>
 
             <div class="qty-avail-row">
               <div>
@@ -183,6 +208,7 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
         border-radius: var(--radius-lg);
         font-size: 13px;
       }
+      .product-photo { display: block; object-fit: contain; width: 100%; background: var(--color-bg-alt); }
       .info {
         display: flex;
         flex-direction: column;
@@ -246,6 +272,12 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
         font-size: 14.5px;
         line-height: 1.7;
       }
+      .no-reviews { color: var(--color-muted); font-size: 12.5px; }
+      .purchase-info { border-block: 1px solid var(--color-border); display: grid; gap: 10px; margin-top: 3px; padding: 12px 0; }
+      .purchase-info > div { align-items: flex-start; color: var(--color-accent); display: flex; gap: 10px; }
+      .purchase-info span { display: grid; gap: 2px; }
+      .purchase-info strong { color: var(--color-text); font-size: 12.5px; }
+      .purchase-info small { color: var(--color-muted); font-size: 11.5px; line-height: 1.4; }
       .qty-avail-row {
         display: flex;
         justify-content: space-between;
@@ -340,6 +372,9 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
         align-items: center;
         gap: 14px;
       }
+      .missing > ui-icon { color: var(--color-accent); }
+      .spin { animation: spin 900ms linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
       @media (max-width: 900px) {
         .product-layout {
           grid-template-columns: 1fr;
@@ -362,7 +397,7 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
 })
 export class ProductDetailComponent {
   private readonly route = inject(ActivatedRoute);
-  private readonly catalog = inject(CatalogService);
+  protected readonly catalog = inject(CatalogService);
   private readonly cart = inject(CartService);
   private readonly wishlist = inject(WishlistService);
 

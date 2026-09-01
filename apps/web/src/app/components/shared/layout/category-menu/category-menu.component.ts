@@ -3,7 +3,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CatalogService } from '../../../../core/catalog/catalog.service';
 import { Category } from '../../../../core/catalog/catalog.models';
 import { IconComponent } from '../../ui/icon/icon.component';
@@ -35,18 +35,19 @@ const CLOSE_DELAY_MS = 220;
 
 @Component({
   selector: 'app-category-menu',
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, RouterLinkActive, IconComponent],
   template: `
     <div class="cat-bar" (mouseleave)="scheduleClose()">
       <nav class="cat-row container" aria-label="Product categories">
-        <span class="edge" aria-hidden="true"></span>
-
         <div class="cat-items">
           @for (category of categories; track category.slug) {
           <a
             class="cat-item"
             [class.open]="openSlug() === category.slug"
             [routerLink]="['/categories', category.slug]"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: false }"
+            ariaCurrentWhenActive="page"
             (mouseenter)="scheduleOpen(category.slug)"
             (focus)="open(category.slug)"
             [attr.aria-expanded]="openSlug() === category.slug"
@@ -55,6 +56,18 @@ const CLOSE_DELAY_MS = 220;
               {{ category.name }}
             </a>
           }
+
+          <span class="cat-divider" aria-hidden="true"></span>
+
+          <a class="shortcut shortcut-store" routerLink="/stores" (click)="close()">
+            <ui-icon name="store" [size]="13" /> Stores
+          </a>
+          <a class="shortcut shortcut-gift" routerLink="/categories/arts-culture" [queryParams]="{ sub: 'souvenirs-gifts' }" (click)="close()">
+            <ui-icon name="gift" [size]="13" /> Gifts
+          </a>
+          <a class="shortcut shortcut-sale" routerLink="/products" [queryParams]="{ sale: '1' }" (click)="close()">
+            <ui-icon name="percent" [size]="13" /> Discount
+          </a>
         </div>
       </nav>
 
@@ -63,20 +76,22 @@ const CLOSE_DELAY_MS = 220;
           <div class="panel-inner container">
             <div class="col by-type">
               <h4>Subcategories</h4>
-              @for (sub of cat.subcategories; track sub.slug) {
-                @let count = catalog.countBySubcategory(cat.slug, sub.slug);
-                <a
-                  class="type-link"
-                  [routerLink]="['/categories', cat.slug]"
-                  [queryParams]="{ sub: sub.slug }"
-                  (click)="close()"
-                  [class.empty]="count === 0"
-                >
-                  {{ sub.name }}
-                  <em>{{ count }}</em>
-                  <ui-icon name="chevron-right" [size]="14" />
-                </a>
-              }
+              <div class="subcategory-grid">
+                @for (sub of cat.subcategories; track sub.slug) {
+                  @let count = catalog.countBySubcategory(cat.slug, sub.slug);
+                  <a
+                    class="type-link"
+                    [routerLink]="['/categories', cat.slug]"
+                    [queryParams]="{ sub: sub.slug }"
+                    (click)="close()"
+                    [class.empty]="count === 0"
+                  >
+                    <span class="sub-label">{{ sub.name }}</span>
+                    <em>{{ count }}</em>
+                    <ui-icon name="chevron-right" [size]="14" />
+                  </a>
+                }
+              </div>
             </div>
 
             <div class="col shop-by">
@@ -116,17 +131,18 @@ const CLOSE_DELAY_MS = 220;
       }
       .cat-bar {
         position: relative;
-        border-top: 1px solid var(--color-border);
+        border-top: 1px solid rgba(111, 91, 67, .11);
       }
-      /* Three tracks, matching the row above: the categories stay centred no
-         matter how wide "All products" or the left edge happen to be. A flex
-         row with margin-left:auto pushed them off-centre. */
+      /* One flex row, one centred group — the shortcuts sit inline right
+         after the departments rather than pinned off to a side, so the
+         whole line (departments + shortcuts together) centres as a unit. */
       .cat-row {
-        display: grid;
-        grid-template-columns: 1fr auto 1fr;
+        position: relative;
+        display: flex;
+        justify-content: center;
         align-items: center;
-        height: 40px;
-        font-size: 13.5px;
+        height: 36px;
+        font-size: 12.5px;
         font-weight: 500;
         color: var(--color-text-secondary);
       }
@@ -137,9 +153,6 @@ const CLOSE_DELAY_MS = 220;
         gap: clamp(14px, 1.6vw, 30px);
         height: 100%;
       }
-      .edge {
-        display: block;
-      }
       .cat-item {
         position: relative;
         display: inline-flex;
@@ -149,9 +162,50 @@ const CLOSE_DELAY_MS = 220;
         white-space: nowrap;
       }
       .cat-item:hover,
-      .cat-item.open {
+      .cat-item.open,
+      .cat-item.active {
         color: var(--color-text);
         border-bottom-color: var(--color-accent);
+      }
+      .cat-item.active {
+        font-weight: 700;
+      }
+      /* A thin rule between the department links and the shortcut pills —
+         marks them as a distinct, secondary group without a big visual gap. */
+      .cat-divider {
+        width: 1px;
+        height: 16px;
+        background: var(--color-border, rgba(111, 91, 67, .25));
+        flex-shrink: 0;
+      }
+      /* Marketing shortcuts: solid colour-filled pills, not underlined text
+         like the departments — deliberately the boldest thing in the bar so
+         each reads instantly at a glance, no decoding required. */
+      .shortcut {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        height: 26px;
+        padding: 0 12px;
+        border-radius: var(--radius-full, 999px);
+        font-weight: 700;
+        color: #fff;
+        transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+        white-space: nowrap;
+      }
+      .shortcut:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.08);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+      }
+      .shortcut-store {
+        background: var(--color-accent);
+      }
+      .shortcut-gift {
+        background: var(--color-gold);
+      }
+      .shortcut-sale {
+        background: var(--color-danger);
       }
       /* Attach directly to the category row. Keeping this absolute inside the
          row avoids a viewport measurement gap when the sticky header moves. */
@@ -164,8 +218,10 @@ const CLOSE_DELAY_MS = 220;
         width: 100%;
         border-top: 1px solid var(--color-border);
         border-bottom: 1px solid var(--color-border);
-        background: var(--color-surface);
-        box-shadow: var(--shadow-md);
+        background: rgba(255, 253, 248, .9);
+        backdrop-filter: blur(24px) saturate(1.2);
+        -webkit-backdrop-filter: blur(24px) saturate(1.2);
+        box-shadow: 0 16px 38px rgba(54, 40, 27, .1);
         animation: drop 140ms var(--ease-out);
       }
       @keyframes drop {
@@ -179,6 +235,8 @@ const CLOSE_DELAY_MS = 220;
         grid-template-columns: minmax(420px, 1.55fr) minmax(150px, .55fr) 340px;
         align-items: start;
         gap: 32px;
+        height: 220px;
+        overflow: hidden;
         /* padding-block, not the shorthand: this element is also .container,
            and a padding shorthand would reset the horizontal padding that
            keeps the columns aligned with the logo above. */
@@ -201,6 +259,12 @@ const CLOSE_DELAY_MS = 220;
         color: var(--color-text);
         font-size: 13px;
       }
+      .sub-label {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
       .type-link:hover {
         color: var(--color-accent);
       }
@@ -220,14 +284,18 @@ const CLOSE_DELAY_MS = 220;
       .shop-by {
         display: flex;
         flex-direction: column;
+        margin-top: 8px;
       }
       .by-type {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        column-gap: 18px;
+        min-width: 0;
       }
-      .by-type h4 {
-        grid-column: 1 / -1;
+      .subcategory-grid {
+        display: grid;
+        grid-template-rows: repeat(6, 27px);
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(0, 1fr);
+        column-gap: 18px;
+        min-width: 0;
       }
 
       .promo {
@@ -276,19 +344,27 @@ const CLOSE_DELAY_MS = 220;
       }
       /* Touch: the row scrolls sideways and the panels never open — each item
          is still a link to its category page. */
+      /* Below this, there just isn't room to fit all 7 categories plus the
+         shortcut pills on one line without clipping off the edge of the
+         screen — so the shortcuts step out entirely and the categories
+         alone get to be centred, which is all that fits comfortably here. */
+      @media (max-width: 1400px) {
+        .cat-divider,
+        .shortcut {
+          display: none;
+        }
+      }
       @media (max-width: 980px) {
-        /* One scrolling strip rather than three tracks — centring is
-           meaningless once the row is wider than the screen. */
+        /* One scrolling strip — centring is meaningless once the row is
+           wider than the screen. The shortcut pills are already
+           display:none from the 1400px breakpoint above by this width. */
         .cat-row {
-          display: flex;
+          justify-content: flex-start;
           overflow-x: auto;
           gap: clamp(14px, 1.6vw, 30px);
           scrollbar-width: none;
         }
         .cat-row::-webkit-scrollbar {
-          display: none;
-        }
-        .edge {
           display: none;
         }
         .cat-items {

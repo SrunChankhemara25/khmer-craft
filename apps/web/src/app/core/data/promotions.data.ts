@@ -11,10 +11,18 @@ export interface Promotion {
   ctaParams?: Record<string, string>;
   secondaryLabel?: string;
   secondaryRoute?: string;
+  secondaryParams?: Record<string, string>;
   /** Maps to a theme class in the slider's stylesheet. */
   theme: 'brand' | 'sale' | 'delivery' | 'seller';
   /** Placeholder caption for the slide visual. */
   visual: string;
+  /** Optional muted campaign video shown in place of the decorative visual. */
+  video?: string;
+  videoWebm?: string;
+  poster?: string;
+  image?: string;
+  sponsoredLabel?: string;
+  offer?: string;
 }
 
 /**
@@ -26,58 +34,52 @@ export interface Promotion {
  */
 export const PROMOTIONS: Promotion[] = [
   {
-    id: 'brand',
-    eyebrow: 'Proudly local, authentically Cambodian',
-    headline: 'Authentic Cambodian products, crafted with love',
+    id: 'mekong-market',
+    eyebrow: 'This week at Mekong Fresh Market',
+    headline: 'Fill your basket with everyday essentials',
     subtitle:
-      'Support local artisans and farmers. Discover handmade crafts, organic foods, and traditional products from across Cambodia.',
-    ctaLabel: 'Shop Now',
-    ctaRoute: '/products',
-    secondaryLabel: 'Explore Categories',
-    secondaryRoute: '/categories',
+      'Fresh groceries, pantry favourites and household essentials from a trusted Cambodian store—all in one order.',
+    ctaLabel: 'Browse groceries',
+    ctaRoute: '/categories/food-groceries',
+    secondaryLabel: 'Explore stores',
+    secondaryRoute: '/stores',
     theme: 'brand',
-    visual: 'Artisan at work',
+    visual: 'Everything your home needs',
+    image: '/assets/ads/premium-supermarket-landscape.png',
+    sponsoredLabel: 'Curated by KhmerCraft · Groceries',
+    offer: 'Fresh picks for the whole home',
   },
   {
-    id: 'black-friday',
-    eyebrow: 'Black Friday · Limited time',
-    headline: 'Up to 50% off handmade crafts',
+    id: 'marketplace-week',
+    eyebrow: 'KhmerCraft marketplace week',
+    headline: 'Selected offers from local stores',
     subtitle:
-      'Our biggest sale of the year. Silk, pottery and bamboo from Cambodian workshops, reduced for one week only.',
-    flash: '50% OFF',
-    ctaLabel: 'Shop the sale',
+      'Discover featured products across fashion, beauty, homeware, children’s products and Cambodian-made gifts.',
+    ctaLabel: 'Shop featured products',
     ctaRoute: '/products',
-    ctaParams: { collection: 'handmade-crafts' },
-    secondaryLabel: 'See all products',
-    secondaryRoute: '/products',
+    ctaParams: { sort: 'featured' },
+    secondaryLabel: 'Browse categories',
+    secondaryRoute: '/categories',
     theme: 'sale',
-    visual: 'Black Friday',
+    visual: 'Marketplace offers',
+    image: '/assets/ads/multi-category-store-landscape.png',
+    sponsoredLabel: 'Curated by KhmerCraft · Marketplace edit',
+    offer: 'Special finds from trusted stores',
   },
   {
-    id: 'free-delivery',
-    eyebrow: 'Every order, every province',
-    headline: 'Free delivery on orders over $50',
+    id: 'electronics',
+    eyebrow: 'Phones, computers and accessories',
+    headline: 'Technology for work and everyday life',
     subtitle:
-      'Order from as many artisans as you like — we group your delivery and drop the fee once your basket passes $50.',
-    flash: 'FREE',
-    ctaLabel: 'Start shopping',
-    ctaRoute: '/products',
-    secondaryLabel: 'Shipping info',
-    secondaryRoute: '/shipping',
+      'Discover smartphones, computers, audio, appliances and useful accessories from marketplace sellers.',
+    ctaLabel: 'Explore electronics',
+    ctaRoute: '/categories/electronics',
+    secondaryLabel: 'See all categories',
+    secondaryRoute: '/categories',
     theme: 'delivery',
-    visual: 'Delivery across Cambodia',
-  },
-  {
-    id: 'seller',
-    eyebrow: 'For Cambodian makers',
-    headline: 'Sell your craft to the whole country',
-    subtitle:
-      'Open a store, list your products and reach buyers in every province. No listing fee while we are in beta.',
-    ctaLabel: 'Become a seller',
-    ctaRoute: '/become-a-seller',
-    secondaryLabel: 'How it works',
-    secondaryRoute: '/about',
-    theme: 'seller',
-    visual: 'Your workshop, online',
+    visual: 'Everyday technology',
+    image: '/assets/ads/electronics-campaign-landscape.png',
+    sponsoredLabel: 'Curated by KhmerCraft · Electronics',
+    offer: 'Explore useful everyday technology',
   },
 ];

@@ -33,6 +33,28 @@ export interface ApiProduct {
   updatedAt: string;
 }
 
+export interface ApiStore {
+  id: string;
+  name: string;
+  location: string | null;
+  rating: number;
+  reviewCount: number;
+  categoryName: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+}
+
+export interface ApiStoreList {
+  stores: ApiStore[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export interface ApiProductDetail extends ApiProduct {
   relatedProducts: ApiProduct[];
 }

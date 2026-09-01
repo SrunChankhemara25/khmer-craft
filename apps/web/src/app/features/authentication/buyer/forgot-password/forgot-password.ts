@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { apiErrorMessage, AuthService } from '../../../../core/auth/auth.service';
 import { AuthLayout } from '../../../../components/shared/authentication/auth-layout/auth-layout';
@@ -22,7 +22,6 @@ import { IconComponent } from '../../../../components/shared/ui/icon/icon.compon
 })
 export class ForgotPassword {
   private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly sent = signal(false);
@@ -46,11 +45,11 @@ export class ForgotPassword {
       .subscribe({
         next: () => {
           this.sent.set(true);
-          void this.router.navigateByUrl('/verify');
         },
         error: () => {
+          // Keep the response deliberately non-enumerating: buyers see the
+          // same confirmation whether or not the address exists.
           this.sent.set(true);
-          void this.router.navigateByUrl('/verify');
         },
       });
   }

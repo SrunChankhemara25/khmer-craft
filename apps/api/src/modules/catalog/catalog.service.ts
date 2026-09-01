@@ -1,5 +1,6 @@
 import mongoose, { QueryFilter } from 'mongoose';
 import Product, { IProduct, slugify } from '../../../models/Product';
+import Store from '../../../models/Store';
 import { IUser } from '../../../models/User';
 import { AppError } from '../../errors/app-error';
 import {
@@ -20,7 +21,6 @@ export const toProductResponse = (product: IProduct) => ({
   compareAtPrice: product.compareAtPrice ?? null,
   category: product.category,
   subcategory: product.subcategory ?? null,
-  // TODO(seller-branch): expose the populated Seller once that branch merges.
   sellerId: product.sellerId ? String(product.sellerId) : null,
   sellerName: product.sellerName,
   storeName: product.storeName ?? null,
@@ -211,6 +211,13 @@ const uniqueSlug = async (name: string): Promise<string> => {
 };
 
 export const createProduct = async (seller: IUser, input: CreateProductInput) => {
+  // Link the listing to the seller's real store when they have one, rather
+  // than trusting a free-text storeName — otherwise nothing stops a seller
+  // from publishing under a name that isn't actually theirs. A seller who
+  // hasn't created a store yet (an account can exist without one) still
+  // falls back to the plain text field so this stays backward compatible.
+  const store = await Store.findOne({ userId: seller._id });
+
   const product = await Product.create({
     name: input.name,
     slug: await uniqueSlug(input.name),
@@ -220,9 +227,10 @@ export const createProduct = async (seller: IUser, input: CreateProductInput) =>
     category: input.category,
     subcategory: input.subcategory,
     // Identity comes from the session, never the payload.
+    sellerId: store?._id,
     sellerUserId: seller._id,
     sellerName: seller.name,
-    storeName: input.storeName,
+    storeName: store?.storeName ?? input.storeName,
     location: input.location ?? '',
     image: input.image,
     images: input.images ?? [],

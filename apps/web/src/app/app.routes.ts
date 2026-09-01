@@ -12,7 +12,7 @@ export const routes: Routes = [
     path: '',
     loadComponent: () =>
       import('./pages/home.component').then((m) => m.HomeComponent),
-    title: 'KhmerCraft — Cambodian handmade crafts & local products',
+    title: 'KhmerCraft — Cambodia’s local-first marketplace',
   },
   {
     path: 'products',
@@ -101,12 +101,38 @@ export const routes: Routes = [
   {
     // Seller landing, onboarding and dashboard are Seypa47's work from
     // origin/prototype, ported into this tree's structure.
+    //
+    // Why Sell / Explore / Pricing / FAQ are separate routes rather than
+    // anchors on one long page — clicking a nav item takes you to that
+    // page, not to a spot further down whatever page you were already on.
     path: 'become-a-seller',
     loadComponent: () =>
       import('./features/seller/landing/seller-landing').then(
         (m) => m.SellerPage,
       ),
     title: 'Become a seller | KhmerCraft',
+  },
+  {
+    path: 'become-a-seller/explore',
+    loadComponent: () =>
+      import('./features/seller/explore/seller-explore').then(
+        (m) => m.SellerExplore,
+      ),
+    title: 'See KhmerCraft in action | KhmerCraft',
+  },
+  {
+    path: 'become-a-seller/pricing',
+    loadComponent: () =>
+      import('./features/seller/pricing/seller-pricing').then(
+        (m) => m.SellerPricing,
+      ),
+    title: 'Seller pricing | KhmerCraft',
+  },
+  {
+    path: 'become-a-seller/faq',
+    loadComponent: () =>
+      import('./features/seller/faq/seller-faq').then((m) => m.SellerFaq),
+    title: 'Seller FAQ | KhmerCraft',
   },
   // The spec uses /become-seller; keep both spellings working.
   { path: 'become-seller', pathMatch: 'full', redirectTo: 'become-a-seller' },
@@ -192,17 +218,20 @@ export const routes: Routes = [
       ),
     title: 'Forgot password | KhmerCraft',
   },
+  // Retired simulated reset-code screens. Password reset now happens only
+  // through the secure token link produced by /forgot-password.
+  { path: 'verify', pathMatch: 'full', redirectTo: 'forgot-password' },
+  { path: 'verify-code', pathMatch: 'full', redirectTo: 'forgot-password' },
   {
-    // Email verification step. The page is a placeholder — there is no
-    // verification endpoint on the API yet.
-    path: 'verify',
+    // Registration's own verification step — separate from the password-reset
+    // /verify placeholder above, and actually wired to the API.
+    path: 'verify-email',
     loadComponent: () =>
-      import('./features/authentication/buyer/verify/verify').then(
-        (m) => m.Verify,
+      import('./features/authentication/buyer/verify-email/verify-email').then(
+        (m) => m.VerifyEmail,
       ),
     title: 'Verify your email | KhmerCraft',
   },
-  { path: 'verify-code', pathMatch: 'full', redirectTo: 'verify' },
   {
     path: 'reset-password',
     loadComponent: () =>

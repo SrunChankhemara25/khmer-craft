@@ -1,5 +1,5 @@
 import { Product, StockStatus } from '../catalog/catalog.models';
-import { classifyCategory } from './categories.data';
+import { CATEGORIES, classifyCategory } from './categories.data';
 
 const stockStatus = (stock: number): StockStatus =>
   stock === 0 ? 'out-of-stock' : stock <= 5 ? 'low-stock' : 'in-stock';
@@ -246,7 +246,7 @@ const SEED: Seed[] = [
   },
 ];
 
-export const PRODUCTS: Product[] = SEED.map((seed) => {
+const CORE_PRODUCTS: Product[] = SEED.map((seed) => {
   const classification = classifyCategory(seed.categorySlug);
   return {
     ...seed,
@@ -259,3 +259,112 @@ export const PRODUCTS: Product[] = SEED.map((seed) => {
     status: stockStatus(seed.stock),
   };
 });
+
+/**
+ * Visual catalogue coverage for departments that do not have seller inventory
+ * yet. Every prepared subcategory gets one orderable-looking showcase card so
+ * navigation, counts and filters can be evaluated before the real catalogue is
+ * complete. API products replace these cards subcategory-by-subcategory in
+ * CatalogService, so this layer does not duplicate real stock.
+ */
+const SHOWCASE_PROFILE: Record<
+  string,
+  { storeId: string; sellerName: string; basePrice: number; image: string }
+> = {
+  fashion: {
+    storeId: 's006', sellerName: 'Sovann Style Studio', basePrice: 24,
+    image: '/assets/ads/multi-category-store-landscape.png',
+  },
+  'food-groceries': {
+    storeId: 's007', sellerName: 'Mekong Fresh Market', basePrice: 4.5,
+    image: '/assets/ads/premium-supermarket-landscape.png',
+  },
+  'home-living': {
+    storeId: 's005', sellerName: 'Takeo Bamboo Craft', basePrice: 12,
+    image: '/assets/ads/multi-category-store-landscape.png',
+  },
+  'beauty-wellness': {
+    storeId: 's006', sellerName: 'Sovann Style Studio', basePrice: 8,
+    image: '/assets/ads/multi-category-store-landscape.png',
+  },
+  electronics: {
+    storeId: 's006', sellerName: 'Sovann Style Studio', basePrice: 18,
+    image: '/assets/ads/electronics-campaign-landscape.png',
+  },
+  'kids-family': {
+    storeId: 's006', sellerName: 'Sovann Style Studio', basePrice: 9,
+    image: '/assets/ads/multi-category-store-landscape.png',
+  },
+  'arts-culture': {
+    storeId: 's001', sellerName: 'Srey Khmer Handmade Store', basePrice: 10,
+    image: '/assets/ads/multi-category-store-landscape.png',
+  },
+};
+
+const showcaseProductName = (subcategory: string): string => {
+  const exactNames: Record<string, string> = {
+    'Fresh Produce': 'Seasonal Cambodian Produce Box',
+    'Rice & Grains': 'Premium Jasmine Rice Selection',
+    'Meat & Seafood': 'Fresh Family Protein Pack',
+    'Eggs & Dairy': 'Farm Fresh Breakfast Bundle',
+    'Bakery & Bread': 'Morning Bakery Basket',
+    'Pantry & Spices': 'Cambodian Pantry Starter Set',
+    'Phones & Tablets': 'Everyday 5G Smartphone',
+    Computers: 'Slim Everyday Laptop',
+    'TV & Audio': 'Wireless Home Speaker',
+    Gaming: 'Wireless Game Controller',
+    'Home Appliances': 'Compact Home Air Purifier',
+    'Kitchen Appliances': 'Compact Digital Rice Cooker',
+    Skincare: 'Hydrating Botanical Face Serum',
+    'Makeup & Cosmetics': 'Everyday Beauty Colour Set',
+    Haircare: 'Nourishing Haircare Duo',
+    'Bath & Body': 'Lemongrass Bath Collection',
+    Furniture: 'Compact Teak Side Table',
+    'Kitchen & Dining': 'Everyday Dining Collection',
+    'Pottery & Ceramics': 'Handmade Ceramic Table Set',
+    'Bamboo & Rattan': 'Woven Rattan Home Basket',
+    'Home Décor': 'Cambodian Home Accent Set',
+    'Toys & Games': 'Wooden Creative Play Set',
+    'Learning & Educational': 'Early Learning Activity Kit',
+    'Handmade Crafts': 'Cambodian Artisan Gift Box',
+    'Textiles & Weaving': 'Handwoven Textile Collection',
+    'Art & Collectibles': 'Cambodian Art Print Set',
+    'Souvenirs & Gifts': 'Cambodian Keepsake Gift Set',
+  };
+  return exactNames[subcategory] ?? `${subcategory} Everyday Essential`;
+};
+
+export const SUBCATEGORY_SHOWCASE_PRODUCTS: Product[] = CATEGORIES.flatMap(
+  (category, categoryIndex) => {
+    const profile = SHOWCASE_PROFILE[category.slug];
+    return category.subcategories.map((subcategory, subcategoryIndex) => {
+      const price = Number(
+        (profile.basePrice + (subcategoryIndex % 6) * (profile.basePrice * 0.22)).toFixed(2),
+      );
+      return {
+        id: `showcase-${category.slug}-${subcategory.slug}`,
+        name: showcaseProductName(subcategory.name),
+        slug: `showcase-${category.slug}-${subcategory.slug}`,
+        image: profile.image,
+        price,
+        compareAtPrice: subcategoryIndex % 5 === 0 ? Number((price * 1.18).toFixed(2)) : undefined,
+        categorySlug: category.slug,
+        categoryName: category.name,
+        subcategory: subcategory.name,
+        subcategorySlug: subcategory.slug,
+        sellerName: profile.sellerName,
+        storeId: profile.storeId,
+        rating: Number((4.5 + (subcategoryIndex % 5) * 0.1).toFixed(1)),
+        reviewCount: 12 + categoryIndex * 9 + subcategoryIndex * 3,
+        stock: 8 + (subcategoryIndex % 8) * 3,
+        status: 'in-stock' as const,
+        description: `A curated ${subcategory.name.toLowerCase()} product selected for the KhmerCraft marketplace showcase.`,
+        soldCount: 24 + categoryIndex * 15 + subcategoryIndex * 7,
+        createdAt: `2026-08-${String(24 - (subcategoryIndex % 18)).padStart(2, '0')}`,
+        collections: subcategoryIndex % 3 === 0 ? ['recommended', 'new-arrivals'] : ['recommended'],
+      };
+    });
+  },
+);
+
+export const PRODUCTS: Product[] = [...CORE_PRODUCTS, ...SUBCATEGORY_SHOWCASE_PRODUCTS];

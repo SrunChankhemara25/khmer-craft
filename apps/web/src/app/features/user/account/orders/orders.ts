@@ -65,9 +65,13 @@ import { OrderStatusBadgeComponent } from '../../../../components/shared/orders/
               <div class="items">
                 @for (item of order.items; track item.productId) {
                   <div class="item">
-                    <a class="thumb img-placeholder" [routerLink]="['/product', item.productId]">{{
-                      item.productName
-                    }}</a>
+                    <a class="thumb img-placeholder" [routerLink]="['/product', item.productId]">
+                      @if (item.productImage) {
+                        <img [src]="item.productImage" [alt]="item.productName" />
+                      } @else {
+                        {{ item.productName }}
+                      }
+                    </a>
                     <div class="item-main">
                       <a class="item-name" [routerLink]="['/product', item.productId]">{{
                         item.productName
@@ -196,6 +200,8 @@ import { OrderStatusBadgeComponent } from '../../../../components/shared/orders/
         font-size: 9px;
         text-align: center;
       }
+      .thumb { overflow: hidden; }
+      .thumb img { height: 100%; object-fit: cover; width: 100%; }
       .item-main {
         display: flex;
         flex-direction: column;
