@@ -544,6 +544,9 @@ export class CheckoutComponent {
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = session.checkoutUrl;
+    // PayWay's docs require this explicitly — the browser's default encoding
+    // (application/x-www-form-urlencoded) is not what their endpoint expects.
+    form.enctype = 'multipart/form-data';
     form.style.display = 'none';
 
     for (const [name, value] of Object.entries(session.fields)) {

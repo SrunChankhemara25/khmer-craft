@@ -131,6 +131,8 @@ describe('ABA PayWay checkout session', () => {
     expect(typeof response.body.fields.hash).toBe('string');
     expect(response.body.fields.hash.length).toBeGreaterThan(0);
     expect(order!.paymentTranId).toBe(response.body.fields.tran_id);
+    // PayWay rejects tran_id over 20 characters — confirmed in their docs.
+    expect(response.body.fields.tran_id.length).toBeLessThanOrEqual(20);
   });
 
   it('refuses to build a second session for an already-paid order', async () => {
@@ -172,7 +174,7 @@ describe('ABA PayWay callback', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
-        json: async () => ({ status: 0 }),
+        json: async () => ({ data: { payment_status_code: 0, payment_status: 'APPROVED' } }),
       })),
     );
 
@@ -200,7 +202,7 @@ describe('ABA PayWay callback', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
-        json: async () => ({ status: 2 }),
+        json: async () => ({ data: { payment_status_code: 2, payment_status: 'PENDING' } }),
       })),
     );
 

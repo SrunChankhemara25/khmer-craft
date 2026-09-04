@@ -8,21 +8,20 @@ import { env } from '../../config/env';
 /**
  * ABA PayWay integration — the "Purchase" hosted-checkout flow.
  *
- * IMPORTANT, read before trusting this in production: the field list and
- * order below is ABA's publicly documented Purchase API hash format as of
- * when this was written, but ABA has revised this integration guide before,
- * and this was built without access to this merchant's actual dashboard
- * docs/Postman collection. Before going live:
+ * The request shape, hash field order, and the check-transaction-2 response
+ * shape below were confirmed against ABA's own live API reference at
+ * developer.payway.com.kh while this was written (Ecommerce Checkout >
+ * Purchase / Check transaction) — not reconstructed from memory. Two things
+ * still can't be verified without a real merchant account, though:
  *   1. Get sandbox credentials (PAYWAY_MERCHANT_ID / PAYWAY_API_KEY) from
- *      ABA's merchant portal and put them in apps/api/.env.local — never in
- *      chat, never committed.
- *   2. Run one real sandbox checkout and compare the request this code
- *      builds against the sample request in ABA's docs. If PayWay responds
- *      "invalid hash", the field order/names in `buildPurchaseHash` are the
- *      first and only thing to check.
- *   3. PAYWAY_CALLBACK_URL must be a URL ABA's servers can reach — a tunnel
+ *      ABA's sandbox registration (sandbox.payway.com.kh/register-sandbox)
+ *      and put them in apps/api/.env.local — never in chat, never committed.
+ *   2. PAYWAY_CALLBACK_URL must be a URL ABA's servers can reach — a tunnel
  *      (ngrok/cloudflared) to this API in dev, the real API host in
  *      production. localhost will never receive the callback.
+ * Run one real sandbox checkout once credentials exist; if PayWay responds
+ * "invalid hash", re-check `buildPurchaseHash` against the current docs
+ * first, since that's the one thing ABA has revised before.
  */
 
 const requireCredentials = () => {
@@ -76,6 +75,7 @@ const buildPurchaseHash = (
     lifetime: string;
     additionalParams: string;
     googlePayToken: string;
+    skipSuccessPage: string;
   },
   apiKey: string,
 ): string =>
@@ -102,13 +102,21 @@ const buildPurchaseHash = (
       fields.payout +
       fields.lifetime +
       fields.additionalParams +
-      fields.googlePayToken,
+      fields.googlePayToken +
+      fields.skipSuccessPage,
     apiKey,
   );
 
-/** A random suffix per attempt, so retrying a failed payment gets a fresh tran_id. */
-const generateTranId = (orderNumber: string): string =>
-  `${orderNumber.replace(/[^A-Za-z0-9]/g, '')}${Date.now().toString(36).toUpperCase()}`;
+/**
+ * tran_id is capped at 20 characters by PayWay — generated fresh per attempt
+ * (not derived from the order number, which alone can already be close to
+ * that limit) so a retried payment gets a new id. Matching it back to the
+ * order goes through `paymentTranId` on the Order document instead.
+ */
+const generateTranId = (): string =>
+  `KC${Date.now().toString(36)}${crypto.randomBytes(5).toString('hex')}`
+    .toUpperCase()
+    .slice(0, 20);
 
 const loadOwnedPendingOrder = async (
   user: IUser,
@@ -146,7 +154,7 @@ export const createCheckoutSession = async (user: IUser, orderId: string) => {
   const { merchantId, apiKey } = requireCredentials();
   const order = await loadOwnedPendingOrder(user, orderId);
 
-  const tranId = generateTranId(order.orderNumber);
+  const tranId = generateTranId();
   const reqTime = paywayTimestamp();
 
   const items = base64(
@@ -186,6 +194,7 @@ export const createCheckoutSession = async (user: IUser, orderId: string) => {
     lifetime: '',
     additionalParams: '',
     googlePayToken: '',
+    skipSuccessPage: '',
   };
 
   const hash = buildPurchaseHash(fields, apiKey);
@@ -224,9 +233,24 @@ export const createCheckoutSession = async (user: IUser, orderId: string) => {
  * this codebase fully controls. Treat the webhook as "go check now", not as
  * proof by itself.
  */
+/**
+ * Confirmed against ABA's live Developer Suite docs (developer.payway.com.kh)
+ * while building this — not a guess. The response nests the actual payment
+ * result under `data`; the top-level `status` object is just the API call's
+ * own request-status wrapper ({code, message, tran_id}), not the payment
+ * outcome — an earlier version of this function read the wrong field.
+ */
+const PAYMENT_STATUS_CODES = {
+  APPROVED: 0,
+  PENDING: 2,
+  DECLINED: 3,
+  REFUNDED: 4,
+  CANCELLED: 7,
+} as const;
+
 const checkTransactionStatus = async (
   tranId: string,
-): Promise<'PAID' | 'FAILED' | 'PENDING'> => {
+): Promise<'PAID' | 'FAILED' | 'PENDING' | 'REFUNDED'> => {
   const { merchantId, apiKey } = requireCredentials();
   const reqTime = paywayTimestamp();
   const hash = hmacSha512Base64(reqTime + merchantId + tranId, apiKey);
@@ -246,25 +270,30 @@ const checkTransactionStatus = async (
   );
 
   const body: unknown = await response.json().catch(() => null);
-  // Logged in full so the first real sandbox transaction shows exactly what
-  // PayWay's response looks like — adjust the parsing below to match it.
+  // Logged in full so a real sandbox transaction is easy to inspect if a
+  // future ABA API revision shifts this shape again.
   console.info('[payway] check-transaction response:', JSON.stringify(body));
 
-  const status =
+  const data =
     body && typeof body === 'object'
-      ? ((body as Record<string, unknown>)['status'] ??
-        (body as Record<string, any>)['data']?.['status'])
+      ? (body as Record<string, unknown>)['data']
+      : undefined;
+  const code =
+    data && typeof data === 'object'
+      ? (data as Record<string, unknown>)['payment_status_code']
       : undefined;
 
-  const approved =
-    status === 0 || status === '0' || String(status).toUpperCase() === 'APPROVED';
-  const declined =
-    status === 1 || String(status).toUpperCase() === 'DECLINED' ||
-    String(status).toUpperCase() === 'FAILED';
-
-  if (approved) return 'PAID';
-  if (declined) return 'FAILED';
-  return 'PENDING';
+  switch (code) {
+    case PAYMENT_STATUS_CODES.APPROVED:
+      return 'PAID';
+    case PAYMENT_STATUS_CODES.DECLINED:
+    case PAYMENT_STATUS_CODES.CANCELLED:
+      return 'FAILED';
+    case PAYMENT_STATUS_CODES.REFUNDED:
+      return 'REFUNDED';
+    default:
+      return 'PENDING';
+  }
 };
 
 const appendStatusEvent = (order: IOrder, note: string) => {
@@ -309,6 +338,10 @@ export const handleCallback = async (payload: Record<string, unknown>) => {
   } else if (status === 'FAILED') {
     order.paymentStatus = 'FAILED';
     appendStatusEvent(order, `ABA PayWay payment failed (tran_id ${tranId})`);
+    await order.save();
+  } else if (status === 'REFUNDED') {
+    order.paymentStatus = 'REFUNDED';
+    appendStatusEvent(order, `ABA PayWay payment refunded (tran_id ${tranId})`);
     await order.save();
   }
   // PENDING: leave it as-is; a later webhook or status check will resolve it.
