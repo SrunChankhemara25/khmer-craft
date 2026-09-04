@@ -35,6 +35,7 @@ export interface ApiProduct {
 
 export interface ApiStore {
   id: string;
+  slug: string;
   name: string;
   location: string | null;
   rating: number;
@@ -43,6 +44,12 @@ export interface ApiStore {
   description: string | null;
   logoUrl: string | null;
   bannerUrl: string | null;
+  tagline: string | null;
+  announcement: string | null;
+  theme: 'FOREST' | 'CLAY' | 'GOLD' | 'MIDNIGHT';
+  phoneNumber: string | null;
+  showContact: boolean;
+  featuredProductIds: string[];
 }
 
 export interface ApiStoreList {
@@ -94,6 +101,7 @@ export interface ApiCreateProductInput {
   images?: string[];
   stock: number;
   status: ApiStockStatus;
+  storeId?: string;
 }
 
 export interface ApiCartItem {
@@ -130,7 +138,7 @@ export type OrderStatus =
   | 'CANCELLED';
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
-export type PaymentMethod = 'COD' | 'ABA_DEMO' | 'STRIPE_SANDBOX';
+export type PaymentMethod = 'COD' | 'ABA_PAYWAY' | 'ABA_DEMO' | 'STRIPE_SANDBOX';
 
 export interface ApiDeliveryInfo {
   fullName: string;
@@ -171,6 +179,7 @@ export interface ApiOrder {
   deliveryInfo: ApiDeliveryInfo;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
+  hasPaymentTranId: boolean;
   orderStatus: OrderStatus;
   subtotal: number;
   deliveryFee: number;
@@ -178,6 +187,12 @@ export interface ApiOrder {
   statusHistory: ApiStatusEvent[];
   createdAt: string;
   updatedAt: string;
+}
+
+/** What the web app POSTs, as an auto-submitted form, to hand the buyer off to PayWay. */
+export interface ApiPaywayCheckoutSession {
+  checkoutUrl: string;
+  fields: Record<string, string>;
 }
 
 /** A seller's view adds their own share of a possibly multi-seller order. */

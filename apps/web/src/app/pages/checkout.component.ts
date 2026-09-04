@@ -30,6 +30,12 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
     hint: 'Pay the courier when your order arrives.',
     icon: 'banknote',
   },
+  {
+    value: 'ABA_PAYWAY',
+    label: 'ABA PayWay',
+    hint: 'Card, KHQR, or ABA account — pay now on ABA’s secure page.',
+    icon: 'credit-card',
+  },
 ];
 
 /**
@@ -146,10 +152,12 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
                 }
               </div>
 
-              <p class="sandbox-note">
-                <ui-icon name="info" [size]="13" />
-                ABA/KHQR will appear here after the real payment integration is ready.
-              </p>
+              @if (method() === 'ABA_PAYWAY') {
+                <p class="sandbox-note">
+                  <ui-icon name="info" [size]="13" />
+                  You'll be sent to ABA's secure page to pay, then brought back here.
+                </p>
+              }
             </section>
           </form>
 
@@ -502,6 +510,14 @@ export class CheckoutComponent {
       // so the badge does not keep showing items that are already ordered.
       this.cart.markEmptied();
 
+      if (this.method() === 'ABA_PAYWAY') {
+        // The order already exists (unpaid); this hands the buyer off to
+        // ABA's own page to actually pay. There's nothing to navigate to
+        // afterward here — redirectToPayway() leaves this page entirely.
+        await this.redirectToPayway(created.orderId);
+        return;
+      }
+
       await this.router.navigate(['/order-success'], {
         queryParams: { order: created.orderNumber },
       });
@@ -513,5 +529,32 @@ export class CheckoutComponent {
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  /**
+   * PayWay's checkout has to be a real full-page form POST, not a fetch/XHR
+   * redirect — it's a hosted page the buyer enters card/KHQR details on, and
+   * that only works as a top-level navigation the browser itself performs.
+   * This builds a hidden form matching the fields the server signed, and
+   * submits it, leaving this Angular app entirely for ABA's page.
+   */
+  private async redirectToPayway(orderId: string): Promise<void> {
+    const session = await firstValueFrom(this.api.createPaywayCheckout(orderId));
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = session.checkoutUrl;
+    form.style.display = 'none';
+
+    for (const [name, value] of Object.entries(session.fields)) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
   }
 }

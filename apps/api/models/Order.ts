@@ -12,7 +12,12 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 export const PAYMENT_STATUSES = ['PENDING', 'PAID', 'FAILED', 'REFUNDED'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const PAYMENT_METHODS = ['COD', 'ABA_DEMO', 'STRIPE_SANDBOX'] as const;
+export const PAYMENT_METHODS = [
+  'COD',
+  'ABA_PAYWAY',
+  'ABA_DEMO',
+  'STRIPE_SANDBOX',
+] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 /**
@@ -65,6 +70,14 @@ export interface IOrder extends Document {
   deliveryInfo: IDeliveryInfo;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
+  /**
+   * The transaction id handed to the payment provider at checkout — how its
+   * webhook callback is matched back to this order. Not the same field as
+   * `orderNumber`: a buyer could in principle retry payment on the same
+   * order, so this is regenerated per attempt rather than reusing the order
+   * number directly against the gateway.
+   */
+  paymentTranId?: string;
   orderStatus: OrderStatus;
   subtotal: number;
   deliveryFee: number;
@@ -124,6 +137,7 @@ const OrderSchema = new Schema<IOrder>(
       default: 'PENDING',
       required: true,
     },
+    paymentTranId: { type: String, index: true, sparse: true },
     orderStatus: {
       type: String,
       enum: ORDER_STATUSES,

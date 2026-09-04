@@ -21,6 +21,7 @@ import cartRoutes from './modules/cart/cart.routes';
 import catalogRoutes from './modules/catalog/catalog.routes';
 import taxonomyRoutes from './modules/catalog/taxonomy.routes';
 import orderRoutes from './modules/orders/orders.routes';
+import paymentRoutes from './modules/payments/payments.routes';
 import reviewRoutes from './modules/reviews/reviews.routes';
 import sellerRoutes from './modules/sellers/sellers.routes';
 
@@ -55,9 +56,13 @@ export const createApp = () => {
       maxAge: 600,
     }),
   );
-  // 100kb is ample for every JSON payload this API accepts; a larger ceiling
-  // only widens the memory-exhaustion surface.
-  app.use(express.json({ limit: '100kb' }));
+  // 6mb covers the seller dashboard's base64 product-image uploads (see
+  // catalog.validation.ts, which caps a single image string at 5MB) plus
+  // request overhead; a larger ceiling only widens the memory-exhaustion
+  // surface for no real payload this API accepts.
+  app.use(express.json({ limit: '6mb' }));
+  // PayWay's webhook can arrive form-encoded rather than as JSON.
+  app.use(express.urlencoded({ extended: true, limit: '100kb' }));
   app.use(cookieParser());
   app.use(preventOperatorInjection);
   app.use(apiRateLimit);
@@ -103,6 +108,7 @@ export const createApp = () => {
   app.use('/api', taxonomyRoutes);
   app.use('/api/cart', cartRoutes);
   app.use('/api/orders', orderRoutes);
+  app.use('/api/payments', paymentRoutes);
   app.use('/api/reviews', reviewRoutes);
   app.use('/api/sellers', sellerRoutes);
 

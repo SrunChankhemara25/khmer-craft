@@ -10,6 +10,7 @@ import {
   ApiMyProductList,
   ApiOrder,
   ApiOrderList,
+  ApiPaywayCheckoutSession,
   ApiProduct,
   ApiProductDetail,
   ApiProductList,
@@ -23,6 +24,7 @@ import {
 export interface ProductQuery {
   search?: string;
   category?: string;
+  storeId?: string;
   location?: string;
   collection?: string;
   priceMin?: number;
@@ -70,9 +72,11 @@ export class CommerceApiService {
   }
 
   /** The signed-in seller's own listings, drafts and archived included. */
-  myProducts(page = 1, limit = 20): Observable<ApiMyProductList> {
+  myProducts(page = 1, limit = 20, storeId?: string): Observable<ApiMyProductList> {
+    let params = new HttpParams().set('page', page).set('limit', limit);
+    if (storeId) params = params.set('storeId', storeId);
     return this.http.get<ApiMyProductList>(`${API_URL}/products/mine`, {
-      params: new HttpParams().set('page', page).set('limit', limit),
+      params,
     });
   }
 
@@ -140,6 +144,15 @@ export class CommerceApiService {
   getOrder(idOrNumber: string): Observable<ApiOrder> {
     return this.http.get<ApiOrder>(
       `${API_URL}/orders/${encodeURIComponent(idOrNumber)}`,
+    );
+  }
+
+  // -------------------------------------------------------------- payments
+  /** Fields to auto-submit, as a form POST, to `checkoutUrl` — see payments.service.ts. */
+  createPaywayCheckout(orderId: string): Observable<ApiPaywayCheckoutSession> {
+    return this.http.post<ApiPaywayCheckoutSession>(
+      `${API_URL}/payments/aba-payway/checkout`,
+      { orderId },
     );
   }
 

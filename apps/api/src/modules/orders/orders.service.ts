@@ -20,12 +20,15 @@ import {
 import { CreateOrderInput } from './orders.validation';
 
 /**
- * Cash on delivery is unpaid until the courier collects. The two demo gateways
- * settle immediately because there is no real payment provider wired up yet.
- * TODO(payments): replace with the provider's webhook result.
+ * Cash on delivery is unpaid until the courier collects, and ABA PayWay is
+ * unpaid until its webhook confirms the transaction — see
+ * `modules/payments/payments.service.ts`. The two demo gateways settle
+ * immediately because they were never wired to a real provider; they are not
+ * offered as a checkout option in the web app any more, but existing test
+ * fixtures still reference them.
  */
 const initialPaymentStatus = (method: PaymentMethod): PaymentStatus =>
-  method === 'COD' ? 'PENDING' : 'PAID';
+  method === 'COD' || method === 'ABA_PAYWAY' ? 'PENDING' : 'PAID';
 
 /** KC-YYMMDD-XXXXXX — sortable by day, random enough not to be guessable. */
 const generateOrderNumber = (): string => {
@@ -61,6 +64,9 @@ export const toOrderResponse = (order: IOrder) => ({
   paymentMethod: order.paymentMethod,
   paymentStatus: order.paymentStatus,
   orderStatus: order.orderStatus,
+  // Only meaningful for a live gateway order; the web app uses it to decide
+  // whether an already-created order still needs a checkout redirect.
+  hasPaymentTranId: Boolean(order.paymentTranId),
   subtotal: order.subtotal,
   deliveryFee: order.deliveryFee,
   totalAmount: order.totalAmount,
