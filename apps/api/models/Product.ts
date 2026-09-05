@@ -14,6 +14,15 @@ export interface IProduct extends Document {
   /** Second level of the tree, e.g. Pottery > Bowls & Plates. */
   subcategory?: string;
   /**
+   * The seller's OWN category tree (see models/StoreCategory.ts) — entirely
+   * separate from `category`/`subcategory` above, which are the fixed,
+   * marketplace-wide taxonomy. A product can carry both at once; neither
+   * replaces the other.
+   */
+  storeCategoryId?: mongoose.Types.ObjectId;
+  /** The specific StoreCategory.subcategories[]._id this product sits under. */
+  storeSubcategoryId?: mongoose.Types.ObjectId;
+  /**
    * The Store this listing belongs to. Set from the seller's own Store at
    * creation time (never trusted from the request) — see
    * `catalog.service.ts#createProduct`. Optional because a seller can have a
@@ -51,6 +60,8 @@ const ProductSchema = new Schema<IProduct>(
     compareAtPrice: { type: Number, min: 0 },
     category: { type: String, required: true, trim: true, index: true },
     subcategory: { type: String, trim: true, index: true },
+    storeCategoryId: { type: Schema.Types.ObjectId, ref: 'StoreCategory', index: true },
+    storeSubcategoryId: { type: Schema.Types.ObjectId, index: true },
 
     sellerId: { type: Schema.Types.ObjectId, ref: 'Store' },
     sellerUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },

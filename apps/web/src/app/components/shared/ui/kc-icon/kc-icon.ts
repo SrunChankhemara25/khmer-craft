@@ -82,6 +82,12 @@ import { Component, input } from '@angular/core';
         @case ('chevron-right') {
           <polyline points="9 18 15 12 9 6" />
         }
+        @case ('chevron-up') {
+          <polyline points="18 15 12 9 6 15" />
+        }
+        @case ('chevron-down') {
+          <polyline points="6 9 12 15 18 9" />
+        }
         @case ('cart') {
           <circle cx="9" cy="21" r="1" />
           <circle cx="20" cy="21" r="1" />

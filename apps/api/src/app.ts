@@ -24,6 +24,7 @@ import orderRoutes from './modules/orders/orders.routes';
 import paymentRoutes from './modules/payments/payments.routes';
 import reviewRoutes from './modules/reviews/reviews.routes';
 import sellerRoutes from './modules/sellers/sellers.routes';
+import storeCategoryRoutes from './modules/store-categories/store-categories.routes';
 
 export const createApp = () => {
   const app = express();
@@ -111,6 +112,7 @@ export const createApp = () => {
   app.use('/api/payments', paymentRoutes);
   app.use('/api/reviews', reviewRoutes);
   app.use('/api/sellers', sellerRoutes);
+  app.use('/api/store-categories', storeCategoryRoutes);
 
   // Interactive API docs. Disabled in production so the schema is not public.
   if (isDocsEnabled) {

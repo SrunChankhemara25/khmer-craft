@@ -1,6 +1,7 @@
 import mongoose, { QueryFilter } from 'mongoose';
 import Order, { IOrder } from '../../../models/Order';
 import Review, { IReview } from '../../../models/Review';
+import Product from '../../../models/Product';
 import Store, { IStore } from '../../../models/Store';
 import SellerApplication, {
   ISellerApplication,
@@ -36,6 +37,12 @@ export const toPublicStore = (seller: IStore) => ({
   reviewCount: seller.reviewCount,
   categoryName: seller.category ?? null,
   description: seller.storeDescription ?? null,
+  tagline: seller.storeTagline ?? null,
+  announcement: seller.announcement ?? null,
+  theme: seller.theme ?? 'FOREST',
+  phoneNumber: seller.showContact ? seller.phoneNumber ?? null : null,
+  showContact: seller.showContact ?? false,
+  featuredProductIds: (seller.featuredProductIds ?? []).map(String),
   logoUrl: seller.storeAvatarUrl ?? null,
   bannerUrl: seller.storeCoverImages?.[0] ?? null,
   isVerified: seller.verificationStatus === 'VERIFIED',
@@ -52,6 +59,11 @@ const toOwnerStore = (seller: IStore) => ({
   slug: seller.slug,
   storeName: seller.storeName,
   storeDescription: seller.storeDescription ?? null,
+  storeTagline: seller.storeTagline ?? null,
+  announcement: seller.announcement ?? null,
+  theme: seller.theme ?? 'FOREST',
+  showContact: seller.showContact ?? false,
+  featuredProductIds: (seller.featuredProductIds ?? []).map(String),
   location: seller.location ?? null,
   phoneNumber: seller.phoneNumber ?? null,
   logoUrl: seller.storeAvatarUrl ?? null,
@@ -169,7 +181,13 @@ export const createStore = async (userId: string, input: CreateStoreInput) => {
   return { store: toOwnerStore(seller), roleChanged };
 };
 
-const findOwnedStore = async (storeId: string, userId: string): Promise<IStore> => {
+/**
+ * Load a store and confirm the caller owns it — every new owner-gated
+ * resource (store categories, collections, storefront config) reuses this
+ * exact check rather than duplicating it. Deliberately 404, not 403: a
+ * non-owner should not be able to tell a store id exists at all.
+ */
+export const findOwnedStore = async (storeId: string, userId: string): Promise<IStore> => {
   const seller = await Store.findById(storeId);
   if (!seller || String(seller.userId) !== userId) {
     throw new AppError(404, 'Store not found', 'STORE_NOT_FOUND');
@@ -191,12 +209,35 @@ export const updateStoreProfile = async (
 
   if (input.storeName !== undefined) seller.storeName = input.storeName;
   if (input.storeDescription !== undefined) seller.storeDescription = input.storeDescription;
+  if (input.storeTagline !== undefined) seller.storeTagline = input.storeTagline;
+  if (input.announcement !== undefined) seller.announcement = input.announcement;
+  if (input.theme !== undefined) seller.theme = input.theme;
+  if (input.showContact !== undefined) seller.showContact = input.showContact;
   if (input.location !== undefined) seller.location = input.location;
   if (input.phoneNumber !== undefined) seller.phoneNumber = input.phoneNumber;
   if (input.logoUrl !== undefined) seller.storeAvatarUrl = input.logoUrl;
   if (input.bannerUrl !== undefined) seller.storeCoverImages = [input.bannerUrl];
+  if (input.featuredProductIds !== undefined) {
+    const uniqueIds = [...new Set(input.featuredProductIds)];
+    const ownedCount = await Product.countDocuments({
+      _id: { $in: uniqueIds },
+      sellerId: seller._id,
+      sellerUserId: seller.userId,
+    });
+    if (ownedCount !== uniqueIds.length) {
+      throw new AppError(422, 'Featured products must belong to this store', 'INVALID_FEATURED_PRODUCTS');
+    }
+    seller.featuredProductIds = uniqueIds.map((id) => new mongoose.Types.ObjectId(id));
+  }
 
   await seller.save();
+
+  const productPatch: Record<string, string> = {};
+  if (input.storeName !== undefined) productPatch.storeName = input.storeName;
+  if (input.location !== undefined) productPatch.location = input.location;
+  if (Object.keys(productPatch).length) {
+    await Product.updateMany({ sellerId: seller._id }, { $set: productPatch });
+  }
   return toOwnerStore(seller);
 };
 

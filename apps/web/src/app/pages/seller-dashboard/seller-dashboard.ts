@@ -1,16 +1,18 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
+import { finalize, firstValueFrom } from 'rxjs';
 import { API_URL } from '../../core/api/api.config';
 import { KcIcon } from '../../components/shared/ui/kc-icon/kc-icon';
+import { StoreCategoriesManagerComponent } from '../../features/seller/store-categories/store-categories-manager.component';
 import { SellerService } from '../../core/api/seller.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { CommerceApiService } from '../../core/api/commerce-api.service';
 import { OrderStatus } from '../../core/api/api.models';
 import { cartErrorMessage } from '../../core/cart/cart.service';
 
-type DashboardView = 'dashboard' | 'products' | 'add' | 'orders' | 'profile' | 'sales' | 'reviews' | 'settings';
+type DashboardView = 'dashboard' | 'products' | 'add' | 'orders' | 'profile' | 'store-categories' | 'sales' | 'reviews' | 'settings';
 type OrderStatusClass = 'pending' | 'shipped' | 'delivered';
 
 interface SellerOrder {
@@ -49,7 +51,7 @@ interface DashboardMetric {
 
 @Component({
   selector: 'app-seller-dashboard',
-  imports: [KcIcon, FormsModule],
+  imports: [KcIcon, FormsModule, StoreCategoriesManagerComponent],
   styles: [`
     :host {
       background: #f8f4ec;
@@ -86,8 +88,13 @@ interface DashboardMetric {
       color: #7b8782;
       font-size: 11px;
       font-weight: 700;
-      margin: 0 24px 35px;
+      margin: 0 24px 16px;
     }
+
+    .store-control { margin: 0 14px 24px; padding: 12px; background: #fff; border: 1px solid #dce4e3; border-radius: 9px; }
+    .store-control label { display: block; margin-bottom: 7px; color: #7b8782; font-size: 9px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+    .store-control select { width: 100%; min-height: 36px; padding: 0 8px; color: #26302c; background: #f9faf8; border: 1px solid #d8dfdc; border-radius: 6px; font-size: 11px; font-weight: 750; }
+    .new-store { width: 100%; margin-top: 8px; padding: 0; color: #146242; text-align: left; background: none; border: 0; font-size: 10px; font-weight: 850; cursor: pointer; }
 
     .nav {
       display: flex;
@@ -925,6 +932,23 @@ interface DashboardMetric {
       justify-content: flex-end;
       margin-top: 14px;
     }
+
+    .profile-section-title { margin: 8px 0 -4px; padding-top: 17px; border-top: 1px solid #ece6dc; }
+    .profile-section-title strong { display: block; color: #26302c; font-size: 13px; }
+    .profile-section-title span { display: block; margin-top: 4px; color: #7b8782; font-size: 10px; font-weight: 600; }
+    .theme-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .theme-choice { min-height: 54px; padding: 8px; display: flex; align-items: center; gap: 7px; color: #4c5752; background: #fff; border: 1px solid #d8ddd6; border-radius: 7px; font-size: 10px; font-weight: 800; cursor: pointer; }
+    .theme-choice i { width: 19px; height: 19px; border-radius: 50%; background: var(--swatch); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+    .theme-choice.selected { color: #146242; border: 2px solid #146242; background: #f4faf6; }
+    .public-contact { padding: 13px; display: flex !important; align-items: flex-start; gap: 10px; background: #f7f9f7; border: 1px solid #e0e6e1; border-radius: 7px; cursor: pointer; }
+    .public-contact input { margin-top: 2px; accent-color: #146242; }
+    .public-contact span { color: #727d78; font-size: 10px; font-weight: 600; line-height: 1.45; }
+    .featured-picker { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .featured-option { min-width: 0; padding: 10px; display: flex !important; align-items: center; gap: 9px; border: 1px solid #e0e4df; border-radius: 7px; cursor: pointer; }
+    .featured-option.selected { border-color: #7aa08d; background: #f1f7f3; }
+    .featured-option input { accent-color: #146242; }
+    .featured-option span { min-width: 0; overflow: hidden; color: #3d4944; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .profile-message { margin-right: auto; align-self: center; color: #146242; font-size: 11px; font-weight: 750; }
 
     .sales-grid {
       display: grid;
@@ -1878,6 +1902,15 @@ interface DashboardMetric {
       <aside class="sidebar">
         <h1 class="logo">KhmerCraft</h1>
         <p class="portal-label">Seller Portal</p>
+        <div class="store-control">
+          <label for="active-store">Working in</label>
+          <select id="active-store" [ngModel]="myStoreId()" (ngModelChange)="switchStore($event)">
+            @for (store of stores(); track store.id || store._id) {
+              <option [value]="store.id || store._id">{{ store.storeName }}</option>
+            }
+          </select>
+          <button class="new-store" type="button" (click)="createAnotherStore()">+ Create another store</button>
+        </div>
         <nav class="nav">
           @for (item of navItems; track item.view) {
             <button
@@ -1890,7 +1923,7 @@ interface DashboardMetric {
             </button>
           }
         </nav>
-        <button type="button" class="logout">
+        <button type="button" class="logout" (click)="logout()">
           <kc-icon name="logout" [size]="17" />
           Logout
         </button>
@@ -1907,7 +1940,7 @@ interface DashboardMetric {
             />
           </div>
           <div class="top-actions">
-            <a class="view-store" href="/">
+            <a class="view-store" [href]="activeStorefrontUrl()">
               View Store
               <kc-icon name="external" [size]="15" />
             </a>
@@ -2340,8 +2373,8 @@ interface DashboardMetric {
                     }
                     <h2>{{ storeProfile().storeName || 'Store Name' }}</h2>
                     <div class="store-rating"><span>{{ storeProfile().location || 'Location' }}</span></div>
-                    <p>{{ storeProfile().storeDescription || 'No description provided.' }}</p>
-                    <a class="visit" href="/"><kc-icon name="eye" [size]="15" /> View Store</a>
+                    <p><strong>{{ storeProfile().storeTagline || 'Add a short buyer-facing tagline.' }}</strong><br />{{ storeProfile().storeDescription || 'No description provided.' }}</p>
+                    <a class="visit" [href]="activeStorefrontUrl()"><kc-icon name="eye" [size]="15" /> View Store</a>
                   </div>
                 </article>
 
@@ -2389,9 +2422,21 @@ interface DashboardMetric {
 
                 <form class="dash-form">
                   <label>Store Name<input class="dash-input" [ngModel]="storeProfile().storeName" (ngModelChange)="storeProfile.set({...storeProfile(), storeName: $event})" name="storeName" /></label>
+                  <label>Store Tagline
+                    <input class="dash-input" maxlength="160" [ngModel]="storeProfile().storeTagline" (ngModelChange)="storeProfile.set({...storeProfile(), storeTagline: $event})" name="storeTagline" placeholder="A clear one-line reason to shop here" />
+                  </label>
                   <label>Description
                     <textarea class="dash-textarea" [ngModel]="storeProfile().storeDescription" (ngModelChange)="storeProfile.set({...storeProfile(), storeDescription: $event})" name="storeDesc"></textarea>
                   </label>
+                  <label>Announcement
+                    <input class="dash-input" maxlength="120" [ngModel]="storeProfile().announcement" (ngModelChange)="storeProfile.set({...storeProfile(), announcement: $event})" name="announcement" placeholder="Example: Free Phnom Penh delivery this weekend" />
+                  </label>
+                  <div class="profile-section-title"><strong>Storefront theme</strong><span>Choose one tested color system. KhmerCraft keeps typography and shopping controls consistent.</span></div>
+                  <div class="theme-options">
+                    @for (theme of storefrontThemes; track theme.value) {
+                      <button type="button" class="theme-choice" [class.selected]="storeProfile().theme === theme.value" [style.--swatch]="theme.color" (click)="storeProfile.set({...storeProfile(), theme: theme.value})"><i></i>{{ theme.label }}</button>
+                    }
+                  </div>
                   <div class="two-cols">
                     <label>Location
                       <div style="position: relative; display: flex;">
@@ -2403,13 +2448,31 @@ interface DashboardMetric {
                     </label>
                     <label>Phone Number<input class="dash-input" [ngModel]="storeProfile().phoneNumber" (ngModelChange)="storeProfile.set({...storeProfile(), phoneNumber: $event})" name="phone" /></label>
                   </div>
+                  <label class="public-contact"><input type="checkbox" [ngModel]="storeProfile().showContact" (ngModelChange)="storeProfile.set({...storeProfile(), showContact: $event})" name="showContact" /><span><strong>Show the store phone number publicly</strong><br />Buyers will see it in the About section. Leave this off if orders should stay inside KhmerCraft.</span></label>
+                  <div class="profile-section-title"><strong>Featured products</strong><span>Select up to 6 products to place above the full store catalogue.</span></div>
+                  @if (products().length) {
+                    <div class="featured-picker">
+                      @for (product of products(); track product.id) {
+                        <label class="featured-option" [class.selected]="isFeaturedProduct(product.id)"><input type="checkbox" [checked]="isFeaturedProduct(product.id)" (change)="toggleFeaturedProduct(product.id)" /><span>{{ product.name }}</span></label>
+                      }
+                    </div>
+                  } @else { <p class="muted">Add products first, then return here to feature your strongest listings.</p> }
                   <div class="form-actions">
-                    <button class="btn btn-ghost" type="button">Cancel</button>
-                    <button class="btn btn-primary" type="button" (click)="saveStoreProfile()">Save Changes</button>
+                    @if (profileMessage()) { <span class="profile-message">{{ profileMessage() }}</span> }
+                    <button class="btn btn-ghost" type="button" (click)="resetStoreProfile()">Cancel</button>
+                    <button class="btn btn-primary" type="button" [disabled]="savingProfile()" (click)="saveStoreProfile()">{{ savingProfile() ? 'Saving…' : 'Publish storefront changes' }}</button>
                   </div>
                 </form>
               </article>
             </section>
+          </main>
+        } @else if (view() === 'store-categories') {
+          <main class="page">
+            @if (myStoreId(); as storeId) {
+              <app-store-categories-manager [storeId]="storeId" />
+            } @else {
+              <p class="muted">Select a store first.</p>
+            }
           </main>
         } @else if (view() === 'sales') {
           <main class="page">
@@ -2640,6 +2703,8 @@ interface DashboardMetric {
 export class SellerDashboardPage implements OnInit {
   private readonly sellerService = inject(SellerService);
   private readonly commerceApi = inject(CommerceApiService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   protected readonly authService = inject(AuthService);
   protected readonly user = this.authService.user;
 
@@ -2649,6 +2714,10 @@ export class SellerDashboardPage implements OnInit {
   protected readonly updatingStatus = signal(false);
   protected readonly statusUpdateError = signal('');
   protected readonly myStoreId = signal<string | null>(null);
+  protected readonly stores = signal<any[]>([]);
+  protected readonly activeStore = computed(() =>
+    this.stores().find((store) => (store.id ?? store._id) === this.myStoreId()) ?? null,
+  );
 
   protected readonly currentPassword = signal('');
   protected readonly newPassword = signal('');
@@ -2720,10 +2789,11 @@ export class SellerDashboardPage implements OnInit {
   protected readonly profileCompletion = computed(() => {
     const p = this.storeProfile();
     let score = 0;
-    if (p.storeName?.trim()) score += 25;
-    if (p.storeDescription?.trim()) score += 25;
-    if (p.location?.trim()) score += 25;
-    if (p.phoneNumber?.trim()) score += 25;
+    if (p.storeName?.trim()) score += 20;
+    if (p.storeDescription?.trim() && p.storeTagline?.trim()) score += 20;
+    if (p.location?.trim() && p.phoneNumber?.trim()) score += 20;
+    if (p.logoUrl) score += 20;
+    if (p.bannerUrl || p.featuredProductIds?.length) score += 20;
     return score;
   });
   
@@ -2732,10 +2802,15 @@ export class SellerDashboardPage implements OnInit {
   ngOnInit() {
     this.http.get<any[]>(`${API_URL}/sellers/my-stores`).subscribe({
       next: (stores) => {
+        this.stores.set(stores ?? []);
         if (stores && stores.length > 0) {
+          const requestedStoreId = this.route.snapshot.queryParamMap.get('storeId');
+          const selectedStore = requestedStoreId
+            ? stores.find((store) => (store.id ?? store._id) === requestedStoreId) ?? stores[0]
+            : stores[0];
           // The current API intentionally exposes `id`, not MongoDB's `_id`.
           // Keep the fallback so older deployments remain compatible.
-          const storeId = stores[0].id ?? stores[0]._id;
+          const storeId = selectedStore.id ?? selectedStore._id;
           this.myStoreId.set(storeId);
           this.loadDashboardData(storeId);
         } else {
@@ -2746,6 +2821,34 @@ export class SellerDashboardPage implements OnInit {
         console.error('Failed to load stores', err);
         alert('API error when loading stores: ' + err.status + ' ' + (err.error?.message || err.message));
       }
+    });
+  }
+
+  protected switchStore(storeId: string): void {
+    if (!storeId || storeId === this.myStoreId()) return;
+    this.myStoreId.set(storeId);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { storeId },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.loadDashboardData(storeId);
+  }
+
+  protected createAnotherStore(): void {
+    void this.router.navigate(['/seller/onboarding']);
+  }
+
+  protected activeStorefrontUrl(): string {
+    const store = this.activeStore();
+    return store ? `/stores/${store.slug ?? store.id ?? store._id}` : '/stores';
+  }
+
+  protected logout(): void {
+    this.authService.logout().subscribe({
+      next: () => void this.router.navigateByUrl('/'),
+      error: () => void this.router.navigateByUrl('/'),
     });
   }
 
@@ -2837,13 +2940,19 @@ export class SellerDashboardPage implements OnInit {
     this.sellerService.getStoreProfile(storeId).subscribe({
       next: (profile) => {
         this.storeProfile.set({
-          storeName: profile.storeName,
-          storeDescription: profile.storeDescription,
-          location: profile.location,
-          phoneNumber: profile.phoneNumber,
-          logoUrl: profile.logoUrl,
-          bannerUrl: profile.bannerUrl
+          storeName: profile.storeName ?? '',
+          storeDescription: profile.storeDescription ?? '',
+          storeTagline: profile.storeTagline ?? '',
+          announcement: profile.announcement ?? '',
+          theme: profile.theme ?? 'FOREST',
+          showContact: profile.showContact ?? false,
+          featuredProductIds: profile.featuredProductIds ?? [],
+          location: profile.location ?? '',
+          phoneNumber: profile.phoneNumber ?? '',
+          logoUrl: profile.logoUrl ?? '',
+          bannerUrl: profile.bannerUrl ?? ''
         });
+        this.profileMessage.set('');
       },
       error: (err) => console.error('Failed to load profile', err)
     });
@@ -2875,6 +2984,7 @@ export class SellerDashboardPage implements OnInit {
     { view: 'add', label: 'Add Product', icon: 'plus-square' },
     { view: 'orders', label: 'Orders', icon: 'cart' },
     { view: 'profile', label: 'Store Profile', icon: 'store' },
+    { view: 'store-categories', label: 'Store Categories', icon: 'grid' },
     { view: 'sales', label: 'Sales / Payout', icon: 'wallet' },
     { view: 'reviews', label: 'Reviews', icon: 'review' },
     { view: 'settings', label: 'Settings', icon: 'settings' },
@@ -2907,9 +3017,25 @@ export class SellerDashboardPage implements OnInit {
   protected readonly storeProfile = signal<any>({
     storeName: '',
     storeDescription: '',
+    storeTagline: '',
+    announcement: '',
+    theme: 'FOREST',
+    showContact: false,
+    featuredProductIds: [],
     location: '',
     phoneNumber: '',
+    logoUrl: '',
+    bannerUrl: '',
   });
+
+  protected readonly storefrontThemes = [
+    { value: 'FOREST', label: 'Forest', color: '#275643' },
+    { value: 'CLAY', label: 'Clay', color: '#a33a24' },
+    { value: 'GOLD', label: 'Harvest', color: '#a97517' },
+    { value: 'MIDNIGHT', label: 'Midnight', color: '#243547' },
+  ] as const;
+  protected readonly savingProfile = signal(false);
+  protected readonly profileMessage = signal('');
 
   protected readonly newProduct = signal<any>({
     name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: ''
@@ -3003,6 +3129,7 @@ export class SellerDashboardPage implements OnInit {
       return;
     }
 
+    data.storeId = this.myStoreId();
     this.sellerService.createProduct(data).subscribe({
       next: () => {
         alert('Product added successfully!');
@@ -3023,13 +3150,54 @@ export class SellerDashboardPage implements OnInit {
     const data = this.storeProfile();
     const id = this.myStoreId();
     if (!id) {
-      alert('Store ID is missing! Please refresh the page and try again.');
+      this.profileMessage.set('Store ID is missing. Please refresh and try again.');
       return;
     }
-    this.sellerService.updateStoreProfile(id, data).subscribe({
-      next: () => alert('Store profile updated successfully!'),
-      error: (err) => alert('Failed to update profile: ' + (err.error?.message || err.message))
+    this.savingProfile.set(true);
+    this.profileMessage.set('');
+    this.sellerService.updateStoreProfile(id, data).pipe(
+      finalize(() => this.savingProfile.set(false))
+    ).subscribe({
+      next: (updated) => {
+        this.storeProfile.update((current) => ({ ...current, ...updated }));
+        this.stores.update((stores) => stores.map((store) =>
+          (store.id ?? store._id) === id ? { ...store, ...updated } : store
+        ));
+        this.profileMessage.set('Your storefront changes are now live.');
+      },
+      error: (err) => this.profileMessage.set(
+        err.error?.error?.message || err.error?.message || err.message || 'Could not publish storefront changes.'
+      )
     });
+  }
+
+  protected isFeaturedProduct(productId: string): boolean {
+    return (this.storeProfile().featuredProductIds ?? []).includes(productId);
+  }
+
+  protected toggleFeaturedProduct(productId: string): void {
+    const selected: string[] = this.storeProfile().featuredProductIds ?? [];
+    if (selected.includes(productId)) {
+      this.storeProfile.update((profile) => ({
+        ...profile,
+        featuredProductIds: selected.filter((id) => id !== productId),
+      }));
+      return;
+    }
+    if (selected.length >= 6) {
+      this.profileMessage.set('Choose up to 6 featured products.');
+      return;
+    }
+    this.profileMessage.set('');
+    this.storeProfile.update((profile) => ({
+      ...profile,
+      featuredProductIds: [...selected, productId],
+    }));
+  }
+
+  protected resetStoreProfile(): void {
+    const id = this.myStoreId();
+    if (id) this.loadDashboardData(id);
   }
 
 
