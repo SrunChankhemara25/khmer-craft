@@ -6,6 +6,7 @@ import {
   CATEGORIES,
   classifyCategory,
   findCategory,
+  subcategorySlug,
 } from '../data/categories.data';
 import { Category, Product, ProductQuery, Store } from './catalog.models';
 import { ApiStore } from '../api/api.models';
@@ -297,6 +298,12 @@ export class CatalogService {
  */
 const toProduct = (api: ApiProduct): Product => {
   const classification = classifyCategory(api.category);
+  // The API's own subcategory (set by the seller at listing time) is the
+  // real value — classifyCategory only fills one in for the handful of old
+  // narrow category labels ("fresh-fruit" etc.) that predate the seller
+  // being able to pick a subcategory at all. Prefer the real one whenever
+  // the seller actually set it, so the store page can group by it.
+  const subcategory = api.subcategory ?? classification.subcategory;
 
   return {
     id: api.id,
@@ -306,6 +313,8 @@ const toProduct = (api: ApiProduct): Product => {
     price: api.price,
     compareAtPrice: api.compareAtPrice ?? undefined,
     ...classification,
+    subcategory,
+    subcategorySlug: subcategory ? subcategorySlug(subcategory) : null,
     sellerName: api.sellerName,
     // The product's own sellerId now points at a real Seller/store document
     // (see sellers.service.ts) — no more guessing the store by matching names

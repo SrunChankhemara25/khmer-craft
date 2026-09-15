@@ -3,10 +3,35 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { CatalogService } from '../core/catalog/catalog.service';
+import { Product, ProductSort } from '../core/catalog/catalog.models';
 import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
 import { FooterComponent } from '../components/shared/layout/footer/footer.component';
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
 import { ProductCardComponent } from '../components/user/catalog/product-card/product-card.component';
+
+const SORTS: { value: ProductSort; label: string }[] = [
+  { value: 'featured', label: 'Featured' },
+  { value: 'newest', label: 'Newest' },
+  { value: 'price-asc', label: 'Price: low to high' },
+  { value: 'price-desc', label: 'Price: high to low' },
+  { value: 'rating', label: 'Top rated' },
+];
+
+const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
+  const sorted = [...products];
+  switch (sort) {
+    case 'price-asc':
+      return sorted.sort((a, b) => a.price - b.price);
+    case 'price-desc':
+      return sorted.sort((a, b) => b.price - a.price);
+    case 'rating':
+      return sorted.sort((a, b) => b.rating - a.rating);
+    case 'newest':
+      return sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    default:
+      return sorted.sort((a, b) => b.soldCount - a.soldCount);
+  }
+};
 
 @Component({
   selector: 'app-store-detail',
@@ -95,7 +120,17 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
               <span class="eyebrow">Store collection</span>
               <h2>Shop {{ s.name }}</h2>
             </div>
-            <span>{{ filteredProducts().length }} items</span>
+            <div class="products-head-controls">
+              <span class="item-count">{{ filteredProducts().length }} items</span>
+              <label class="sort">
+                <span>Sort</span>
+                <select [value]="sort()" (change)="setSort($event)">
+                  @for (option of sorts; track option.value) {
+                    <option [value]="option.value">{{ option.label }}</option>
+                  }
+                </select>
+              </label>
+            </div>
           </header>
 
           @if (categories().length > 1) {
@@ -109,12 +144,23 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
             </div>
           }
 
-          @if (filteredProducts().length) {
-            <div class="product-grid">
-              @for (product of filteredProducts(); track product.id) {
-                <app-product-card [product]="product" />
-              }
-            </div>
+          @if (groupedProducts().length) {
+            <!-- Grouped by subcategory rather than one flat grid — a store
+                 selling both shirts and shorts under one category otherwise
+                 shows them interleaved in whatever order the API returned,
+                 which reads as unsorted clutter rather than a real catalog. -->
+            @for (group of groupedProducts(); track group.label) {
+              <div class="product-group">
+                @if (groupedProducts().length > 1) {
+                  <h3 class="group-heading">{{ group.label }} <span>{{ group.products.length }}</span></h3>
+                }
+                <div class="product-grid">
+                  @for (product of group.products; track product.id) {
+                    <app-product-card [product]="product" />
+                  }
+                </div>
+              </div>
+            }
           } @else {
             <div class="empty"><ui-icon name="package" [size]="28" /><p>No products are listed in this category yet.</p></div>
           }
@@ -216,7 +262,10 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
     .products-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
     .eyebrow { color: var(--color-accent); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     h2 { margin-top: 3px; font-size: clamp(23px,2.2vw,31px); }
-    .products-head > span { color: var(--color-muted); font-size: 13px; }
+    .products-head-controls { display: flex; align-items: center; gap: 16px; }
+    .item-count { color: var(--color-muted); font-size: 13px; white-space: nowrap; }
+    .sort { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--color-muted); }
+    .sort select { padding: 7px 10px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: #fff; font-size: 12.5px; }
     /* Still scrolls when it overflows — just without a visible scrollbar
        cluttering the row underneath it. */
     .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 3px; scrollbar-width: none; }
@@ -225,6 +274,9 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
     .category-tabs button span { color: var(--color-muted); font-size: 11px; }
     .category-tabs button.active { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
     .category-tabs button.active span { color: rgba(255,255,255,.72); }
+    .product-group + .product-group { margin-top: 34px; }
+    .group-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-family: var(--font-body); font-size: 14px; font-weight: 750; color: var(--color-text); }
+    .group-heading span { padding: 1px 8px; border-radius: var(--radius-full); background: var(--color-bg-alt); color: var(--color-muted); font-size: 11px; font-weight: 700; }
     .product-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 12px; }
     .empty { display: grid; place-items: center; min-height: 240px; color: var(--color-muted); }
     .about-section { display: grid; grid-template-columns: .85fr 1.15fr; gap: clamp(40px,8vw,130px); padding-top: clamp(54px,7vw,100px); padding-bottom: clamp(54px,7vw,100px); border-top: 1px solid var(--color-border); }
@@ -259,6 +311,8 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
       .store-actions .btn { flex: 1; }
       .store-nav-inner { gap: 18px; }
       .store-status { display: none; }
+      .products-head { flex-wrap: wrap; }
+      .products-head-controls { width: 100%; justify-content: space-between; }
       .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
       .reviews-section { border-radius: 18px; }
       .store-banner.fashion-store, .store-banner.fruit-store { align-items: flex-end; min-height: 300px; background-position: 62% center; }
@@ -285,9 +339,37 @@ export class StoreDetailComponent {
     return this.products().filter((product) => ids.has(product.id));
   });
   protected readonly categories = computed(() => [...new Set(this.products().map((product) => product.categoryName))]);
+  protected readonly sorts = SORTS;
+  protected readonly sort = signal<ProductSort>('featured');
   protected readonly filteredProducts = computed(() => {
     const category = this.activeCategory();
-    return category ? this.products().filter((product) => product.categoryName === category) : this.products();
+    const scoped = category ? this.products().filter((product) => product.categoryName === category) : this.products();
+    return sortProducts(scoped, this.sort());
+  });
+  /**
+   * Split into subcategory groups so shirts and shorts (say) don't end up
+   * interleaved in one grid — but only when there is actually more than one
+   * subcategory to separate, so a single-subcategory store still gets one
+   * plain grid instead of a pointless single heading.
+   */
+  protected readonly groupedProducts = computed(() => {
+    const products = this.filteredProducts();
+    const buckets = new Map<string, Product[]>();
+    for (const product of products) {
+      const label = product.subcategory ?? 'More from this store';
+      const bucket = buckets.get(label);
+      if (bucket) bucket.push(product);
+      else buckets.set(label, [product]);
+    }
+    const groups = [...buckets.entries()].map(([label, items]) => ({ label, products: items }));
+    if (groups.length <= 1) {
+      return products.length ? [{ label: 'All', products }] : [];
+    }
+    // "More from this store" (products with no subcategory at all) reads
+    // better trailing the named groups than leading them.
+    return groups.sort((a, b) =>
+      a.label === 'More from this store' ? 1 : b.label === 'More from this store' ? -1 : a.label.localeCompare(b.label),
+    );
   });
   private lastRequestedStoreId = '';
 
@@ -308,6 +390,9 @@ export class StoreDetailComponent {
     });
   }
   protected countCategory(category: string): number { return this.products().filter((product) => product.categoryName === category).length; }
+  protected setSort(event: Event): void {
+    this.sort.set((event.target as HTMLSelectElement).value as ProductSort);
+  }
   protected initials(name: string): string { return name.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase(); }
   protected scrollToSection(
     section: 'products' | 'about' | 'reviews',
