@@ -72,7 +72,7 @@ const CLOSE_DELAY_MS = 220;
       </nav>
 
       @if (activeCategory(); as cat) {
-        <div class="panel" role="menu">
+        <div class="panel" role="menu" animate.leave="panel-leave">
           <div class="panel-inner container">
             <div class="col by-type">
               <h4>Subcategories</h4>
@@ -230,6 +230,15 @@ const CLOSE_DELAY_MS = 220;
           transform: translateY(-6px);
         }
       }
+      .panel-leave {
+        animation: lift 120ms var(--ease-standard) both;
+      }
+      @keyframes lift {
+        to {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+      }
       .panel-inner {
         display: grid;
         grid-template-columns: minmax(420px, 1.55fr) minmax(150px, .55fr) 340px;
@@ -375,7 +384,8 @@ const CLOSE_DELAY_MS = 220;
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        .panel {
+        .panel,
+        .panel-leave {
           animation: none;
         }
       }

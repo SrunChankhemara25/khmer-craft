@@ -22,12 +22,14 @@ import { IconComponent } from '../ui/icon/icon.component';
         class="cart-backdrop"
         type="button"
         aria-label="Close shopping bag"
+        animate.leave="backdrop-leave"
         (click)="requestClose()"
       ></button>
 
       <aside
         #panel
         class="cart-panel"
+        animate.leave="panel-leave"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-drawer-title"
@@ -188,6 +190,10 @@ import { IconComponent } from '../ui/icon/icon.component';
     .sr-only { clip: rect(0,0,0,0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
     @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
     @keyframes drawer-in { from { opacity: .85; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes drawer-out { from { opacity: 1; transform: translateX(0); } to { opacity: .85; transform: translateX(100%); } }
+    .backdrop-leave { animation: backdrop-out 200ms ease-in both; }
+    .panel-leave { animation: drawer-out 240ms cubic-bezier(.4,0,.68,.15) both; }
     @media (max-width: 720px) {
       .cart-backdrop { background: rgba(12,22,17,.56); }
       .cart-panel { animation-name: sheet-in; border-radius: 20px 20px 0 0; bottom: 0; height: min(88dvh, 760px); max-width: none; top: auto; width: 100%; }
@@ -198,8 +204,12 @@ import { IconComponent } from '../ui/icon/icon.component';
       .cart-line { grid-template-columns: 76px minmax(0,1fr); gap: 12px; padding: 18px 0; }
       .product-image { height: 92px; }
       @keyframes sheet-in { from { opacity: .9; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes sheet-out { from { opacity: 1; transform: translateY(0); } to { opacity: .9; transform: translateY(100%); } }
+      .panel-leave { animation-name: sheet-out; }
     }
-    @media (prefers-reduced-motion: reduce) { .cart-backdrop, .cart-panel { animation-duration: 1ms; } }
+    @media (prefers-reduced-motion: reduce) {
+      .cart-backdrop, .cart-panel, .backdrop-leave, .panel-leave { animation-duration: 1ms; }
+    }
   `],
 })
 export class CartDrawerComponent implements AfterViewInit, OnDestroy {

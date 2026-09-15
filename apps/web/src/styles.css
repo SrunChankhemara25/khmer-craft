@@ -124,14 +124,26 @@ button:active { transform: scale(0.97); }
 input, select, textarea {
   font-family: var(--font-body);
   color: var(--color-text);
-  transition: border-color var(--dur-base) var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard);
+  transition: border-color var(--dur-base) var(--ease-standard),
+    box-shadow var(--dur-base) var(--ease-standard),
+    transform var(--dur-base) var(--ease-standard);
 }
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--color-accent) !important;
   box-shadow: var(--shadow-focus);
+  transform: translateY(-1px);
 }
-::placeholder { color: var(--color-muted-2); }
+::placeholder { color: var(--color-muted-2); transition: color var(--dur-base) var(--ease-standard); }
+input:focus::placeholder, textarea:focus::placeholder { color: var(--color-muted); }
+
+/* A field's own validation message (e.g. `@if (invalid('email')) { <small>…`)
+   — the field turning red and the reason appearing should read as one
+   motion, not the border snapping red while the text pops in cold. */
+label small, .field-error, .form-error {
+  display: block;
+  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+}
 
 .container {
   /* 1240px left ~340px of dead margin either side on a 1920 screen. This
@@ -329,6 +341,87 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 .delay-2 { animation-delay: 120ms; }
 .delay-3 { animation-delay: 180ms; }
 .delay-4 { animation-delay: 240ms; }
+
+/* ===== Page transitions (Router withViewTransitions) =====
+   The browser's View Transitions API snapshots the outgoing page and
+   crossfades it with the incoming one; without this block that crossfade is
+   a flat, instant-feeling opacity swap. Giving old/new their own timing plus
+   a small rise/fall makes a route change read as one continuous motion
+   rather than a page just replacing another. */
+::view-transition-old(root) {
+  animation: kc-page-out var(--dur-base) var(--ease-standard) both;
+}
+::view-transition-new(root) {
+  animation: kc-page-in var(--dur-slow) var(--ease-out) both;
+}
+@keyframes kc-page-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-6px); }
+}
+@keyframes kc-page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
+
+/* ===== animate.enter / animate.leave utilities =====
+   Paired with Angular's native `animate.enter="..."` / `animate.leave="..."`
+   template bindings: `enter` runs once the element is in the DOM, `leave`
+   runs before Angular actually removes it, so a drawer/menu/backdrop closes
+   with the same motion it opened with instead of just vanishing. Reuse
+   these rather than one-off animations per component so every popover in
+   the app closes with the same feel. */
+@keyframes kc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes kc-fade-out { from { opacity: 1; } to { opacity: 0; } }
+.kc-fade-enter { animation: kc-fade-in var(--dur-base) var(--ease-standard) both; }
+.kc-fade-leave { animation: kc-fade-out var(--dur-base) var(--ease-standard) both; }
+
+@keyframes kc-pop-in {
+  from { opacity: 0; transform: scale(.94) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes kc-pop-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(.96) translateY(-4px); }
+}
+.kc-pop-enter { animation: kc-pop-in var(--dur-base) var(--ease-out) both; transform-origin: top; }
+.kc-pop-leave { animation: kc-pop-out var(--dur-fast) var(--ease-standard) both; transform-origin: top; }
+
+@keyframes kc-panel-in-right {
+  from { opacity: .85; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes kc-panel-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: .85; transform: translateX(100%); }
+}
+.kc-panel-enter-right { animation: kc-panel-in-right var(--dur-slow) cubic-bezier(.22,.85,.32,1) both; }
+.kc-panel-leave-right { animation: kc-panel-out-right 260ms var(--ease-standard) both; }
+
+@keyframes kc-panel-in-left {
+  from { opacity: .85; transform: translateX(-100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes kc-panel-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: .85; transform: translateX(-100%); }
+}
+.kc-panel-enter-left { animation: kc-panel-in-left var(--dur-slow) cubic-bezier(.22,.85,.32,1) both; }
+.kc-panel-leave-left { animation: kc-panel-out-left 260ms var(--ease-standard) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kc-fade-enter, .kc-fade-leave, .kc-pop-enter, .kc-pop-leave,
+  .kc-panel-enter-right, .kc-panel-leave-right,
+  .kc-panel-enter-left, .kc-panel-leave-left {
+    animation-duration: 1ms !important;
+  }
+}
 
 ::-webkit-scrollbar { height: 8px; width: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 4px; }

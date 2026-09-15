@@ -4,7 +4,11 @@ import {
   provideZonelessChangeDetection,
 } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { provideRouter, withInMemoryScrolling } from '@angular/router';
+import {
+  provideRouter,
+  withInMemoryScrolling,
+  withViewTransitions,
+} from '@angular/router';
 
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { routes } from './app.routes';
@@ -25,6 +29,12 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
         anchorScrolling: 'enabled',
       }),
+      // Cross-fades the outgoing/incoming page on every route change via the
+      // browser's View Transitions API, instead of the new page just
+      // snapping in. The actual look (fade + slight rise, timing, reduced-
+      // motion fallback) is defined once in styles.css under
+      // ::view-transition-old/new(root) rather than per navigation here.
+      withViewTransitions({ skipInitialTransition: true }),
     ),
   ],
 };

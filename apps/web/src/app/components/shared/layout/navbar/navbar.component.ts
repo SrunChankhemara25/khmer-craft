@@ -83,7 +83,12 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
               <ui-icon name="globe" [size]="18" />
             </button>
             @if (langMenuOpen()) {
-              <div class="lang-menu" (click)="$event.stopPropagation()">
+              <div
+                class="lang-menu"
+                animate.enter="kc-pop-enter"
+                animate.leave="kc-pop-leave"
+                (click)="$event.stopPropagation()"
+              >
                 <button
                   type="button"
                   [class.active]="language() === 'en'"
@@ -154,7 +159,12 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
               <ui-icon [name]="menuOpen() ? 'x' : 'menu'" [size]="20" />
             </button>
             @if (menuOpen()) {
-              <nav class="mobile-menu" (click)="$event.stopPropagation()">
+              <nav
+                class="mobile-menu"
+                animate.enter="kc-pop-enter"
+                animate.leave="kc-pop-leave"
+                (click)="$event.stopPropagation()"
+              >
                 <a routerLink="/" (click)="menuOpen.set(false)">Home</a>
                 <a routerLink="/products" (click)="menuOpen.set(false)">All products</a>
                 <a routerLink="/categories" (click)="menuOpen.set(false)">Categories</a>
@@ -206,10 +216,13 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
     </header>
 
     @if (searchOpen()) {
-      <app-search-overlay (close)="searchOpen.set(false)" />
+      <app-search-overlay
+        animate.leave="kc-fade-leave"
+        (close)="searchOpen.set(false)"
+      />
     }
     @if (cartOpen()) {
-      <app-cart-drawer (closed)="closeCart()" />
+      <app-cart-drawer animate.leave="kc-fade-leave" (closed)="closeCart()" />
     }
   `,
   styles: [

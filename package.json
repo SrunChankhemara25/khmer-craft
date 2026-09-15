@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
     "dev:web": "cd apps/web && ng serve",
+    "dev:web-preview": "cd apps/web && ng serve --port 4300",
     "dev:api": "cd apps/api && npm run dev"
   },
   "devDependencies": {

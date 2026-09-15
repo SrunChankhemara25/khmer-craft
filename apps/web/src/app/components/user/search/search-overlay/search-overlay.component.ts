@@ -44,10 +44,11 @@ const POPULAR_SEARCHES = [
       role="dialog"
       aria-modal="true"
       aria-label="Search KhmerCraft"
+      animate.leave="scrim-leave"
       (click)="close.emit()"
     >
       <!-- Clicks inside the panel must not reach the scrim's close handler. -->
-      <div class="panel" (click)="$event.stopPropagation()">
+      <div class="panel" animate.leave="panel-leave" (click)="$event.stopPropagation()">
         <form class="search-row" (ngSubmit)="submit()">
           <ui-icon name="search" [size]="19" />
           <input
@@ -207,6 +208,14 @@ const POPULAR_SEARCHES = [
           opacity: 0;
         }
       }
+      .scrim-leave {
+        animation: fade-out 160ms var(--ease-standard) both;
+      }
+      @keyframes fade-out {
+        to {
+          opacity: 0;
+        }
+      }
       .panel {
         width: min(100%, 680px);
         max-height: 82vh;
@@ -221,6 +230,15 @@ const POPULAR_SEARCHES = [
       }
       @keyframes rise {
         from {
+          transform: translateY(-8px);
+          opacity: 0;
+        }
+      }
+      .panel-leave {
+        animation: sink 160ms var(--ease-standard) both;
+      }
+      @keyframes sink {
+        to {
           transform: translateY(-8px);
           opacity: 0;
         }
@@ -492,7 +510,9 @@ const POPULAR_SEARCHES = [
 
       @media (prefers-reduced-motion: reduce) {
         .scrim,
-        .panel {
+        .panel,
+        .scrim-leave,
+        .panel-leave {
           animation: none;
         }
       }
