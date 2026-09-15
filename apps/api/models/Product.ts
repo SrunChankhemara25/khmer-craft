@@ -42,6 +42,13 @@ export interface IProduct extends Document {
   location: string;
   image?: string;
   images: string[];
+  /**
+   * A small (~220px) copy of `image`, generated alongside it — see
+   * utils/image.ts. Product LIST responses (60+ items on one page) return
+   * this instead of the full-size `image`; only a single product's own
+   * detail page needs the larger one.
+   */
+  thumbnail?: string;
   rating: number;
   reviewCount: number;
   stock: number;
@@ -71,6 +78,7 @@ const ProductSchema = new Schema<IProduct>(
 
     image: { type: String },
     images: { type: [String], default: [] },
+    thumbnail: { type: String },
 
     rating: { type: Number, default: 0, min: 0, max: 5 },
     reviewCount: { type: Number, default: 0, min: 0 },

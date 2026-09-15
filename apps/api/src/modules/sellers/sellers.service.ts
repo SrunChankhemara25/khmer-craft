@@ -9,6 +9,7 @@ import SellerApplication, {
 import User from '../../../models/User';
 import { AppError } from '../../errors/app-error';
 import { assertEmailConfigured } from '../../utils/email';
+import { compressImage } from '../../utils/image';
 import { slugify } from '../../utils/slugify';
 import {
   CreateSellerApplicationInput,
@@ -240,8 +241,14 @@ export const updateStoreProfile = async (
   if (input.showContact !== undefined) seller.showContact = input.showContact;
   if (input.location !== undefined) seller.location = input.location;
   if (input.phoneNumber !== undefined) seller.phoneNumber = input.phoneNumber;
-  if (input.logoUrl !== undefined) seller.storeAvatarUrl = input.logoUrl;
-  if (input.bannerUrl !== undefined) seller.storeCoverImages = [input.bannerUrl];
+  // See utils/image.ts — a logo/banner otherwise rides along on every
+  // public store listing forever, not just this store's own page.
+  if (input.logoUrl !== undefined)
+    seller.storeAvatarUrl = await compressImage(input.logoUrl, 320);
+  if (input.bannerUrl !== undefined) {
+    const banner = await compressImage(input.bannerUrl, 1280);
+    seller.storeCoverImages = banner ? [banner] : [];
+  }
   if (input.featuredProductIds !== undefined) {
     const uniqueIds = [...new Set(input.featuredProductIds)];
     const ownedCount = await Product.countDocuments({

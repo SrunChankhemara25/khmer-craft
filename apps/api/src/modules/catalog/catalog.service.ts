@@ -3,6 +3,7 @@ import Product, { IProduct, slugify } from '../../../models/Product';
 import Store from '../../../models/Store';
 import { IUser } from '../../../models/User';
 import { AppError } from '../../errors/app-error';
+import { compressImageWithThumbnail, compressImages } from '../../utils/image';
 import {
   COLLECTION_CATEGORIES,
   CreateProductInput,
@@ -25,8 +26,10 @@ export const toProductResponse = (product: IProduct) => ({
   sellerName: product.sellerName,
   storeName: product.storeName ?? null,
   location: product.location,
-  image: product.image ?? product.images[0] ?? null,
-  images: product.images,
+  // `?.` because a list query's .select('-image -images') means both are
+  // genuinely absent on the document, not just empty — see toProductListItem.
+  image: product.image ?? product.images?.[0] ?? null,
+  images: product.images ?? [],
   rating: product.rating,
   reviewCount: product.reviewCount,
   stock: product.stock,
@@ -37,6 +40,19 @@ export const toProductResponse = (product: IProduct) => ({
 });
 
 export type ProductResponse = ReturnType<typeof toProductResponse>;
+
+/**
+ * Same shape as toProductResponse, but `image` is the small thumbnail
+ * instead of the full-size copy — for any response that renders many
+ * products as cards at once (the product list, related products, a
+ * seller's own product table), where the full-size image buys nothing a
+ * shopper can see at card scale but multiplies the response size by how
+ * many cards are on the page. See utils/image.ts.
+ */
+export const toProductListItem = (product: IProduct) => ({
+  ...toProductResponse(product),
+  image: product.thumbnail ?? product.image ?? product.images?.[0] ?? null,
+});
 
 const SORT_ORDERS: Record<ProductSort, Record<string, 1 | -1>> = {
   newest: { createdAt: -1 },
@@ -150,13 +166,19 @@ export const listProducts = async (query: ListProductsQuery) => {
   const skip = (query.page - 1) * query.limit;
 
   // countDocuments runs alongside the page fetch rather than after it.
+  // Excludes `image`/`images` at the query itself, not just the response
+  // mapper — Mongo still has to read and transfer whatever a query selects
+  // over the network before Node ever gets a chance to drop a field, and a
+  // page of 60 products each carrying a 60-150KB embedded photo turned a
+  // ~200ms query into a 10+ second one purely on that transfer. The list
+  // response only ever uses `thumbnail` (see toProductListItem).
   const [documents, total] = await Promise.all([
-    Product.find(filter).sort(sort).skip(skip).limit(query.limit),
+    Product.find(filter).select('-image -images').sort(sort).skip(skip).limit(query.limit),
     Product.countDocuments(filter),
   ]);
 
   return {
-    products: documents.map(toProductResponse),
+    products: documents.map(toProductListItem),
     total,
     page: query.page,
     limit: query.limit,
@@ -196,12 +218,13 @@ export const getProductDetail = async (idOrSlug: string) => {
     category: product.category,
     status: 'ACTIVE',
   })
+    .select('-image -images')
     .sort({ rating: -1, soldCount: -1 })
     .limit(8);
 
   return {
     ...toProductResponse(product),
-    relatedProducts: related.map(toProductResponse),
+    relatedProducts: related.map(toProductListItem),
   };
 };
 
@@ -229,6 +252,14 @@ export const createProduct = async (seller: IUser, input: CreateProductInput) =>
     throw new AppError(404, 'Store not found', 'STORE_NOT_FOUND');
   }
 
+  // See utils/image.ts — a full-resolution upload here would otherwise ride
+  // along on every catalog list response forever, not just this product's
+  // own detail page.
+  const [{ image, thumbnail }, images] = await Promise.all([
+    compressImageWithThumbnail(input.image),
+    compressImages(input.images),
+  ]);
+
   const product = await Product.create({
     name: input.name,
     slug: await uniqueSlug(input.name),
@@ -243,8 +274,9 @@ export const createProduct = async (seller: IUser, input: CreateProductInput) =>
     sellerName: seller.name,
     storeName: store?.storeName ?? input.storeName,
     location: input.location ?? '',
-    image: input.image,
-    images: input.images ?? [],
+    image,
+    thumbnail,
+    images: images ?? [],
     stock: input.stock,
     status: input.status,
   });
@@ -303,8 +335,13 @@ export const updateProduct = async (
     product.subcategory = input.subcategory ?? undefined;
   if (input.storeName !== undefined) product.storeName = input.storeName;
   if (input.location !== undefined) product.location = input.location;
-  if (input.image !== undefined) product.image = input.image ?? undefined;
-  if (input.images !== undefined) product.images = input.images;
+  if (input.image !== undefined) {
+    const { image, thumbnail } = await compressImageWithThumbnail(input.image ?? undefined);
+    product.image = image ?? undefined;
+    product.thumbnail = thumbnail ?? undefined;
+  }
+  if (input.images !== undefined)
+    product.images = (await compressImages(input.images)) ?? [];
   if (input.stock !== undefined) product.stock = input.stock;
   if (input.status !== undefined) product.status = input.status;
 
@@ -341,6 +378,7 @@ export const listSellerProducts = async (
   };
   const [documents, total] = await Promise.all([
     Product.find(filter)
+      .select('-image -images')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
@@ -348,7 +386,7 @@ export const listSellerProducts = async (
   ]);
 
   return {
-    products: documents.map(toProductResponse),
+    products: documents.map(toProductListItem),
     total,
     page,
     limit,
