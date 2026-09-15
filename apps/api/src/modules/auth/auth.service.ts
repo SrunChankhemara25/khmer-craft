@@ -9,6 +9,7 @@ import { env } from '../../config/env';
 import { AppError } from '../../errors/app-error';
 import { signAccessToken } from '../../utils/jwt';
 import { slugify } from '../../utils/slugify';
+import { assertEmailConfigured, sendVerificationEmail } from '../../utils/email';
 import {
   hashPassword,
   verifyPassword,
@@ -41,15 +42,24 @@ const generateVerificationCode = () =>
   crypto.randomInt(100_000, 1_000_000).toString();
 
 /**
- * Issues a fresh code for a user, replacing any still-live one. Logs it to
- * the server console — same stopgap the codebase already uses for password
- * reset links (see forgotPassword) until a transactional email provider is
- * wired in.
+ * Calls through the (mockable) `assertEmailConfigured` rather than reading
+ * env vars directly, so a test that mocks it to simulate "configured" or
+ * "unconfigured" changes what this reports too — not just the real env.
  */
+const isEmailAvailable = (): boolean => {
+  try {
+    assertEmailConfigured();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/** Persist only the hash; never log or return the code. */
 const issueVerificationCode = async (user: IUser) => {
-  await EmailVerificationCode.deleteMany({ user_id: user._id });
+  assertEmailConfigured();
   const code = generateVerificationCode();
-  await EmailVerificationCode.create({
+  const record = await EmailVerificationCode.create({
     user_id: user._id,
     code_hash: hashVerificationCode(code),
     expires_at: new Date(
@@ -57,12 +67,14 @@ const issueVerificationCode = async (user: IUser) => {
     ),
   });
 
-  if (env.nodeEnv !== 'test') {
-    // This is the handoff point for a transactional email provider.
-    console.info(`Email verification code for ${user.email}: ${code}`);
+  try {
+    await sendVerificationEmail(user.email, code);
+  } catch (error) {
+    await EmailVerificationCode.deleteOne({ _id: record._id });
+    throw error;
   }
-
-  return env.nodeEnv === 'test' ? code : undefined;
+  // Keep the previous code usable if delivery fails.
+  await EmailVerificationCode.deleteMany({ user_id: user._id, _id: mongoose.trusted({ $ne: record._id }) });
 };
 
 /** Unique slug; suffix on collision so a second "Angkor Crafts" is not blocked. */
@@ -97,18 +109,13 @@ export class AuthService {
   }
 
   /**
-   * Creates the account and signs it in immediately.
-   *
-   * This used to create the account unverified and require a code from
-   * /verify-email before any session was issued — but nothing in this
-   * deployment can actually deliver that code (see `issueVerificationCode`:
-   * no email provider is wired up, it only logs to the server console).
-   * That made every new registration, and every account created before this
-   * change, permanently unable to sign in. Marking accounts verified at
-   * creation removes a dead end, not a security control that was doing
-   * anything — see `registerSeller` for the same reasoning applied there
-   * first. /verify-email and /resend-code still work and are harmless to
-   * leave in place for when a real provider exists.
+   * Create an unverified account; only code confirmation starts a session —
+   * but only when a real email provider is actually configured (SMTP_* in
+   * .env.local; see isEmailAvailable below). Without one, nothing could ever
+   * deliver the code, which would make every registration a permanent dead
+   * end (see the same reasoning historically applied to `registerSeller`
+   * below). In that case the account is created verified and signed in
+   * immediately instead, same as before this feature existed.
    */
   async register(input: RegisterInput) {
     const email = normalizeEmail(input.email);
@@ -120,6 +127,23 @@ export class AuthService {
       );
     }
 
+    if (!isEmailAvailable()) {
+      const user = await User.create({
+        name: input.name,
+        email,
+        password_hash: await hashPassword(input.password),
+        phone: input.phone,
+        role: 'BUYER',
+        status: 'ACTIVE',
+        email_verified: true,
+      });
+      return {
+        requiresVerification: false as const,
+        user,
+        ...(await this.createSession(user)),
+      };
+    }
+
     const user = await User.create({
       name: input.name,
       email,
@@ -127,10 +151,16 @@ export class AuthService {
       phone: input.phone,
       role: 'BUYER',
       status: 'ACTIVE',
-      email_verified: true,
+      email_verified: false,
     });
 
-    return { user, ...(await this.createSession(user)) };
+    try {
+      await issueVerificationCode(user);
+    } catch (error) {
+      await User.deleteOne({ _id: user._id, email_verified: false });
+      throw error;
+    }
+    return { requiresVerification: true as const, email: user.email };
   }
 
   /** Confirms the code and, only then, starts the session. */
@@ -140,8 +170,8 @@ export class AuthService {
       throw new AppError(400, 'Invalid or expired code', 'INVALID_CODE');
     }
 
-    if (user.email_verified) {
-      return { user, ...(await this.createSession(user)) };
+    if (user.email_verified || user.status !== 'ACTIVE') {
+      throw new AppError(400, 'Invalid or expired code. If already verified, sign in.', 'INVALID_CODE');
     }
 
     const record = await EmailVerificationCode.findOne({
@@ -161,6 +191,8 @@ export class AuthService {
       throw new AppError(400, 'Invalid or expired code', 'INVALID_CODE');
     }
 
+    const consumed = await EmailVerificationCode.deleteOne({ _id: record._id, code_hash: record.code_hash, attempts: mongoose.trusted({ $lt: MAX_VERIFICATION_ATTEMPTS }) });
+    if (!consumed.deletedCount) throw new AppError(400, 'Invalid or expired code', 'INVALID_CODE');
     user.email_verified = true;
     await user.save();
     await EmailVerificationCode.deleteMany({ user_id: user._id });
@@ -172,8 +204,7 @@ export class AuthService {
   async resendCode(input: ResendCodeInput) {
     const user = await User.findOne({ email: normalizeEmail(input.email) });
     if (user && !user.email_verified) {
-      const devCode = await issueVerificationCode(user);
-      return { devCode };
+      await issueVerificationCode(user);
     }
     return {};
   }
@@ -182,14 +213,13 @@ export class AuthService {
    * Register-as-seller: create the account (or upgrade an existing buyer's)
    * and its Store in one step, then sign in immediately.
    *
-   * Ported from origin/develop's `registerSeller`, which predates this
-   * branch's email-verification requirement — it never set `email_verified`
-   * and had no `/verify-email` step to send anyone through, so a seller
-   * created there could sign in right away. There is still no email provider
-   * wired up here (see `issueVerificationCode`), so gating this path on a
-   * code that can never be delivered would just recreate the exact dead end
-   * `register` currently has. Marking the account pre-verified reproduces
-   * the working behavior this was pulled from, not a new exemption.
+   * A brand-new email is created pre-verified and signed in right away,
+   * same as `register()`'s own fallback when no email provider is
+   * configured — gating this on a code nothing can deliver would just be
+   * the same dead end twice. An *existing* buyer being upgraded only needs
+   * to already be verified once a real provider exists to have verified
+   * them with (see isEmailAvailable); before that, verification was
+   * never possible in the first place, so it is not required here either.
    *
    * No multi-document transaction: this deployment's test suite runs against
    * a standalone (non-replica-set) MongoDB, which cannot start one, and the
@@ -223,6 +253,14 @@ export class AuthService {
           'This email is already registered. Enter its correct password to upgrade it to a seller account.',
           'INVALID_CREDENTIALS',
         );
+      }
+      if (existingUser.status !== 'ACTIVE') {
+        throw new AppError(403, 'This account is not active.', 'ACCOUNT_INACTIVE');
+      }
+      // Only enforced once a real email provider exists to have verified
+      // them with in the first place — see isEmailAvailable above.
+      if (isEmailAvailable() && !existingUser.email_verified) {
+        throw new AppError(403, 'Verify your email before creating a store.', 'EMAIL_NOT_VERIFIED');
       }
     }
 
@@ -345,10 +383,13 @@ export class AuthService {
       throw new AppError(403, 'This account is not active', 'ACCOUNT_INACTIVE');
     }
 
-    // Not gated on email_verified: see the comment on `register()` — nothing
-    // in this deployment can deliver the verification code that would be
-    // required to clear it, so this check only ever produced accounts no one
-    // could sign into.
+    // Only enforced once a real email provider exists to have verified them
+    // with in the first place — see isEmailAvailable above. An account
+    // created before email verification existed, or while it was
+    // unconfigured, is not retroactively locked out.
+    if (isEmailAvailable() && !user.email_verified) {
+      throw new AppError(403, 'Verify your email before signing in.', 'EMAIL_NOT_VERIFIED');
+    }
 
     if (input.expectedRole && user.role !== input.expectedRole) {
       throw new AppError(

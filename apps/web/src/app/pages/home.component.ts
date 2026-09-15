@@ -49,10 +49,17 @@ interface CategoryShelf {
     <div class="category-strip" [class.showing-popular]="showPopularCategories()">
       @if (!showPopularCategories()) {
         @for (c of categories(); track c.slug) {
-          <a class="category-pill" [routerLink]="['/categories', c.slug]">
-            <div class="cat-icon"><ui-icon [name]="c.icon" [size]="20" [strokeWidth]="1.6"></ui-icon></div>
-            <span>{{ c.name }}</span>
-            <small>{{ catalog.countByCategory(c.slug) }} products</small>
+          <a
+            class="category-poster"
+            [attr.data-category]="c.slug"
+            [routerLink]="['/categories', c.slug]"
+            [attr.aria-label]="c.name"
+          >
+            @if (categoryPosterImage(c.slug); as image) {
+              <img [src]="image" [alt]="c.name" loading="lazy" />
+            } @else {
+              <div class="cat-icon"><ui-icon [name]="c.icon" [size]="26" [strokeWidth]="1.6"></ui-icon></div>
+            }
           </a>
         }
       } @else {
@@ -70,9 +77,47 @@ interface CategoryShelf {
     </div>
   </section>
 
+  <section class="container section" aria-label="Seller offers">
+    @if (dealCategories().length) {
+      <div class="section-head">
+        <h2>Shop by category</h2>
+        <a routerLink="/products" class="see-all">See all products <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
+      </div>
+      <div class="deals-strip">
+        @for (deal of dealCategories(); track deal.category.slug) {
+          <a
+            class="deal-poster"
+            [attr.data-category]="deal.category.slug"
+            [routerLink]="['/products']"
+            [queryParams]="deal.hasDeal ? { category: deal.category.slug, sale: '1' } : { category: deal.category.slug }"
+          >
+            <div class="deal-poster-inner">
+              @if (deal.hasDeal) {
+                <span class="deal-badge">On sale</span>
+              }
+              <span class="deal-name">{{ deal.category.name }}</span>
+              <span class="deal-count">
+                {{ deal.storeCount }} store{{ deal.storeCount === 1 ? '' : 's' }} ·
+                {{ deal.productCount }} product{{ deal.productCount === 1 ? '' : 's' }}
+              </span>
+              <span class="deal-arrow"><ui-icon name="arrow-right" [size]="14"></ui-icon></span>
+            </div>
+          </a>
+        }
+      </div>
+    } @else {
+      <div class="offers-strip">
+        <ui-icon name="tag" [size]="20" />
+        <div><strong>Explore seller offers</strong><p>Discover special offers from local sellers.</p></div>
+        <a class="see-all" routerLink="/products" [queryParams]="{ sale: '1' }">Shop deals <ui-icon name="arrow-right" [size]="14" /></a>
+      </div>
+    }
+  </section>
+
   <section class="container section">
     <app-product-rail
       title="Best sellers"
+      badge="Best seller"
       [products]="bestSellers()"
       linkRoute="/products"
       [linkParams]="{ sort: 'featured' }"
@@ -82,6 +127,7 @@ interface CategoryShelf {
   <section class="container section">
     <app-product-rail
       title="New arrivals"
+      badge="New"
       [products]="newArrivals()"
       linkRoute="/products"
       [linkParams]="{ sort: 'newest' }"
@@ -260,7 +306,77 @@ interface CategoryShelf {
       cursor: pointer;
       font-family: inherit;
     }
-    .category-pill:hover { border-color: var(--color-border-strong); box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+    .category-pill[data-category="fashion"] { background: #fff3ed; }
+    .category-pill[data-category="food-groceries"] { background: #f1f7ef; }
+    .category-pill[data-category="home-living"] { background: #faf3e9; }
+    .category-pill[data-category="arts-culture"] { background: #fff8e9; }
+    .category-pill[data-category="beauty-wellness"] { background: #fcf1f3; }
+    .category-pill[data-category="electronics"] { background: #eff5fa; }
+    .category-pill[data-category="kids-family"] { background: #f5f1fa; }
+    .category-pill { transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+    .category-pill:hover { border-color: var(--color-accent); box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+    .category-poster {
+      display: block; position: relative; overflow: hidden; border-radius: 12px;
+      aspect-ratio: 4 / 3.15; background: var(--color-muted, #f1ede4);
+      border: 1px solid var(--color-border); cursor: pointer;
+      transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+    }
+    .category-poster:hover { border-color: var(--color-accent); box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+    .category-poster img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 220ms ease; }
+    .category-poster:hover img { transform: scale(1.04); }
+    .category-poster[data-category="fashion"] { background: #fff3ed; }
+    .category-poster[data-category="food-groceries"] { background: #f1f7ef; }
+    .category-poster[data-category="home-living"] { background: #faf3e9; }
+    .category-poster[data-category="arts-culture"] { background: #fff8e9; }
+    .category-poster[data-category="beauty-wellness"] { background: #fcf1f3; }
+    .category-poster[data-category="electronics"] { background: #eff5fa; }
+    .category-poster[data-category="kids-family"] { background: #f5f1fa; }
+    .category-poster .cat-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--color-accent); }
+    .offers-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 16px 20px; border: 1px solid #e8ded2; border-radius: 12px; background: #fcf0e8; }
+    .offers-strip strong { color: var(--color-accent); font-size: 14px; }
+    .offers-strip p { margin: 4px 0 0; color: var(--color-text-secondary); font-size: 12px; }
+    .offers-strip .see-all { margin-left: auto; color: var(--color-accent); }
+    .deals-strip { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+    .deals-strip::-webkit-scrollbar { display: none; }
+    /* A hairline-thin frame — barely there — so the color itself is what reads,
+       not a white border around it. */
+    .deal-poster {
+      flex: 0 0 132px; scroll-snap-align: start; display: block;
+      padding: 3px; border-radius: 16px; background: #fff;
+      text-decoration: none; transition: transform 200ms ease, box-shadow 200ms ease;
+    }
+    .deal-poster:hover { transform: translateY(-3px); box-shadow: 0 12px 24px rgba(40, 32, 22, .16); }
+    .deal-poster-inner {
+      position: relative; overflow: hidden; min-height: 192px; border-radius: 13px;
+      display: flex; flex-direction: column; justify-content: flex-end; gap: 4px;
+      padding: 13px; color: #fff;
+    }
+    .deal-poster[data-category="fashion"] .deal-poster-inner { background: #c14e6b; }
+    .deal-poster[data-category="food-groceries"] .deal-poster-inner { background: #34664f; }
+    .deal-poster[data-category="home-living"] .deal-poster-inner { background: #ba7d3e; }
+    .deal-poster[data-category="beauty-wellness"] .deal-poster-inner { background: #ac5a78; }
+    .deal-poster[data-category="electronics"] .deal-poster-inner { background: #446789; }
+    .deal-poster[data-category="kids-family"] .deal-poster-inner { background: #7c62b0; }
+    .deal-poster[data-category="arts-culture"] .deal-poster-inner { background: #b1852a; }
+    .deal-badge {
+      position: absolute; top: 10px; left: 10px; padding: 3px 7px; border-radius: 5px;
+      background: rgba(255,255,255,.92); color: #28231f; font-size: 8.5px; font-weight: 800;
+      letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-body);
+    }
+    .deal-name {
+      font-family: 'Anton', var(--font-heading), sans-serif; font-weight: 400;
+      font-size: 17px; line-height: 1.05; letter-spacing: .01em; text-transform: uppercase;
+    }
+    .deal-count { font-size: 9.5px; color: rgba(255,255,255,.82); font-weight: 550; font-family: var(--font-body); }
+    .deal-arrow {
+      position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center;
+      transition: transform 200ms ease, background 200ms ease;
+    }
+    .deal-poster:hover .deal-arrow { background: rgba(255,255,255,.32); transform: translate(2px, -2px); }
+    .see-all ui-icon { transition: transform 180ms ease; }
+    .see-all:hover { text-decoration: underline; text-underline-offset: 4px; }
+    .see-all:hover ui-icon { transform: translateX(3px); }
     .category-pill.more { background: var(--color-accent); color: #fff; justify-content: center; }
     .popular-category { animation: category-in 220ms ease both; }
     @keyframes category-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
@@ -417,6 +533,7 @@ interface CategoryShelf {
       .category-strip { display: flex; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
       .category-strip::-webkit-scrollbar { display: none; }
       .category-pill { flex: 0 0 112px; }
+      .category-poster { flex: 0 0 112px; }
       .fashion-intro { align-items: flex-start; flex-direction: column; gap: 4px; }
       .marketplace-explorer { padding-top: 20px; }
       .marketplace-heading { padding-bottom: 13px; }
@@ -464,6 +581,43 @@ export class HomeComponent {
     return withCounts.map((entry) => entry.category);
   });
   readonly stores = computed(() => this.catalog.allStores());
+
+  /**
+   * One poster per category that actually has real inventory — real product
+   * and store counts, never an invented "up to 50% off". `hasDeal` is true
+   * only when at least one product in that category genuinely has a
+   * compareAtPrice above its price (the same "on sale" test the products
+   * page filter uses), so a poster can honestly badge itself as having a
+   * live deal without ever claiming one that doesn't exist.
+   */
+  readonly dealCategories = computed(() => {
+    const products = this.catalog.allProducts();
+    return this.categories()
+      .map((category) => {
+        const inCategory = products.filter((product) => product.categorySlug === category.slug);
+        const hasDeal = inCategory.some(
+          (product) => product.compareAtPrice !== undefined && product.compareAtPrice > product.price,
+        );
+        const storeCount = new Set(inCategory.map((product) => product.storeId)).size;
+        return { category, productCount: inCategory.length, storeCount, hasDeal };
+      })
+      .filter((entry) => entry.productCount > 0)
+      .sort((a, b) => b.productCount - a.productCount);
+  });
+
+  /**
+   * A real photo to stand in for the category, not a fabricated banner —
+   * whichever in-stock product in it ranks highest by the same discovery
+   * scoring the department shelves use. Null only if the category has no
+   * product with a real image yet.
+   */
+  protected categoryPosterImage(slug: string): string | null {
+    const ranked = this.catalog
+      .allProducts()
+      .filter((product) => product.categorySlug === slug && product.image)
+      .sort((a, b) => this.discoveryScore(b) - this.discoveryScore(a));
+    return ranked[0]?.image ?? null;
+  }
   readonly showPopularCategories = signal(false);
 
   readonly popularCategories = [

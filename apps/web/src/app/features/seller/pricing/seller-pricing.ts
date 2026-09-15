@@ -34,7 +34,7 @@ import { faqItems, sellerTools } from '../../../core/data/seller-content.data';
                     <li><kc-icon name="check" [size]="14" /> {{ feature }}</li>
                   }
                 </ul>
-                <button class="button" [class.on-dark]="plan.featured" [class.outline]="!plan.featured" type="button" (click)="startOnboarding()">{{ plan.cta }} <span aria-hidden="true">→</span></button>
+                <button class="button" [class.on-dark]="plan.featured" [class.outline]="!plan.featured" type="button" (click)="startOnboarding(plan.key)">{{ plan.cta }} <span aria-hidden="true">→</span></button>
               </div>
             }
           </div>
@@ -135,16 +135,16 @@ export class SellerPricing {
   protected readonly tools = sellerTools;
 
   protected readonly plans = [
-    { name: 'Starter', badge: 'Start here', price: '$0', description: 'For new makers beginning their online journey.', featured: false, cta: 'Choose Starter', features: ['Up to 10 active products · planned', 'Standard storefront', 'Order management', 'Email support · planned'] },
-    { name: 'Growth', badge: 'Approved price', price: '$12', description: 'For active sellers ready to reach more customers.', featured: true, cta: 'Choose Growth', features: ['Unlimited products · planned', 'Sales analytics · planned', 'Promotion tools · planned', 'Priority support · planned'] },
-    { name: 'Professional', badge: 'Approved price', price: '$29', description: 'For established workshops and growing brands.', featured: false, cta: 'Choose Professional', features: ['Everything in Growth · planned', 'Team access · planned', 'Featured campaigns · planned', 'Dedicated support · planned'] },
-  ];
+    { key: 'STARTER', name: 'Starter', badge: 'Start here', price: '$0', description: 'For new makers beginning their online journey.', featured: false, cta: 'Choose Starter', features: ['Publish and manage products', 'Standard storefront', 'Order management', 'Customer reviews'] },
+    { key: 'STANDARD', name: 'Growth', badge: 'Approved price', price: '$12', description: 'For active sellers ready to reach more customers.', featured: true, cta: 'Choose Growth', features: ['Everything in Starter', 'Sales and stock overview', 'Store logo and cover controls', 'Promotion tools · planned'] },
+    { key: 'PREMIUM', name: 'Professional', badge: 'Approved price', price: '$29', description: 'For established workshops and growing brands.', featured: false, cta: 'Choose Professional', features: ['Everything in Growth', 'Multiple-store workspace', 'Team access · planned', 'Featured campaigns · planned'] },
+  ] as const;
 
   protected readonly pricingFaq = faqItems.filter((item) =>
     ['How much does it cost to sell?', 'How do I get paid?'].includes(item.question),
   );
 
-  protected startOnboarding(): void {
-    void this.router.navigateByUrl('/seller/onboarding');
+  protected startOnboarding(plan: 'STARTER' | 'STANDARD' | 'PREMIUM' = 'STARTER'): void {
+    void this.router.navigate(['/seller/onboarding'], { queryParams: { plan } });
   }
 }

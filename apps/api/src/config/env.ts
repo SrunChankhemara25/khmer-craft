@@ -4,6 +4,23 @@ const asPositiveNumber = (value: string | undefined, fallback: number) => {
 };
 
 export const env = {
+  get smtpHost() { return process.env.SMTP_HOST; },
+  get smtpPort() { return asPositiveNumber(process.env.SMTP_PORT, 587); },
+  get smtpUser() { return process.env.SMTP_USER; },
+  get smtpPassword() { return process.env.SMTP_PASSWORD; },
+  get mailFrom() { return process.env.MAIL_FROM; },
+  /**
+   * Whether a real transactional-email provider is actually wired up. Used
+   * to decide, at registration time, between requiring email verification
+   * (once SMTP_* is set — see .env.example) and auto-verifying accounts
+   * (when it isn't, so registration is never a dead end nothing can ever
+   * deliver a code for). See auth.service.ts#register.
+   */
+  get isEmailConfigured() {
+    return Boolean(
+      this.smtpHost && this.smtpUser && this.smtpPassword && this.mailFrom,
+    );
+  },
   get nodeEnv() {
     return process.env.NODE_ENV ?? 'development';
   },

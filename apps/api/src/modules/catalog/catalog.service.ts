@@ -91,6 +91,10 @@ const buildFilter = (query: ListProductsQuery): QueryFilter<IProduct> => {
     filter.subcategory = nameOrSlug(query.subcategory);
   }
 
+  if (query.storeId) {
+    filter.sellerId = new mongoose.Types.ObjectId(query.storeId);
+  }
+
   if (query.location) {
     filter.location = nameOrSlug(query.location);
   }
@@ -161,6 +165,7 @@ export const listProducts = async (query: ListProductsQuery) => {
       search: query.search ?? null,
       category: query.category ?? null,
       subcategory: query.subcategory ?? null,
+      storeId: query.storeId ?? null,
       location: query.location ?? null,
       collection: query.collection ?? null,
       priceMin: query.priceMin ?? null,
@@ -216,7 +221,13 @@ export const createProduct = async (seller: IUser, input: CreateProductInput) =>
   // from publishing under a name that isn't actually theirs. A seller who
   // hasn't created a store yet (an account can exist without one) still
   // falls back to the plain text field so this stays backward compatible.
-  const store = await Store.findOne({ userId: seller._id });
+  const store = input.storeId
+    ? await Store.findOne({ _id: input.storeId, userId: seller._id })
+    : await Store.findOne({ userId: seller._id });
+
+  if (input.storeId && !store) {
+    throw new AppError(404, 'Store not found', 'STORE_NOT_FOUND');
+  }
 
   const product = await Product.create({
     name: input.name,
@@ -320,8 +331,14 @@ export const listSellerProducts = async (
   sellerUserId: string,
   page: number,
   limit: number,
+  storeId?: string,
 ) => {
-  const filter = { sellerUserId };
+  const filter = {
+    sellerUserId,
+    ...(storeId && mongoose.isValidObjectId(storeId)
+      ? { sellerId: new mongoose.Types.ObjectId(storeId) }
+      : {}),
+  };
   const [documents, total] = await Promise.all([
     Product.find(filter)
       .sort({ createdAt: -1 })

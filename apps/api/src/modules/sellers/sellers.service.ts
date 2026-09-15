@@ -8,6 +8,7 @@ import SellerApplication, {
 } from '../../../models/SellerApplication';
 import User from '../../../models/User';
 import { AppError } from '../../errors/app-error';
+import { assertEmailConfigured } from '../../utils/email';
 import { slugify } from '../../utils/slugify';
 import {
   CreateSellerApplicationInput,
@@ -19,6 +20,20 @@ import {
   ReviewSellerApplicationInput,
   UpdateStoreProfileInput,
 } from './sellers.validation';
+
+/**
+ * Calls through the (mockable) `assertEmailConfigured` rather than reading
+ * env vars directly, matching auth.service.ts#isEmailAvailable — so a test
+ * that mocks it also changes what this reports, not just the real env.
+ */
+const isEmailAvailable = (): boolean => {
+  try {
+    assertEmailConfigured();
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Public shape of a store — what any shopper browsing the marketplace sees.
@@ -142,6 +157,16 @@ export const listMyStores = async (userId: string) => {
  * does, or the very next request fails `authenticate`'s role check.
  */
 export const createStore = async (userId: string, input: CreateStoreInput) => {
+  const owner = await User.findById(userId);
+  if (!owner || owner.status !== 'ACTIVE') {
+    throw new AppError(403, 'This account is not active.', 'ACCOUNT_INACTIVE');
+  }
+  // Only enforced once a real email provider exists to have verified them
+  // with in the first place — see isEmailAvailable above and the same
+  // reasoning in auth.service.ts#register.
+  if (isEmailAvailable() && !owner.email_verified) {
+    throw new AppError(403, 'Verify your email before creating a store.', 'EMAIL_NOT_VERIFIED');
+  }
   // If KhmerCraft already approved this seller's application before they
   // finished setting up a store, the store opens already verified — the
   // approval, not the order the two steps happened in, is what matters.

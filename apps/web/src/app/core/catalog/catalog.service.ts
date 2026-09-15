@@ -93,6 +93,21 @@ export class CatalogService {
     return this.products();
   }
 
+  /**
+   * Loads a complete public storefront directly from the API. The marketplace
+   * home catalogue is intentionally paged, so filtering its first page would
+   * make larger sellers appear to have missing products.
+   */
+  async productsForStore(storeId: string): Promise<Product[]> {
+    const first = await firstValueFrom(this.api.listProducts({ storeId, page: 1, limit: 60 }));
+    const products = [...first.products];
+    for (let page = 2; page <= first.totalPages; page += 1) {
+      const response = await firstValueFrom(this.api.listProducts({ storeId, page, limit: 60 }));
+      products.push(...response.products);
+    }
+    return products.map(toProduct);
+  }
+
   productById(id: string): Product | undefined {
     return this.products().find(
       (product) => product.id === id || product.slug === id,
@@ -110,7 +125,7 @@ export class CatalogService {
   }
 
   store(id: string): Store | undefined {
-    return this._stores().find((candidate) => candidate.id === id);
+    return this._stores().find((candidate) => candidate.id === id || candidate.slug === id);
   }
 
   countByCategory(slug: string): number {
@@ -311,12 +326,21 @@ const toProduct = (api: ApiProduct): Product => {
 /** Map a server store onto the shape the UI renders. */
 const toStore = (api: ApiStore): Store => ({
   id: api.id,
+  slug: api.slug,
   name: api.name,
   location: api.location ?? '',
   rating: api.rating,
   reviewCount: api.reviewCount,
   categoryName: api.categoryName ?? '',
   description: api.description ?? '',
+  tagline: api.tagline ?? '',
+  announcement: api.announcement ?? '',
+  theme: api.theme ?? 'FOREST',
+  phoneNumber: api.phoneNumber ?? '',
+  showContact: api.showContact,
+  logoUrl: api.logoUrl,
+  bannerUrl: api.bannerUrl,
+  featuredProductIds: api.featuredProductIds ?? [],
 });
 
 /**

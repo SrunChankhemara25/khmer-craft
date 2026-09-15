@@ -57,12 +57,21 @@ export interface Category {
 
 export interface Store {
   id: string;
+  slug?: string;
   name: string;
   location: string;
   rating: number;
   reviewCount: number;
   categoryName: string;
   description: string;
+  tagline?: string;
+  announcement?: string;
+  theme?: 'FOREST' | 'CLAY' | 'GOLD' | 'MIDNIGHT';
+  phoneNumber?: string;
+  showContact?: boolean;
+  logoUrl?: string | null;
+  bannerUrl?: string | null;
+  featuredProductIds?: string[];
 }
 
 export interface CartItem {

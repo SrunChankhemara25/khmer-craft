@@ -15,6 +15,11 @@ export interface IStore extends Document {
   /** Unique, human-readable, public identifier — never a raw Mongo id in a URL. */
   slug: string;
   storeDescription?: string;
+  storeTagline?: string;
+  announcement?: string;
+  theme: 'FOREST' | 'CLAY' | 'GOLD' | 'MIDNIGHT';
+  showContact: boolean;
+  featuredProductIds: mongoose.Types.ObjectId[];
   storeAvatarUrl?: string;
   storeCoverImages?: string[];
   subscriptionPlan: 'STARTER' | 'STANDARD' | 'PREMIUM';
@@ -42,6 +47,15 @@ const StoreSchema: Schema = new Schema(
     storeName: { type: String, required: true },
     slug: { type: String, required: true, unique: true, trim: true, index: true },
     storeDescription: { type: String },
+    storeTagline: { type: String, trim: true, maxlength: 160 },
+    announcement: { type: String, trim: true, maxlength: 120 },
+    theme: {
+      type: String,
+      enum: ['FOREST', 'CLAY', 'GOLD', 'MIDNIGHT'],
+      default: 'FOREST',
+    },
+    showContact: { type: Boolean, default: false },
+    featuredProductIds: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
     storeAvatarUrl: { type: String },
     storeCoverImages: { type: [String], default: [] },
     subscriptionPlan: {

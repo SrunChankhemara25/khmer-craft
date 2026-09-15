@@ -55,6 +55,8 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
 
         @if (discount(); as off) {
           <span class="discount-badge badge badge-gold">-{{ off }}%</span>
+        } @else if (badge(); as label) {
+          <span class="context-badge">{{ label }}</span>
         }
 
         <button
@@ -97,8 +99,8 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         <div class="price-row">
           <div class="prices">
             <span class="price">\${{ product().price.toFixed(2) }}</span>
-            @if (product().compareAtPrice; as was) {
-              <span class="was">\${{ was.toFixed(2) }}</span>
+            @if (discount()) {
+              <span class="was">\${{ product().compareAtPrice!.toFixed(2) }}</span>
             }
           </div>
 
@@ -133,8 +135,8 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         outline: none;
         transform: translateZ(0);
         transition:
-          transform 320ms cubic-bezier(.2,.75,.25,1),
-          box-shadow 320ms cubic-bezier(.2,.75,.25,1),
+          transform 200ms ease,
+          box-shadow 200ms ease,
           border-color 220ms ease;
         will-change: transform;
       }
@@ -230,18 +232,18 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         min-height: clamp(176px, 12vw, 222px);
         flex-direction: column;
         gap: 12px;
-        transition: transform 420ms cubic-bezier(.2,.75,.25,1), filter 320ms ease;
+        transition: transform 220ms ease, filter 220ms ease;
       }
       .product-photo { width: 100%; object-fit: cover; object-position: center; display: block; }
       @media (hover: hover) and (pointer: fine) {
         .product-card:hover {
           border-color: rgba(142, 48, 33, .26);
-          box-shadow: 0 15px 34px rgba(60, 43, 28, .12);
-          transform: translateY(-5px);
+          box-shadow: 0 6px 18px rgba(60, 43, 28, .08);
+          transform: translateY(-2px);
         }
         .product-card:hover .product-thumb {
           filter: saturate(1.035) contrast(1.015);
-          transform: scale(1.045);
+          transform: scale(1.02);
         }
         .product-card:hover .cart-add:not(:disabled) {
           box-shadow: 0 7px 16px rgba(142, 48, 33, .22);
@@ -281,6 +283,9 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         bottom: 10px;
         left: 10px;
       }
+      .discount-badge, .context-badge { background: #fff3eb; color: var(--color-accent); }
+      .context-badge { position: absolute; bottom: 10px; left: 10px; padding: 4px 7px; border-radius: 5px; font-size: 9px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+      .product-card:not(.editorial) .product-body { background: #fff; border-top: 1px solid #e8ded2; }
       .wish-btn {
         position: absolute;
         top: 8px;
@@ -385,7 +390,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         min-height: 2.4em;
         font-family: var(--font-body);
         font-size: clamp(14px, .25vw + 12px, 16px);
-        font-weight: 700;
+        font-weight: 750;
         line-height: 1.35;
         /* Two-line clamp keeps every card in a row the same height. */
         display: -webkit-box;
@@ -418,7 +423,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       }
       .price {
         font-size: 16px;
-        font-weight: 750;
+        font-weight: 800;
       }
       .was {
         color: var(--color-muted);
@@ -442,6 +447,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       }
       .cart-add:hover:not(:disabled) {
         background: var(--color-accent-hover);
+        transform: scale(1.02);
       }
       .cart-add:disabled {
         background: var(--color-border-strong);
@@ -679,6 +685,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
 })
 export class ProductCardComponent {
   readonly product = input.required<Product>();
+  readonly badge = input<'Best seller' | 'New' | null>(null);
   readonly variant = input<'default' | 'editorial'>('default');
 
   private readonly cart = inject(CartService);

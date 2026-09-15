@@ -87,7 +87,7 @@ export class VerifyEmail {
       .resendCode(this.email())
       .pipe(finalize(() => this.resending.set(false)))
       .subscribe({
-        next: () => this.resendMessage.set('A new code is on its way.'),
+        next: () => this.resendMessage.set('If this email needs verification, a code has been sent. Check your inbox and spam folder. Already verified? Sign in.'),
         error: (error) => this.error.set(apiErrorMessage(error)),
       });
   }

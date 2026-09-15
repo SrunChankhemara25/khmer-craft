@@ -1,14 +1,28 @@
 import { z } from 'zod';
 
+const imageValue = z
+  .string()
+  .trim()
+  .max(5_000_000)
+  .refine(
+    (value) => /^https?:\/\//i.test(value) || /^data:image\/[a-z0-9.+-]+;base64,/i.test(value),
+    'Use an image URL or an uploaded image',
+  );
+
 /** Every field optional — a seller fixing one thing shouldn't have to resend the whole profile. */
 export const updateStoreProfileSchema = z
   .object({
     storeName: z.string().trim().min(2).max(120).optional(),
     storeDescription: z.string().trim().max(2000).optional(),
+    storeTagline: z.string().trim().max(160).optional(),
+    announcement: z.string().trim().max(120).optional(),
+    theme: z.enum(['FOREST', 'CLAY', 'GOLD', 'MIDNIGHT']).optional(),
+    showContact: z.boolean().optional(),
+    featuredProductIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).max(12).optional(),
     location: z.string().trim().max(80).optional(),
     phoneNumber: z.string().trim().max(30).optional(),
-    logoUrl: z.string().trim().url().max(2048).optional(),
-    bannerUrl: z.string().trim().url().max(2048).optional(),
+    logoUrl: imageValue.optional(),
+    bannerUrl: imageValue.optional(),
   })
   .strict()
   .refine((body) => Object.keys(body).length > 0, {

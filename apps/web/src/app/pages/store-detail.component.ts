@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
@@ -27,7 +27,10 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
         <button class="btn btn-primary" type="button" (click)="catalog.loadStores()">Try again</button>
       </section>
     } @else if (store(); as s) {
-      <main>
+      <main class="store-theme" [class.theme-clay]="s.theme === 'CLAY'" [class.theme-gold]="s.theme === 'GOLD'" [class.theme-midnight]="s.theme === 'MIDNIGHT'">
+        @if (s.announcement) {
+          <div class="store-announcement"><ui-icon name="sparkles" [size]="14" /> {{ s.announcement }}</div>
+        }
         <section class="store-intro">
           <div class="container">
             <nav class="crumbs">
@@ -36,13 +39,15 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
               <span>{{ s.name }}</span>
             </nav>
 
-            <div class="store-banner">
+            <div class="store-banner" [class.has-cover]="s.bannerUrl" [style.background-image]="s.bannerUrl ? 'linear-gradient(90deg, rgba(18,28,23,.9), rgba(18,28,23,.42)), url(' + s.bannerUrl + ')' : null">
               <div class="identity">
-                <div class="store-logo">{{ initials(s.name) }}</div>
+                <div class="store-logo">
+                  @if (s.logoUrl) { <img [src]="s.logoUrl" [alt]="s.name + ' logo'" /> } @else { {{ initials(s.name) }} }
+                </div>
                 <div class="identity-copy">
                   <span class="verified"><ui-icon name="store" [size]="13" /> Marketplace store</span>
                   <h1>{{ s.name }}</h1>
-                  <p>{{ s.description }}</p>
+                  <p class="store-tagline">{{ s.tagline || s.description }}</p>
                   <div class="meta">
                     <span><ui-icon name="map-pin" [size]="14" /> {{ s.location }}</span>
                     @if (s.reviewCount > 0) {
@@ -71,6 +76,18 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
             <span class="store-status"><i></i> {{ products().length ? 'Products available' : 'No active listings' }}</span>
           </div>
         </nav>
+
+        @if (featuredProducts().length) {
+          <section class="container featured-section">
+            <header class="products-head">
+              <div><span class="eyebrow">Chosen by the seller</span><h2>Featured at {{ s.name }}</h2></div>
+              <span>{{ featuredProducts().length }} picks</span>
+            </header>
+            <div class="product-grid featured-grid">
+              @for (product of featuredProducts(); track product.id) { <app-product-card [product]="product" /> }
+            </div>
+          </section>
+        }
 
         <section class="container products-section" id="products">
           <header class="products-head">
@@ -112,7 +129,11 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
           <div class="facts">
             <div><span>01</span><strong>Store-owned listings</strong><small>Products on this page are listed under this seller.</small></div>
             <div><span>02</span><strong>Clear order records</strong><small>Signed-in purchases appear in My Orders.</small></div>
-            <div><span>03</span><strong>Marketplace support</strong><small>Contact KhmerCraft when an order needs attention.</small></div>
+            @if (s.showContact && s.phoneNumber) {
+              <div><span>03</span><strong>Contact this store</strong><small>{{ s.phoneNumber }} · Seller chose to make this number public.</small></div>
+            } @else {
+              <div><span>03</span><strong>Marketplace support</strong><small>Contact KhmerCraft when an order needs attention.</small></div>
+            }
           </div>
         </section>
 
@@ -138,9 +159,18 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
   `,
   styles: [`
     .store-intro { padding: 10px 0 12px; background: #f7f2e9; }
+    .store-theme { --store-accent: #275643; --store-soft: #e8f0eb; }
+    .store-theme.theme-clay { --store-accent: #963827; --store-soft: #f6e9e4; }
+    .store-theme.theme-gold { --store-accent: #9a691b; --store-soft: #f7efdc; }
+    .store-theme.theme-midnight { --store-accent: #263750; --store-soft: #e8edf4; }
+    .store-announcement { min-height: 34px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 7px 18px; color: #fff; background: var(--store-accent); font-size: 11px; font-weight: 750; letter-spacing: .02em; text-align: center; }
     .crumbs { display: flex; gap: 7px; margin-bottom: 9px; color: var(--color-muted); font-size: 10.5px; }
     .crumbs a:hover { color: var(--color-accent); }
     .store-banner { display: flex; align-items: center; justify-content: space-between; gap: 22px; min-height: 150px; padding: clamp(18px, 2.1vw, 26px); border: 1px solid var(--color-border); border-radius: 18px; background: var(--color-surface); box-shadow: 0 10px 30px rgba(64,47,29,.045); }
+    .store-banner.has-cover { min-height: clamp(210px, 22vw, 320px); color: #fff; background-position: center; background-size: cover; border: 0; }
+    .store-banner.has-cover .identity-copy h1 { color: #fff; }
+    .store-banner.has-cover .identity-copy > p, .store-banner.has-cover .meta { color: rgba(255,255,255,.78); }
+    .store-banner.has-cover .verified { color: #fff; background: rgba(255,255,255,.16); backdrop-filter: blur(8px); }
     .store-banner.fashion-store, .store-banner.fruit-store { position: relative; align-items: flex-end; min-height: clamp(240px,22vw,340px); overflow: hidden; padding: clamp(22px,2.6vw,38px); background-position: center; background-size: cover; }
     .store-banner.fashion-store { background-image: url('/assets/stores/khmer-style-hero.png'); }
     .store-banner.fruit-store { background-image: url('/assets/stores/cambodia-fruits-hero.png'); }
@@ -157,8 +187,10 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
     .campaign-actions { display: none; }
     .identity { display: flex; align-items: center; gap: clamp(16px, 2vw, 24px); min-width: 0; }
     .store-logo { display: grid; place-items: center; width: clamp(68px, 6vw, 82px); aspect-ratio: 1; flex: 0 0 auto; border: 1px solid var(--color-border); border-radius: 19px; background: linear-gradient(145deg,#f3e7d3,#fffdf8); color: var(--color-accent); font-family: var(--font-heading); font-size: clamp(22px,2vw,28px); font-weight: 700; }
+    .store-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
     .identity-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; max-width: 760px; }
     .verified { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: var(--radius-full); background: var(--color-success-soft); color: var(--color-success); font-size: 9.5px; font-weight: 750; }
+    .store-tagline { font-size: clamp(13px, 1.3vw, 17px) !important; }
     .identity-copy h1 { font-size: clamp(25px,2.5vw,36px); line-height: 1.05; }
     .identity-copy > p { max-width: 700px; color: var(--color-text-secondary); font-size: 12.5px; line-height: 1.45; }
     .meta { display: flex; flex-wrap: wrap; gap: 12px; color: var(--color-muted); font-size: 10.5px; }
@@ -173,9 +205,13 @@ import { ProductCardComponent } from '../components/user/catalog/product-card/pr
     .store-nav button { align-self: stretch; padding: 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--color-muted); font-size: 12px; font-weight: 700; }
     .store-nav button:hover { color: var(--color-accent); }
     .store-nav button.active { border-color: var(--color-accent); color: var(--color-text); }
+    .store-theme .store-nav button.active { border-color: var(--store-accent); }
     .store-status { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; color: var(--color-success); font-size: 12px; font-weight: 700; }
     .store-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); }
     .products-section { padding-top: 28px; padding-bottom: 48px; }
+    .featured-section { padding-top: 34px; padding-bottom: 10px; }
+    .featured-section .eyebrow { color: var(--store-accent); }
+    .featured-grid { padding: 18px; border-radius: 18px; background: var(--store-soft); }
     #products, #about, #reviews { scroll-margin-top: 92px; }
     .products-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
     .eyebrow { color: var(--color-accent); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
@@ -242,12 +278,35 @@ export class StoreDetailComponent {
   protected readonly activeSection = signal<'products' | 'about' | 'reviews'>('products');
   private readonly storeId = toSignal(this.route.paramMap.pipe(map((params) => params.get('id') ?? '')), { initialValue: this.route.snapshot.paramMap.get('id') ?? '' });
   protected readonly store = computed(() => this.catalog.store(this.storeId()));
-  protected readonly products = computed(() => this.catalog.search({ storeId: this.storeId() }));
+  private readonly loadedStoreProducts = signal<ReturnType<CatalogService['allProducts']>>([]);
+  protected readonly products = computed(() => this.loadedStoreProducts());
+  protected readonly featuredProducts = computed(() => {
+    const ids = new Set(this.store()?.featuredProductIds ?? []);
+    return this.products().filter((product) => ids.has(product.id));
+  });
   protected readonly categories = computed(() => [...new Set(this.products().map((product) => product.categoryName))]);
   protected readonly filteredProducts = computed(() => {
     const category = this.activeCategory();
     return category ? this.products().filter((product) => product.categoryName === category) : this.products();
   });
+  private lastRequestedStoreId = '';
+
+  constructor() {
+    effect(() => {
+      const storeId = this.store()?.id ?? '';
+      if (!storeId || storeId === this.lastRequestedStoreId) return;
+      this.lastRequestedStoreId = storeId;
+      // Start with any already-loaded catalogue entries, then replace them
+      // with the complete store-scoped result as soon as it arrives.
+      this.loadedStoreProducts.set(this.catalog.search({ storeId }));
+      void this.catalog.productsForStore(storeId).then((products) => {
+        if (this.lastRequestedStoreId === storeId) this.loadedStoreProducts.set(products);
+      }).catch(() => {
+        // Keep the safe partial catalogue already on screen; global catalogue
+        // errors are rendered by the existing marketplace error state.
+      });
+    });
+  }
   protected countCategory(category: string): number { return this.products().filter((product) => product.categoryName === category).length; }
   protected initials(name: string): string { return name.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase(); }
   protected scrollToSection(

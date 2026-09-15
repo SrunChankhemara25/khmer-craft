@@ -32,8 +32,8 @@ export interface SellerStep {
 export const sellerSteps: SellerStep[] = [
   {
     number: '01',
-    title: 'Create your seller account',
-    description: 'Sign up with your contact details and begin seller onboarding.',
+    title: 'Use your KhmerCraft account',
+    description: 'Sign in or create one marketplace account for shopping, orders, and every store you own.',
     icon: 'user',
   },
   {
@@ -94,7 +94,7 @@ export const faqItems: FaqItem[] = [
   {
     question: 'How much does it cost to sell?',
     answer:
-      'Creating a seller account and preparing a draft store is free. Any marketplace fee must be confirmed with you during store review before your shop is activated.',
+      'Starter is $0 per month, Growth is $12, and Professional is $29. Paid plan billing is confirmed separately before money is collected.',
   },
   {
     question: 'What shipping options are available?',

@@ -43,6 +43,7 @@ export const listMine = async (request: Request, response: Response) => {
       request.auth!.userId,
       Number.isFinite(page) && page > 0 ? page : 1,
       Number.isFinite(limit) && limit > 0 ? limit : 20,
+      typeof request.query.storeId === 'string' ? request.query.storeId : undefined,
     ),
   );
 };

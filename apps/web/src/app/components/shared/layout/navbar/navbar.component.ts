@@ -439,8 +439,9 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
       }
       .icon-btn:hover {
         background: var(--color-bg-alt);
-        color: var(--color-text);
+        color: var(--color-accent);
       }
+      .icon-btn { transition: background 180ms ease, color 180ms ease; }
       .wishlist-btn:hover {
         color: var(--color-danger);
       }
@@ -453,8 +454,8 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         font-size: 9.5px;
         font-weight: 700;
         border-radius: 50%;
-        min-width: 15px;
-        height: 15px;
+        min-width: 17px;
+        height: 17px;
         padding: 0 3px;
         display: flex;
         align-items: center;
@@ -545,10 +546,13 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         }
       }
       @media (max-width: 1180px) {
-        .search-placeholder { display: none; }
-        .search-bar { width: 40px; padding: 0; justify-content: center; }
+        .navbar-inner { grid-template-columns: auto minmax(0, 1fr) auto; }
+        .search-group { min-width: 0; }
+        .search-bar { width: 100%; min-width: 0; }
+        .search-bar > ui-icon, .lang-wrap { flex-shrink: 0; }
       }
       @media (max-width: 700px) {
+        .navbar-inner { grid-template-columns: 1fr auto 1fr; }
         .search-placeholder {
           display: none;
         }

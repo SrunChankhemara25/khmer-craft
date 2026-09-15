@@ -28,7 +28,7 @@ import { ProductCardComponent } from '../product-card/product-card.component';
 
     <div class="rail" [class.editorial-rail]="variant() === 'editorial'" tabindex="0" role="region" [attr.aria-label]="title()">
       @for (product of products(); track product.id) {
-        <app-product-card [product]="product" [variant]="variant()" />
+        <app-product-card [product]="product" [variant]="variant()" [badge]="badge()" />
       }
     </div>
   `,
@@ -42,7 +42,7 @@ import { ProductCardComponent } from '../product-card/product-card.component';
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        margin-bottom: 9px;
+        margin-bottom: 20px;
       }
       .section-head h2 {
         font-size: clamp(22px, 1.6vw, 28px);
@@ -58,7 +58,10 @@ import { ProductCardComponent } from '../product-card/product-card.component';
       }
       .see-all:hover {
         text-decoration: underline;
+        text-underline-offset: 4px;
       }
+      .see-all ui-icon { transition: transform 180ms ease; }
+      .see-all:hover ui-icon { transform: translateX(3px); }
 
       .rail {
         display: flex;
@@ -131,6 +134,7 @@ import { ProductCardComponent } from '../product-card/product-card.component';
 })
 export class ProductRailComponent {
   readonly title = input.required<string>();
+  readonly badge = input<'Best seller' | 'New' | null>(null);
   readonly products = input.required<Product[]>();
   readonly variant = input<'default' | 'editorial'>('default');
   readonly linkLabel = input('See all');

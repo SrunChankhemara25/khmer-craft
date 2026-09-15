@@ -158,7 +158,16 @@ export class Login {
           this.success.set(this.successMessage(user.name));
           this.goToDestination(role);
         },
-        error: (error) => this.error.set(apiErrorMessage(error, content.fallbackError)),
+        error: (error) => {
+          if (error?.error?.error?.code === 'EMAIL_NOT_VERIFIED') {
+            void this.router.navigate(['/verify-email'], { queryParams: {
+              email,
+              returnUrl: this.route.snapshot.queryParamMap.get('returnUrl') ?? '/',
+            } });
+            return;
+          }
+          this.error.set(apiErrorMessage(error, content.fallbackError));
+        },
       });
   }
   private successMessage(name: string): string {

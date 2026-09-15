@@ -19,10 +19,19 @@ const setSessionCookies = (
 
 export const register = async (request: Request, response: Response) => {
   const result = await authService.register(request.body);
-  setSessionCookies(response, result.accessToken, result.refreshToken);
+
+  if (!result.requiresVerification) {
+    setSessionCookies(response, result.accessToken, result.refreshToken);
+    response.status(201).json({
+      message: 'Account created successfully',
+      user: result.user,
+    });
+    return;
+  }
+
   response.status(201).json({
-    message: 'Account created successfully',
-    user: result.user,
+    message: 'Check your email for your verification code',
+    email: result.email,
   });
 };
 
@@ -50,10 +59,9 @@ export const verifyEmail = async (request: Request, response: Response) => {
 };
 
 export const resendCode = async (request: Request, response: Response) => {
-  const result = await authService.resendCode(request.body);
+  await authService.resendCode(request.body);
   response.json({
     message: 'If that email needs verifying, a new code has been sent',
-    ...(result.devCode ? { devCode: result.devCode } : {}),
   });
 };
 

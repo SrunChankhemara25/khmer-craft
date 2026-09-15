@@ -164,6 +164,7 @@ export const routes: Routes = [
   },
   {
     path: 'seller/onboarding',
+    canActivate: [buyerGuard],
     loadComponent: () =>
       import('./features/seller/onboarding/seller-onboarding').then(
         (m) => m.SellerOnboardingPage,

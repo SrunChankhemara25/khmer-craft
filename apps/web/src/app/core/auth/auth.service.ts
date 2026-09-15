@@ -112,6 +112,12 @@ export class AuthService {
     );
   }
 
+  /** Reloads the server-issued session after a role-changing action such as opening a store. */
+  refreshCurrentUser(): Observable<AuthUser | null> {
+    this.checkedState.set(false);
+    return this.loadCurrentUser();
+  }
+
   private setUser(user: AuthUser) {
     this.userState.set(user);
     this.checkedState.set(true);

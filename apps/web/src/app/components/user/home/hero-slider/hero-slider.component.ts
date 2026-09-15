@@ -166,7 +166,7 @@ const AUTOPLAY_MS = 5000;
         background-size: cover;
         color: inherit;
         display: block;
-        height: clamp(300px, 29vw, 410px);
+        height: clamp(264px, 25.5vw, 361px);
         isolation: isolate;
         overflow: hidden;
         position: relative;
@@ -256,9 +256,9 @@ const AUTOPLAY_MS = 5000;
       }
       .campaign-link {
         align-items: center;
-        color: rgba(255,255,255,.9);
+        color: #fffdf7;
         display: inline-flex;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 750;
         gap: 7px;
         margin-top: 17px;
