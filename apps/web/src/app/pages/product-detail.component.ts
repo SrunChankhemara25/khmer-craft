@@ -1,8 +1,9 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { CartService } from '../core/cart/cart.service';
+import { FlyToCartService } from '../core/cart/fly-to-cart.service';
 import { CatalogService } from '../core/catalog/catalog.service';
 import { WishlistService } from '../core/wishlist/wishlist.service';
 import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
@@ -131,7 +132,7 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
               <button
                 class="btn btn-primary btn-lg btn-block"
                 [disabled]="p.status === 'out-of-stock'"
-                (click)="addToCart()"
+                (click)="addToCart($event)"
               >
                 <ui-icon name="cart" [size]="16" color="#fff" />
                 {{ p.status === 'out-of-stock' ? 'Out of stock' : 'Add to Cart' }}
@@ -399,6 +400,8 @@ export class ProductDetailComponent {
   private readonly route = inject(ActivatedRoute);
   protected readonly catalog = inject(CatalogService);
   private readonly cart = inject(CartService);
+  private readonly flyToCart = inject(FlyToCartService);
+  private readonly host = inject(ElementRef<HTMLElement>);
   private readonly wishlist = inject(WishlistService);
 
   private readonly id = toSignal(
@@ -447,12 +450,37 @@ export class ProductDetailComponent {
     );
   }
 
-  protected async addToCart(): Promise<void> {
+  protected async addToCart(event?: Event): Promise<void> {
     const current = this.product();
     if (!current) {
       return;
     }
     const units = this.quantity();
+
+    /*
+     * Same flight the product cards fire. Without it, adding from this page
+     * bumped the cart count silently while adding from anywhere else threw
+     * the product into the bag — the same action appearing to do two
+     * different things depending on which screen you were on.
+     *
+     * Fired before the await, like the card does, so the click feels instant
+     * rather than waiting on the server round-trip.
+     */
+    const image = this.host.nativeElement.querySelector('.main-image') as HTMLElement | null;
+    const trigger = event?.currentTarget as HTMLElement | undefined;
+    const rect = image?.getBoundingClientRect();
+    const imageOnScreen = Boolean(
+      rect &&
+        rect.bottom > 0 &&
+        rect.top < window.innerHeight &&
+        rect.right > 0 &&
+        rect.left < window.innerWidth,
+    );
+    const source = imageOnScreen && image ? image : trigger;
+    if (source) {
+      this.flyToCart.fly(current.image, source, current.name);
+    }
+
     if (!(await this.cart.add(current, units))) {
       // cart.error carries the server's reason, e.g. "Only 3 left in stock".
       this.feedback.set('');
