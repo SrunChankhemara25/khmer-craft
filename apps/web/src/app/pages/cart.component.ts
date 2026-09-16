@@ -2,6 +2,8 @@ import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { CartService } from '../core/cart/cart.service';
+import { CatalogService } from '../core/catalog/catalog.service';
+import { ProductRailComponent } from '../components/user/catalog/product-rail/product-rail.component';
 import { WishlistService } from '../core/wishlist/wishlist.service';
 import { CartLine } from '../core/catalog/catalog.models';
 import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
@@ -10,7 +12,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
 
 @Component({
   selector: 'app-cart',
-  imports: [RouterLink, NavbarComponent, FooterComponent, IconComponent],
+  imports: [RouterLink, NavbarComponent, FooterComponent, IconComponent, ProductRailComponent],
   template: `
     <app-navbar />
 
@@ -174,6 +176,17 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
             </button>
           }
         </div>
+      </section>
+    }
+
+    @if (recommended().length) {
+      <section class="container section cart-suggestions">
+        <app-product-rail
+          [title]="cart.isEmpty() ? 'Popular right now' : 'Goes well with your cart'"
+          [products]="recommended()"
+          linkRoute="/products"
+          linkLabel="See all products"
+        />
       </section>
     }
 
@@ -436,11 +449,51 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
 })
 export class CartComponent {
   protected readonly cart = inject(CartService);
+  private readonly catalog = inject(CatalogService);
   protected readonly wishlist = inject(WishlistService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
   protected readonly isAuthenticated = this.auth.isAuthenticated;
+
+  /**
+   * Something to look at after adding to the cart, rather than a dead end.
+   *
+   * Related, not random: products from the same categories as what is already
+   * in the cart, and from the same sellers — so the suggestion is plausibly
+   * something they would add to the same order, and often ships together.
+   * Anything already in the cart is excluded, since suggesting it back is
+   * noise. An empty cart has nothing to relate to, so it falls back to the
+   * genuinely best-selling products.
+   */
+  protected readonly recommended = computed(() => {
+    const all = this.catalog.allProducts();
+    if (!all.length) return [];
+
+    const inCart = new Set(this.cart.lines().map((line) => line.product.id));
+    const candidates = all.filter((product) => !inCart.has(product.id));
+
+    if (!inCart.size) {
+      return [...candidates].sort((a, b) => b.soldCount - a.soldCount).slice(0, 12);
+    }
+
+    const categories = new Set(this.cart.lines().map((line) => line.product.categorySlug));
+    const stores = new Set(this.cart.lines().map((line) => line.product.storeId));
+
+    return [...candidates]
+      .map((product) => ({
+        product,
+        // Same seller counts for more than same category: it is the one that
+        // actually saves the shopper a second delivery.
+        score:
+          (stores.has(product.storeId) ? 2 : 0) +
+          (categories.has(product.categorySlug) ? 1 : 0),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || b.product.soldCount - a.product.soldCount)
+      .slice(0, 12)
+      .map((entry) => entry.product);
+  });
 
   /** Cart lines bucketed by seller, preserving first-seen store order. */
   protected readonly groups = computed(() => {
