@@ -3,7 +3,7 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import dbConnect from '../lib/mongodb';
 import { createApp } from './app';
-import { assertEnv } from './config/env';
+import { assertEnv, env } from './config/env';
 
 /**
  * Locate .env.local by walking up from this file rather than resolving it
@@ -48,6 +48,23 @@ try {
 } catch (error) {
   console.error(`Configuration error: ${(error as Error).message}`);
   process.exit(1);
+}
+
+/**
+ * Email degrades quietly by design (see auth.service.ts#register): with no
+ * provider configured, accounts are auto-verified rather than waiting on a
+ * code nothing can deliver. Quietly is the problem — from the outside it is
+ * indistinguishable from "the code never arrived", so say it once at boot.
+ */
+if (!env.isEmailConfigured) {
+  const missing = (['SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD', 'MAIL_FROM'] as const).filter(
+    (key) => !process.env[key],
+  );
+  console.warn(
+    `[email] DISABLED — ${missing.join(', ')} not set in .env.local. ` +
+      'No verification codes or password-reset emails will be sent; new accounts ' +
+      'are created already-verified instead. Diagnose with: npm run check:email',
+  );
 }
 
 const port = process.env.PORT || 3001;

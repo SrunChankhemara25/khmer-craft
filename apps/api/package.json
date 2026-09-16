@@ -11,7 +11,8 @@
     "seed:auth": "ts-node scripts/seed-auth-test-users.ts",
     "seed:catalog": "ts-node scripts/seed-catalog.ts",
     "seed:sellers": "ts-node scripts/seed-sellers.ts",
-    "migrate:legacy-seller": "ts-node scripts/migrate-legacy-seller.ts"
+    "migrate:legacy-seller": "ts-node scripts/migrate-legacy-seller.ts",
+    "check:email": "ts-node scripts/check-email.ts"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
