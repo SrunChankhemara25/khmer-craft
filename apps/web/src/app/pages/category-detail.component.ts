@@ -57,11 +57,6 @@ const SORTS: { value: ProductSort; label: string }[] = [
     <app-navbar />
 
     @if (category(); as cat) {
-      @if (posterImage(); as poster) {
-        <section class="category-poster" [attr.data-category]="cat.slug">
-          <img [src]="poster" [alt]="cat.name + ' at KhmerCraft'" (error)="posterFailed.set(true)" />
-        </section>
-      }
       <header class="category-intro">
         <div class="container category-intro-inner">
           <div>
@@ -369,29 +364,6 @@ const SORTS: { value: ProductSort; label: string }[] = [
   `,
   styles: [
     `
-      /* The category's own promo poster, shown at a size where its artwork is
-         actually legible. It is portrait, so it sits centred on a tinted band
-         rather than being stretched across the page - cropping a 2:3 poster
-         into a wide banner would cut the headline off it. */
-      .category-poster {
-        display: flex;
-        justify-content: center;
-        padding: clamp(14px, 2.5vw, 26px) 16px;
-        background: var(--color-bg-alt);
-        border-bottom: 1px solid var(--color-border);
-      }
-      .category-poster img {
-        width: auto;
-        max-width: min(100%, 420px);
-        max-height: min(62vh, 560px);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-md);
-        display: block;
-      }
-      @media (max-width: 560px) {
-        .category-poster { padding-inline: 12px; }
-        .category-poster img { max-width: 100%; max-height: none; }
-      }
       .category-intro {
         border-bottom: 1px solid var(--color-border);
         background: var(--color-bg-alt);
@@ -878,27 +850,6 @@ export class CategoryDetailComponent {
   protected readonly category = computed(() =>
     this.catalog.category(this.params().get('slug') ?? ''),
   );
-
-  /**
-   * Categories that have a designed poster in public/categories/posters.
-   * Arts & Culture has none yet, so it simply renders without one - listing
-   * the files we actually have beats a 404 and a broken image frame.
-   */
-  private readonly POSTER_SLUGS = new Set([
-    'fashion',
-    'food-groceries',
-    'home-living',
-    'beauty-wellness',
-    'electronics',
-    'kids-family',
-  ]);
-  protected readonly posterFailed = signal(false);
-  protected readonly posterImage = computed(() => {
-    const slug = this.category()?.slug ?? '';
-    return !this.posterFailed() && this.POSTER_SLUGS.has(slug)
-      ? `/categories/posters/${slug}.webp`
-      : null;
-  });
 
   protected readonly activeSub = computed(() => this.query().get('sub'));
   protected readonly storeId = computed(() => this.query().get('store'));
