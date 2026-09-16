@@ -14,6 +14,13 @@ export interface Product {
   slug: string;
   /** Null until real imagery exists; the UI renders a labelled placeholder. */
   image: string | null;
+  /**
+   * Extra shots of the same item, shown as thumbnails beside the main image.
+   * Optional so the bundled fixtures, which predate it, still type-check.
+   */
+  images?: string[];
+  /** Alternate finishes; picking one swaps the main image. */
+  variants?: { label: string; image: string }[];
   price: number;
   /** Original price when the item is discounted. */
   compareAtPrice?: number;

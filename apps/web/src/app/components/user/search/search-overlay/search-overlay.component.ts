@@ -70,8 +70,9 @@ const POPULAR_SEARCHES = [
               <ui-icon name="x" [size]="15" />
             </button>
           }
-          <button type="button" class="dismiss" (click)="close.emit()">
-            Esc
+          <button type="button" class="dismiss" (click)="close.emit()" aria-label="Close search">
+            <ui-icon name="x" [size]="16" class="dismiss-icon" />
+            <span class="dismiss-text">Esc</span>
           </button>
         </form>
 
@@ -279,6 +280,9 @@ const POPULAR_SEARCHES = [
         color: var(--color-text);
       }
       .dismiss {
+        display: flex;
+        align-items: center;
+        gap: 6px;
         padding: 4px 8px;
         border: 1px solid var(--color-border-strong);
         border-radius: var(--radius-xs);
@@ -286,6 +290,11 @@ const POPULAR_SEARCHES = [
         color: var(--color-muted);
         font-size: 11px;
         font-weight: 600;
+      }
+      /* Desktop shows the "Esc" hint (the key actually works there); the icon
+         stays hidden so the button doesn't show both. */
+      .dismiss-icon {
+        display: none;
       }
 
       .body {
@@ -503,7 +512,22 @@ const POPULAR_SEARCHES = [
         .category-grid {
           grid-template-columns: 1fr;
         }
+        /* There is no Escape key on mobile and the full-screen panel leaves no
+           scrim to tap — this icon button is the only way out, so it must
+           stay visible and be a real tap target, not the desktop text hint. */
         .dismiss {
+          padding: 8px;
+          border: 0;
+          border-radius: 50%;
+          width: 36px;
+          height: 36px;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .dismiss-icon {
+          display: block;
+        }
+        .dismiss-text {
           display: none;
         }
       }

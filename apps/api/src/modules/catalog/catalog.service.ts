@@ -30,6 +30,7 @@ export const toProductResponse = (product: IProduct) => ({
   // genuinely absent on the document, not just empty — see toProductListItem.
   image: product.image ?? product.images?.[0] ?? null,
   images: product.images ?? [],
+  variants: product.variants ?? [],
   rating: product.rating,
   reviewCount: product.reviewCount,
   stock: product.stock,
@@ -255,10 +256,17 @@ export const createProduct = async (seller: IUser, input: CreateProductInput) =>
   // See utils/image.ts — a full-resolution upload here would otherwise ride
   // along on every catalog list response forever, not just this product's
   // own detail page.
-  const [{ image, thumbnail }, images] = await Promise.all([
+  const [{ image, thumbnail }, images, variantImages] = await Promise.all([
     compressImageWithThumbnail(input.image),
     compressImages(input.images),
+    // Colour swatches are full product photos too, so they get the same
+    // treatment — otherwise six colours means six full-size uploads on one row.
+    compressImages(input.variants?.map((variant) => variant.image)),
   ]);
+  const variants = (input.variants ?? []).map((variant, index) => ({
+    label: variant.label,
+    image: variantImages?.[index] ?? variant.image,
+  }));
 
   const product = await Product.create({
     name: input.name,
@@ -277,6 +285,7 @@ export const createProduct = async (seller: IUser, input: CreateProductInput) =>
     image,
     thumbnail,
     images: images ?? [],
+    variants,
     stock: input.stock,
     status: input.status,
   });
@@ -342,6 +351,15 @@ export const updateProduct = async (
   }
   if (input.images !== undefined)
     product.images = (await compressImages(input.images)) ?? [];
+  if (input.variants !== undefined) {
+    const compressed = await compressImages(
+      input.variants.map((variant) => variant.image),
+    );
+    product.variants = input.variants.map((variant, index) => ({
+      label: variant.label,
+      image: compressed?.[index] ?? variant.image,
+    }));
+  }
   if (input.stock !== undefined) product.stock = input.stock;
   if (input.status !== undefined) product.status = input.status;
 

@@ -46,7 +46,18 @@ const AUTOPLAY_MS = 5000;
             aria-roledescription="slide"
             [attr.aria-label]="i + 1 + ' of ' + promotions.length"
           >
-            @if (promo.video || promo.image) {
+            @if (promo.imageOnly && promo.image) {
+              <!-- Banner artwork with its own baked-in copy: show it whole and
+                   add nothing on top, or the overlay collides with the design. -->
+              <a
+                class="campaign-stage image-only"
+                [routerLink]="promo.ctaRoute"
+                [queryParams]="promo.ctaParams ?? {}"
+                [attr.aria-label]="promo.headline"
+              >
+                <img [src]="promo.image" [alt]="promo.headline" />
+              </a>
+            } @else if (promo.video || promo.image) {
               <a
                 class="campaign-stage"
                 [routerLink]="promo.ctaRoute"
@@ -172,6 +183,30 @@ const AUTOPLAY_MS = 5000;
         position: relative;
         text-decoration: none;
       }
+      /* A full-bleed banner sizes to its own ratio - no fixed height, no cover
+         crop - so nothing baked into the artwork gets cut off. */
+      /* A 3:1 slot - the standard web-banner shape. Artwork drawn at 3:1 fills it
+         exactly with nothing cropped; anything squarer is trimmed top and bottom
+         rather than blowing the hero up to its own height. */
+      .campaign-stage.image-only {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 3 / 1;
+        max-height: 560px;
+        background: var(--color-bg-alt, #f6f1e7);
+        display: block;
+        border-radius: inherit;
+        overflow: hidden;
+      }
+      .campaign-stage.image-only img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .campaign-stage.image-only::after,
+      .campaign-stage.image-only::before { display: none; }
+
       .campaign-stage::after {
         background: linear-gradient(180deg, rgba(10,14,11,.08), transparent 45%, rgba(10,14,11,.28));
         content: '';

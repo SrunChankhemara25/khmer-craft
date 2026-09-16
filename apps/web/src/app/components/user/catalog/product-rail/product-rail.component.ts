@@ -26,11 +26,26 @@ import { ProductCardComponent } from '../product-card/product-card.component';
       }
     </div>
 
-    <div class="rail" [class.editorial-rail]="variant() === 'editorial'" tabindex="0" role="region" [attr.aria-label]="title()">
+    <div
+      class="rail"
+      [class.editorial-rail]="variant() === 'editorial'"
+      [class.as-grid]="layout() === 'grid'"
+      [attr.tabindex]="layout() === 'grid' ? null : 0"
+      role="region"
+      [attr.aria-label]="title()"
+    >
       @for (product of products(); track product.id) {
         <app-product-card [product]="product" [variant]="variant()" [badge]="badge()" />
       }
     </div>
+
+    @if (layout() === 'grid' && linkRoute()) {
+      <div class="rail-more">
+        <a class="more-btn" [routerLink]="linkRoute()" [queryParams]="linkParams()">
+          {{ linkLabel() }} <ui-icon name="arrow-right" [size]="14" />
+        </a>
+      </div>
+    }
   `,
   styles: [
     `
@@ -44,6 +59,37 @@ import { ProductCardComponent } from '../product-card/product-card.component';
         gap: 16px;
         margin-bottom: 20px;
       }
+      /* Grid layout: wrap into rows instead of scrolling sideways. */
+      .rail.as-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+        gap: 18px;
+        overflow: visible;
+      }
+      .rail.as-grid > * { width: auto; min-width: 0; flex: none; scroll-snap-align: none; }
+      .rail-more { display: flex; justify-content: center; margin-top: 26px; }
+      .more-btn {
+        align-items: center;
+        border: 1px solid var(--color-border-strong, #d9cfc2);
+        border-radius: 999px;
+        color: var(--color-text, #2b2118);
+        display: inline-flex;
+        font-size: 13.5px;
+        font-weight: 650;
+        gap: 8px;
+        padding: 11px 26px;
+        text-decoration: none;
+        transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+      }
+      .more-btn:hover {
+        background: var(--color-accent, #8e3021);
+        border-color: var(--color-accent, #8e3021);
+        color: #fff;
+      }
+      @media (max-width: 640px) {
+        .rail.as-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+      }
+
       .section-head h2 {
         font-size: clamp(22px, 1.6vw, 28px);
       }
@@ -133,6 +179,12 @@ import { ProductCardComponent } from '../product-card/product-card.component';
   ],
 })
 export class ProductRailComponent {
+  /**
+   * 'rail' scrolls sideways; 'grid' wraps into rows instead, for sections that
+   * should read as a full catalogue rather than a peek at one.
+   */
+  readonly layout = input<'rail' | 'grid'>('rail');
+
   readonly title = input.required<string>();
   readonly badge = input<'Best seller' | 'New' | null>(null);
   readonly products = input.required<Product[]>();

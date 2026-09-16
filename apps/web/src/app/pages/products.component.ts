@@ -51,58 +51,67 @@ const SORTS: { value: ProductSort; label: string }[] = [
     </header>
 
     <section class="container filters-bar">
-      <!-- Category chips: the spec's primary filter affordance. -->
-      <div class="chips">
-        <button
-          class="chip"
-          [class.active]="!category()"
-          (click)="setCategory(null)"
-        >
-          All
-        </button>
-        @for (cat of categories; track cat.slug) {
+      <!-- Category chips: the spec's primary filter affordance. The fade
+           wrapper hints there's more to scroll on narrow screens, where the
+           scrollbar itself is hidden. -->
+      <div class="scroll-fade">
+        <div class="chips">
           <button
             class="chip"
-            [class.active]="category() === cat.slug"
-            (click)="setCategory(cat.slug)"
+            [class.active]="!category()"
+            (click)="setCategory(null)"
           >
-            {{ cat.name }}
+            All
           </button>
-        }
-      </div>
-
-      <div class="filters-row">
-        <div class="quick-filters" aria-label="Product filters">
-          <label>
-            <span>Price</span>
-            <select [value]="priceBand()" (change)="setPriceBand($event)">
-              <option value="">Any price</option>
-              <option value="under-5">Under $5</option>
-              <option value="5-10">$5–$10</option>
-              <option value="10-20">$10–$20</option>
-              <option value="over-20">Over $20</option>
-            </select>
-          </label>
-          <label>
-            <span>Rating</span>
-            <select [value]="minRating() ?? ''" (change)="setRating($event)">
-              <option value="">Any rating</option>
-              <option value="4.5">4.5 & up</option>
-              <option value="4">4.0 & up</option>
-            </select>
-          </label>
-          <button type="button" class="toggle-filter" [class.active]="inStockOnly()" (click)="toggleInStock()">
-            <ui-icon name="check" [size]="12" /> In stock
-          </button>
-          <button type="button" class="toggle-filter" [class.active]="onSaleOnly()" (click)="toggleSale()">
-            <ui-icon name="percent" [size]="12" /> On sale
-          </button>
-          @if (hasFilters()) {
-            <button class="clear" (click)="clearAll()">
-              <ui-icon name="x" [size]="13" /> Clear filters
+          @for (cat of categories; track cat.slug) {
+            <button
+              class="chip"
+              [class.active]="category() === cat.slug"
+              (click)="setCategory(cat.slug)"
+            >
+              {{ cat.name }}
             </button>
           }
         </div>
+      </div>
+
+      <div class="filters-row">
+        <div class="scroll-fade">
+          <div class="quick-filters" aria-label="Product filters">
+            <label>
+              <span>Price</span>
+              <select [value]="priceBand()" (change)="setPriceBand($event)">
+                <option value="">Any price</option>
+                <option value="under-5">Under $5</option>
+                <option value="5-10">$5–$10</option>
+                <option value="10-20">$10–$20</option>
+                <option value="over-20">Over $20</option>
+              </select>
+            </label>
+            <label>
+              <span>Rating</span>
+              <select [value]="minRating() ?? ''" (change)="setRating($event)">
+                <option value="">Any rating</option>
+                <option value="4.5">4.5 & up</option>
+                <option value="4">4.0 & up</option>
+              </select>
+            </label>
+            <button type="button" class="toggle-filter" [class.active]="inStockOnly()" (click)="toggleInStock()">
+              <ui-icon name="check" [size]="12" /> In stock
+            </button>
+            <button type="button" class="toggle-filter" [class.active]="onSaleOnly()" (click)="toggleSale()">
+              <ui-icon name="percent" [size]="12" /> On sale
+            </button>
+          </div>
+        </div>
+
+        <!-- Deliberately outside the scrollable row above — it must never be
+             something a user has to discover by scrolling sideways. -->
+        @if (hasFilters()) {
+          <button class="clear" (click)="clearAll()">
+            <ui-icon name="x" [size]="13" /> Clear filters
+          </button>
+        }
 
         <label class="sort">
           <span>Sort</span>
@@ -231,6 +240,12 @@ const SORTS: { value: ProductSort; label: string }[] = [
         background: #fff;
         font-size: 13px;
       }
+      /* Only does anything at the mobile breakpoint below, where the row
+         inside becomes a hidden-scrollbar horizontal scroller — the fade is
+         the only remaining hint that there's more to the right. */
+      .scroll-fade {
+        position: relative;
+      }
       .chips {
         display: flex;
         flex-wrap: wrap;
@@ -258,9 +273,8 @@ const SORTS: { value: ProductSort; label: string }[] = [
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        padding: 0 0 0 4px;
+        padding: 0;
         border: 0;
-        border-left: 1px solid var(--color-border);
         background: none;
         color: var(--color-accent);
         font-size: 12.5px;
@@ -341,6 +355,19 @@ const SORTS: { value: ProductSort; label: string }[] = [
         .quick-filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
         .quick-filters::-webkit-scrollbar { display: none; }
         .quick-filters label, .toggle-filter { flex: 0 0 auto; }
+        .scroll-fade::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 4px;
+          width: 28px;
+          background: linear-gradient(to right, rgba(255, 253, 248, 0), var(--color-bg));
+          pointer-events: none;
+        }
+        /* filters-row already wraps the "Clear filters" button onto its own
+           line when the scrollable row above leaves no horizontal room. */
+        .filters-row { row-gap: 10px; }
         .grid-section { padding-inline: 16px; }
         .product-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));

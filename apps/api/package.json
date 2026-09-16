@@ -12,7 +12,8 @@
     "seed:catalog": "ts-node scripts/seed-catalog.ts",
     "seed:sellers": "ts-node scripts/seed-sellers.ts",
     "migrate:legacy-seller": "ts-node scripts/migrate-legacy-seller.ts",
-    "check:email": "ts-node scripts/check-email.ts"
+    "check:email": "ts-node scripts/check-email.ts",
+    "seed:demo": "ts-node scripts/seed-demo-stores.ts"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -220,6 +220,25 @@ const LEGACY_CATEGORY_MAP: Record<string, { slug: string; name: string; subcateg
 /** Converts the original narrow category labels into scalable departments. */
 export const classifyCategory = (category: string) => {
   const originalSlug = subcategorySlug(category);
+
+  // A seller picks a department by its display name, and slugifying that name
+  // does not always give the department's own slug — "Fashion & Accessories"
+  // becomes "fashion-accessories" while the department is "fashion". Matching
+  // on the slugified name alone left every fashion listing belonging to no
+  // shelf at all, so resolve against the taxonomy before anything else.
+  const department = CATEGORIES.find(
+    (entry) =>
+      entry.slug === originalSlug || subcategorySlug(entry.name) === originalSlug,
+  );
+  if (department) {
+    return {
+      categorySlug: department.slug,
+      categoryName: department.name,
+      subcategory: null,
+      subcategorySlug: null,
+    };
+  }
+
   const mapped = LEGACY_CATEGORY_MAP[originalSlug];
   if (!mapped) {
     return {

@@ -24,6 +24,7 @@ export interface ApiProduct {
   location: string;
   image: string | null;
   images: string[];
+  variants?: { label: string; image: string }[];
   rating: number;
   reviewCount: number;
   stock: number;

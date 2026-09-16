@@ -7,3 +7,6 @@ dist/
 .env
 **/.env
 .DS_Store
+
+# Database backups taken before destructive cleanups — never commit.
+backups/

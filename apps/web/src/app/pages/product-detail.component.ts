@@ -10,6 +10,7 @@ import { NavbarComponent } from '../components/shared/layout/navbar/navbar.compo
 import { FooterComponent } from '../components/shared/layout/footer/footer.component';
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
 import { ProductRailComponent } from '../components/user/catalog/product-rail/product-rail.component';
+import { Product } from '../core/catalog/catalog.models';
 
 @Component({
   selector: 'app-product-detail',
@@ -48,8 +49,24 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
 
         <div class="product-layout">
           <div class="gallery">
-            @if (p.image) {
-              <img class="main-image product-photo" [src]="p.image" [alt]="p.name" />
+            @if (galleryShots(p).length > 1) {
+              <div class="shot-rail" role="group" aria-label="Product photos">
+                @for (shot of galleryShots(p); track shot; let i = $index) {
+                  <button
+                    type="button"
+                    class="shot"
+                    [class.active]="shownImage(p) === shot"
+                    (click)="pickImage(shot)"
+                    [attr.aria-label]="'Photo ' + (i + 1)"
+                  >
+                    <img [src]="shot" alt="" />
+                  </button>
+                }
+              </div>
+            }
+
+            @if (shownImage(p); as image) {
+              <img class="main-image product-photo" [src]="image" [alt]="p.name" />
             } @else {
               <div class="main-image img-placeholder">{{ p.name }}</div>
             }
@@ -58,6 +75,29 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
           <div class="info">
             <span class="badge badge-soft">{{ p.categoryName }}</span>
             <h1>{{ p.name }}</h1>
+
+            @if (p.variants?.length) {
+              <div class="variant-picker">
+                <span class="variant-label">
+                  Colour<span class="variant-chosen">{{ chosenVariantLabel(p) }}</span>
+                </span>
+                <div class="swatches" role="group" aria-label="Choose a colour">
+                  @for (variant of p.variants; track variant.label) {
+                    <button
+                      type="button"
+                      class="swatch"
+                      [class.active]="chosenVariantLabel(p) === variant.label"
+                      (click)="pickVariant(variant)"
+                      [attr.aria-label]="variant.label"
+                      [attr.aria-pressed]="chosenVariantLabel(p) === variant.label"
+                      [title]="variant.label"
+                    >
+                      <img [src]="variant.image" alt="" />
+                    </button>
+                  }
+                </div>
+              </div>
+            }
 
             @if (p.reviewCount > 0) {
               <div class="rating-row">
@@ -198,6 +238,45 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
       .crumbs a:hover {
         color: var(--color-accent);
       }
+      /* Thumbnail rail down the left of the main photo, the way a phone listing
+         usually reads. Collapses above the image on narrow screens. */
+      .gallery { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 12px; align-items: start; }
+      .gallery:has(.shot-rail) .main-image { grid-column: 2; }
+      .gallery:not(:has(.shot-rail)) { grid-template-columns: minmax(0, 1fr); }
+      .shot-rail {
+        display: flex; flex-direction: column; gap: 9px;
+        max-height: 520px; overflow-y: auto; scrollbar-width: none;
+      }
+      .shot-rail::-webkit-scrollbar { display: none; }
+      .shot {
+        background: var(--color-bg-alt); border: 1.5px solid var(--color-border);
+        border-radius: 10px; cursor: pointer; overflow: hidden; padding: 0;
+        aspect-ratio: 1; width: 100%;
+        transition: border-color 150ms ease, transform 150ms ease;
+      }
+      .shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .shot:hover { border-color: var(--color-muted); }
+      .shot.active { border-color: var(--color-accent); transform: translateY(-1px); }
+
+      /* Colour swatches: the photo itself is the swatch, so the shopper sees the
+         finish rather than guessing from a name. */
+      .variant-picker { display: flex; flex-direction: column; gap: 9px; margin: 4px 0 2px; }
+      .variant-label {
+        color: var(--color-text-secondary); font-size: 12.5px; font-weight: 650;
+        letter-spacing: .02em; text-transform: uppercase;
+      }
+      .variant-chosen { color: var(--color-text); margin-left: 8px; text-transform: none; }
+      .swatches { display: flex; flex-wrap: wrap; gap: 9px; }
+      .swatch {
+        background: var(--color-bg-alt); border: 2px solid var(--color-border);
+        border-radius: 50%; cursor: pointer; height: 46px; width: 46px;
+        overflow: hidden; padding: 0;
+        transition: border-color 150ms ease, transform 150ms ease;
+      }
+      .swatch img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .swatch:hover { border-color: var(--color-muted); transform: scale(1.04); }
+      .swatch.active { border-color: var(--color-accent); }
+
       .product-layout {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -383,6 +462,11 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
       .spin { animation: spin 900ms linear infinite; }
       @keyframes spin { to { transform: rotate(360deg); } }
       @media (max-width: 900px) {
+        .gallery { grid-template-columns: minmax(0, 1fr); }
+        .shot-rail { flex-direction: row; max-height: none; overflow-x: auto; }
+        .shot { flex: 0 0 64px; width: 64px; }
+        .gallery:has(.shot-rail) .main-image { grid-column: 1; grid-row: 1; }
+        .gallery:has(.shot-rail) .shot-rail { grid-row: 2; }
         .product-layout {
           grid-template-columns: 1fr;
           gap: 24px;
@@ -403,6 +487,48 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
   ],
 })
 export class ProductDetailComponent {
+  // --------------------------------------------------------------- gallery
+  /**
+   * Which photo the main frame is showing. Null means "whatever the product
+   * leads with" — picking a colour or a thumbnail pins it until the shopper
+   * navigates to a different product.
+   */
+  private readonly pinnedImage = signal<string | null>(null);
+  private readonly pinnedVariant = signal<string | null>(null);
+
+  protected pickImage(image: string): void {
+    this.pinnedImage.set(image);
+    this.pinnedVariant.set(null);
+  }
+
+  protected pickVariant(variant: { label: string; image: string }): void {
+    this.pinnedImage.set(variant.image);
+    this.pinnedVariant.set(variant.label);
+  }
+
+  protected shownImage(product: Product): string | null {
+    return this.pinnedImage() ?? product.image ?? null;
+  }
+
+  protected chosenVariantLabel(product: Product): string {
+    const pinned = this.pinnedVariant();
+    if (pinned) return pinned;
+    // Nothing picked yet: if the lead photo happens to be one of the variants,
+    // show that as selected rather than leaving every swatch unlit.
+    const match = product.variants?.find((v) => v.image === product.image);
+    return match?.label ?? product.variants?.[0]?.label ?? '';
+  }
+
+  /** Lead photo first, then the extra shots, then any variant not already shown. */
+  protected galleryShots(product: Product): string[] {
+    const shots = [
+      product.image,
+      ...(product.images ?? []),
+      ...(product.variants ?? []).map((variant) => variant.image),
+    ].filter((shot): shot is string => Boolean(shot));
+    return [...new Set(shots)];
+  }
+
   private readonly route = inject(ActivatedRoute);
   protected readonly catalog = inject(CatalogService);
   private readonly cart = inject(CartService);
@@ -416,6 +542,13 @@ export class ProductDetailComponent {
   );
 
   protected readonly product = computed(() => this.catalog.productById(this.id()));
+
+  /** A pinned photo belongs to one product; drop it when the route changes. */
+  private readonly resetGalleryOnNavigate = effect(() => {
+    this.id();
+    this.pinnedImage.set(null);
+    this.pinnedVariant.set(null);
+  });
   protected readonly related = computed(() => {
     const current = this.product();
     return current ? this.catalog.related(current, 8) : [];

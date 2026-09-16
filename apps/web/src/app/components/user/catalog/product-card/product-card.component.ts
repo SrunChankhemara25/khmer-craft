@@ -35,7 +35,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
     >
       <div class="thumb-wrap">
         @if (product().image; as image) {
-          <img class="product-thumb product-photo" [src]="image" [alt]="product().name" />
+          <img class="product-thumb product-photo" [src]="image" [alt]="product().name" (load)="matchBackdrop($event)" />
         } @else {
           <div class="product-thumb img-placeholder" aria-hidden="true">
             <span class="craft-mark">{{ product().name.charAt(0) }}</span>
@@ -227,6 +227,11 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         overflow: hidden;
         background: var(--color-bg-alt);
       }
+      /* A packshot carries its own background — usually white — and the card's
+         cream showed as a hard edge around it wherever the photo did not reach.
+         Once loaded we sample the photo's own border pixels and paint the tile
+         that colour, so the two meet invisibly. */
+      .thumb-wrap.matched { background: var(--shot-bg); }
       /* Square, because the catalogue is square: 14 of 18 LyLy images, and
          most of Cloth and Skincare, are 800x800. A 4:3.15 box cropped 21% off
          the height of every one of them - and sellers put their Khmer
@@ -696,6 +701,54 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
   ],
 })
 export class ProductCardComponent {
+  /**
+   * Paint the tile in the photo's own background colour.
+   *
+   * Averages the pixels around the photo's border — the frame, not the middle,
+   * so the product itself does not drag the colour. Needs a clean canvas, so a
+   * cross-origin image without CORS headers throws; that is caught and the card
+   * keeps the default card colour rather than losing the image.
+   */
+  protected matchBackdrop(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    const wrap = img.closest('.thumb-wrap') as HTMLElement | null;
+    if (!wrap || !img.naturalWidth) return;
+
+    try {
+      const size = 32;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, size, size);
+      const { data } = ctx.getImageData(0, 0, size, size);
+
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let k = 0; k < size; k++) {
+        const edges = [
+          k * 4,                                  // top row
+          (k * size) * 4,                         // left column
+          (k * size + size - 1) * 4,              // right column
+          ((size - 1) * size + k) * 4,            // bottom row
+        ];
+        for (const i of edges) {
+          if (data[i + 3] < 8) continue;          // skip transparent padding
+          r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+        }
+      }
+      if (!n) return;
+
+      wrap.style.setProperty(
+        '--shot-bg',
+        `rgb(${Math.round(r / n)} ${Math.round(g / n)} ${Math.round(b / n)})`,
+      );
+      wrap.classList.add('matched');
+    } catch {
+      // tainted canvas — leave the card's own colour in place
+    }
+  }
+
 
   readonly product = input.required<Product>();
   readonly badge = input<'Best seller' | 'New' | null>(null);

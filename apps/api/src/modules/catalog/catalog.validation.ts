@@ -96,6 +96,15 @@ export const createProductSchema = z
     location: z.string().trim().max(80).optional(),
     image: z.string().trim().max(5_000_000).optional(),
     images: z.array(z.string().trim().max(5_000_000)).max(10).optional(),
+    variants: z
+      .array(
+        z.object({
+          label: z.string().trim().min(1).max(60),
+          image: z.string().trim().min(1).max(5_000_000),
+        }),
+      )
+      .max(12)
+      .optional(),
     stock: z.number().int().min(0).max(1_000_000).default(0),
     status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).default('ACTIVE'),
     sellerId: z.string().optional(),
@@ -122,6 +131,15 @@ export const updateProductSchema = z
     location: z.string().trim().max(80).optional(),
     image: z.string().trim().max(5_000_000).nullable().optional(),
     images: z.array(z.string().trim().max(5_000_000)).max(10).optional(),
+    variants: z
+      .array(
+        z.object({
+          label: z.string().trim().min(1).max(60),
+          image: z.string().trim().min(1).max(5_000_000),
+        }),
+      )
+      .max(12)
+      .optional(),
     stock: z.number().int().min(0).max(1_000_000).optional(),
     status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).optional(),
   })

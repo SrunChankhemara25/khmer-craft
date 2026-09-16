@@ -59,10 +59,16 @@ export class CatalogService {
     this.loaded.set(false);
     this.productError.set('');
     try {
-      const response = await firstValueFrom(
-        this.api.listProducts({ limit: 60 }),
-      );
-      this.products.set(response.products.map(toProduct));
+      // A page is capped at 60 server-side, so one request silently truncated
+      // the catalogue - whole departments were missing from the homepage.
+      // Follow totalPages, the same way loadStoreProducts already does.
+      const first = await firstValueFrom(this.api.listProducts({ page: 1, limit: 60 }));
+      const all = [...first.products];
+      for (let page = 2; page <= first.totalPages; page += 1) {
+        const next = await firstValueFrom(this.api.listProducts({ page, limit: 60 }));
+        all.push(...next.products);
+      }
+      this.products.set(all.map(toProduct));
     } catch {
       this.products.set([]);
       this.productError.set(
@@ -310,6 +316,8 @@ const toProduct = (api: ApiProduct): Product => {
     name: api.name,
     slug: api.slug,
     image: api.image,
+    images: api.images ?? [],
+    variants: api.variants ?? [],
     price: api.price,
     compareAtPrice: api.compareAtPrice ?? undefined,
     ...classification,

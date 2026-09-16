@@ -4,6 +4,12 @@ import { slugify } from '../src/utils/slugify';
 export const PRODUCT_STATUSES = ['ACTIVE', 'DRAFT', 'ARCHIVED'] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
+export interface IProductVariant {
+  /** What the shopper sees on the swatch, e.g. "Midnight Green". */
+  label: string;
+  image: string;
+}
+
 export interface IProduct extends Document {
   name: string;
   slug: string;
@@ -43,6 +49,13 @@ export interface IProduct extends Document {
   image?: string;
   images: string[];
   /**
+   * Alternate finishes of the same listing — a phone in six colours is one
+   * product, not six. Each carries its own photo, which the detail page swaps
+   * in when the shopper picks it. Price and stock stay on the parent: these
+   * are presentation variants, not separately sellable SKUs.
+   */
+  variants: IProductVariant[];
+  /**
    * A small (~220px) copy of `image`, generated alongside it — see
    * utils/image.ts. Product LIST responses (60+ items on one page) return
    * this instead of the full-size `image`; only a single product's own
@@ -78,6 +91,16 @@ const ProductSchema = new Schema<IProduct>(
 
     image: { type: String },
     images: { type: [String], default: [] },
+    variants: {
+      type: [
+        {
+          _id: false,
+          label: { type: String, required: true, trim: true },
+          image: { type: String, required: true },
+        },
+      ],
+      default: [],
+    },
     thumbnail: { type: String },
 
     rating: { type: Number, default: 0, min: 0, max: 5 },
