@@ -98,6 +98,15 @@ export class Login {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly content = computed(() => ROLE_CONTENT['BUYER']);
+  /**
+   * Explains why someone who clicked "Start selling" is suddenly looking at a
+   * sign-in form. Creating a store requires an account (see createStore in
+   * sellers.service.ts), so the guard bounce is correct — but landing on a
+   * bare login page with no reason given reads as the app losing their click.
+   */
+  protected readonly sellerIntent = signal(
+    (this.route.snapshot?.queryParamMap.get('returnUrl') ?? '').startsWith('/seller'),
+  );
   protected readonly passwordVisible = signal(false);
   protected readonly loading = signal(false);
   protected readonly submitted = signal(false);
@@ -126,6 +135,10 @@ export class Login {
    * Guards attach ?returnUrl when they bounce someone to sign in, so a visitor
    * who clicked Checkout lands back on checkout rather than being stranded on
    * the login page with a success message — which is what used to happen.
+   *
+   * With no returnUrl, the landing page follows the account's *actual* role:
+   * dropping a seller on the buyer home page after they signed in is a dead
+   * end, since nothing there links into their dashboard.
    */
   private goToDestination(role: LoginRole) {
     const returnUrl = this.route.snapshot?.queryParamMap.get('returnUrl');
@@ -134,7 +147,7 @@ export class Login {
       return;
     }
 
-    void this.router.navigateByUrl('/');
+    void this.router.navigateByUrl(role === 'SELLER' ? '/seller/dashboard' : '/');
   }
 
   protected submit() {
@@ -147,16 +160,21 @@ export class Login {
     this.loading.set(true);
     this.error.set('');
     this.success.set('');
-    const role = 'BUYER' as LoginRole;
     const content = this.content();
     const { email, password } = this.form.getRawValue();
+    // Deliberately no expectedRole: this is the one sign-in page the whole
+    // app links to, so it must accept buyers, sellers and admins alike. It
+    // used to pin the request to BUYER, which made the server answer "Email
+    // or password is incorrect" for every seller account with a correct
+    // password. Where they land afterwards is decided below, from the role
+    // the server actually returns.
     this.auth
-      .login(email, password, role)
+      .login(email, password)
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: ({ user }) => {
           this.success.set(this.successMessage(user.name));
-          this.goToDestination(role);
+          this.goToDestination(user.role);
         },
         error: (error) => {
           if (error?.error?.error?.code === 'EMAIL_NOT_VERIFIED') {

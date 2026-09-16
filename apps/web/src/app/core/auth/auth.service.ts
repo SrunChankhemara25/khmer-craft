@@ -45,12 +45,19 @@ export class AuthService {
     });
   }
 
-  login(email: string, password: string, expectedRole: UserRole) {
+  /**
+   * `expectedRole` narrows sign-in to one role and is only for the dedicated
+   * portals (/seller/login, /admin/login). The server rejects a mismatch with
+   * a plain INVALID_CREDENTIALS, so passing it on the *unified* /login page
+   * locked every seller and admin out of it with "Email or password is
+   * incorrect" even when the password was right. Omit it there.
+   */
+  login(email: string, password: string, expectedRole?: UserRole) {
     return this.http
       .post<AuthResponse>(`${API_URL}/login`, {
         email,
         password,
-        expectedRole,
+        ...(expectedRole ? { expectedRole } : {}),
       })
       .pipe(tap(({ user }) => this.setUser(user)));
   }

@@ -8,7 +8,12 @@ export function assertEmailConfigured() {
   }
 }
 
-export async function sendVerificationEmail(email: string, code: string) {
+/**
+ * One transport per send, closed straight after. The failure message is
+ * deliberately generic: it must never leak SMTP credentials, whether the
+ * recipient exists, or the code/token being delivered.
+ */
+async function sendMail(to: string, subject: string, text: string, failureMessage: string) {
   assertEmailConfigured();
   const transport = nodemailer.createTransport({
     host: env.smtpHost,
@@ -21,17 +26,32 @@ export async function sendVerificationEmail(email: string, code: string) {
     socketTimeout: 15000,
   });
   try {
-    const result = await transport.sendMail({
-      from: env.mailFrom,
-      to: email,
-      subject: 'Your KhmerCraft verification code',
-      text: `Your KhmerCraft verification code is ${code}. It expires in 10 minutes. Do not share this code. If you did not request it, ignore this email.`,
-    });
+    const result = await transport.sendMail({ from: env.mailFrom, to, subject, text });
     if (!result.accepted.length || result.rejected.length) throw new Error('Recipient rejected');
   } catch {
-    // Never expose SMTP credentials, recipient details, or verification codes.
-    throw new AppError(503, 'We could not send your verification email. Please try again shortly.', 'EMAIL_DELIVERY_FAILED');
+    throw new AppError(503, failureMessage, 'EMAIL_DELIVERY_FAILED');
   } finally {
     transport.close();
   }
+}
+
+export async function sendVerificationEmail(email: string, code: string) {
+  await sendMail(
+    email,
+    'Your KhmerCraft verification code',
+    `Your KhmerCraft verification code is ${code}. It expires in 10 minutes. Do not share this code. If you did not request it, ignore this email.`,
+    'We could not send your verification email. Please try again shortly.',
+  );
+}
+
+export async function sendPasswordResetEmail(email: string, resetUrl: string, expiresInMinutes: number) {
+  await sendMail(
+    email,
+    'Reset your KhmerCraft password',
+    `Someone asked to reset the password for your KhmerCraft account.\n\n` +
+      `Open this link to choose a new one:\n${resetUrl}\n\n` +
+      `The link expires in ${expiresInMinutes} minutes and can only be used once. ` +
+      `If you did not request this, you can ignore this email — your password stays unchanged.`,
+    'We could not send your reset email. Please try again shortly.',
+  );
 }

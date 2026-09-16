@@ -9,7 +9,7 @@ import { env } from '../../config/env';
 import { AppError } from '../../errors/app-error';
 import { signAccessToken } from '../../utils/jwt';
 import { slugify } from '../../utils/slugify';
-import { assertEmailConfigured, sendVerificationEmail } from '../../utils/email';
+import { assertEmailConfigured, sendPasswordResetEmail, sendVerificationEmail } from '../../utils/email';
 import {
   hashPassword,
   verifyPassword,
@@ -498,8 +498,20 @@ export class AuthService {
     });
 
     const resetUrl = `${env.webUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
-    if (env.nodeEnv !== 'test') {
-      // This is the handoff point for a transactional email provider.
+
+    if (isEmailAvailable()) {
+      // Delivery failures are swallowed on purpose: this endpoint always
+      // answers the same way regardless of whether the address exists, and
+      // surfacing "we couldn't email you" would break that by confirming it
+      // does. The token stays valid, so a retry still works.
+      try {
+        await sendPasswordResetEmail(user.email, resetUrl, env.resetTokenExpiresInMinutes);
+      } catch (error) {
+        console.error('[auth] password reset email failed to send:', error);
+      }
+    } else if (env.nodeEnv !== 'test') {
+      // No SMTP configured (see utils/email.ts) — fall back to the console so
+      // local development still has a way to reach the link.
       console.info(`Buyer password reset link: ${resetUrl}`);
     }
 

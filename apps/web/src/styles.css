@@ -629,6 +629,14 @@ input {
   border-color: #ebc0bb;
 }
 
+/* Context, not an outcome — explains why a guard sent someone here. */
+.notice.info {
+  color: #6b4a1f;
+  background: #fdf6e9;
+  border-color: #e6d5b4;
+  font-weight: 550;
+}
+
 @media (max-width: 480px) {
   .auth-form input {
     height: 2.85rem;

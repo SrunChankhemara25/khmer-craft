@@ -3,6 +3,12 @@
   [title]="content().title"
   [subtitle]="content().subtitle"
 >
+  @if (sellerIntent()) {
+    <div class="notice info" role="status">
+      Selling on KhmerCraft starts with a KhmerCraft account. Sign in — or
+      create one below — and we'll take you straight to setting up your store.
+    </div>
+  }
   @if (success()) {
     <div class="notice success" role="status">{{ success() }}</div>
   }
