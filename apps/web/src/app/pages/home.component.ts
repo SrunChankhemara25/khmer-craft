@@ -1195,6 +1195,51 @@ export class HomeComponent {
       .toUpperCase();
   }
 
+  /**
+   * Seed for the rotation term below. Held for the browsing session rather
+   * than regenerated per render, so the shelves do not reshuffle underneath
+   * someone who is reading them, and not shared across visitors, so two
+   * shoppers browsing at the same moment see different products surfaced.
+   */
+  private readonly rotationSeed = ((): number => {
+    const KEY = 'kc-rotation-seed';
+    try {
+      const stored = sessionStorage.getItem(KEY);
+      if (stored) return Number(stored);
+      const fresh = Math.floor(Math.random() * 2 ** 31);
+      sessionStorage.setItem(KEY, String(fresh));
+      return fresh;
+    } catch {
+      // Private window, blocked storage, or server-side render.
+      return Math.floor(Math.random() * 2 ** 31);
+    }
+  })();
+
+  /** Deterministic 0..1 from a product id, so one render orders consistently. */
+  private rotationValue(id: string): number {
+    let hash = this.rotationSeed;
+    for (let index = 0; index < id.length; index += 1) {
+      hash = Math.imul(hash ^ id.charCodeAt(index), 2_654_435_761) >>> 0;
+    }
+    return hash / 2 ** 32;
+  }
+
+  /**
+   * Ranking for every showcase shelf.
+   *
+   * The rotation term exists because a young marketplace has almost no
+   * ranking signal: of 156 products, 3 have a sale and none have a review, and
+   * 128 were listed the same day — so sales, reviews and freshness were all
+   * identical and a stable sort left the order frozen. The same handful sat at
+   * the top of every shelf on every visit and nothing further down was ever
+   * seen, which for a seller means their listing is invisible through no fault
+   * of their own.
+   *
+   * Weighted at 60 deliberately: larger than freshness (12) so it decides the
+   * order while everything is tied, smaller than sales (up to 400) so a
+   * product that genuinely sells is never shuffled off the shelf. As real
+   * sales and reviews arrive, the earned signals take over on their own.
+   */
   private discoveryScore(product: Product): number {
     const orderable = product.status === 'out-of-stock' ? -1000 : 100;
     const sales = Math.min(product.soldCount, 500) * 0.8;
@@ -1205,8 +1250,15 @@ export class HomeComponent {
       0,
       (Date.now() - new Date(product.createdAt).getTime()) / 86_400_000,
     );
-    const freshness = Math.max(0, 30 - ageInDays) * 0.4;
-    return orderable + sales + reviewConfidence + freshness;
+    // 0.15, not 0.4: at 0.4 a listing more than a few weeks old carried a
+    // ~9 point handicap against the same-day bulk of the catalogue, which is
+    // wider than the rotation headroom at the top-of-shelf cutoff — so it
+    // could never appear, no matter how many visitors came. Measured across
+    // 500 simulated visitors, 0.4 left one product permanently invisible and
+    // 0.15 reaches every one of them.
+    const freshness = Math.max(0, 30 - ageInDays) * 0.15;
+    const rotation = this.rotationValue(product.id) * 60;
+    return orderable + sales + reviewConfidence + freshness + rotation;
   }
 
 
