@@ -22,15 +22,18 @@ const ROLE_CONTENT: Record<
     fallbackError: string;
   }
 > = {
+  // One page for every kind of account, so the copy cannot promise "buyer":
+  // a seller signing in here would be told their own credentials belong to
+  // someone else's kind of account.
   BUYER: {
-    eyebrow: 'Buyer account',
+    eyebrow: 'KhmerCraft account',
     title: 'Welcome back',
-    subtitle: 'Sign in to continue discovering authentic Cambodian craft.',
+    subtitle: 'One account for shopping and for selling — sign in to pick up where you left off.',
     emailLabel: 'Email address',
     emailPlaceholder: 'you@example.com',
     button: 'Sign in',
     busy: 'Signing in...',
-    fallbackError: 'Buyer credentials are incorrect.',
+    fallbackError: 'Email or password is incorrect.',
   },
   SELLER: {
     eyebrow: 'Seller portal',

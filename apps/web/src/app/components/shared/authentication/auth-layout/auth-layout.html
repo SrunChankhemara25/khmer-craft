@@ -1,5 +1,7 @@
-<main class="auth-page" [class.admin-theme]="admin()">
+<main class="auth-page">
   <section class="story-panel" aria-label="About KhmerCraft">
+    <div class="krama" aria-hidden="true"></div>
+
     <a class="brand" routerLink="/" aria-label="KhmerCraft home">
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 48 48" role="img">
@@ -11,18 +13,16 @@
     </a>
 
     <div class="story-copy">
-      <span class="story-kicker">Cambodian stores, one marketplace</span>
-      <h2>Shop closer to home.</h2>
-      <p>
-        Discover everyday products, local food and meaningful craft from
-        trusted stores across Cambodia.
-      </p>
+      <span class="story-kicker">{{ story().kicker }}</span>
+      <h2>{{ story().headline }}</h2>
+      <p>{{ story().body }}</p>
     </div>
 
-    <div class="weave" aria-hidden="true">
-      <span></span><span></span><span></span><span></span>
-    </div>
-    <p class="story-footer">Local stores · Secure checkout · Delivery updates</p>
+    <ul class="story-marks">
+      @for (mark of story().marks; track mark) {
+        <li>{{ mark }}</li>
+      }
+    </ul>
   </section>
 
   <section class="form-panel">

@@ -29,7 +29,7 @@ import { AuthLayout } from '../../../../components/shared/authentication/auth-la
       eyebrow="Seller portal"
       title="Sign in to your store"
       subtitle="Manage incoming orders, accept them, and track what you have shipped."
-      [admin]="true"
+      variant="seller"
     >
       @if (success()) {
         <div class="notice success" role="status">{{ success() }}</div>
