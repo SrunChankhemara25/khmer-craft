@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
+import { SellerService, SellerStore } from '../../../../core/api/seller.service';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CartService } from '../../../../core/cart/cart.service';
 import { FlyToCartService } from '../../../../core/cart/fly-to-cart.service';
@@ -131,13 +132,79 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
           }
 
           @if (user(); as currentUser) {
-            <a
-              class="signin-btn"
-              [routerLink]="isSeller() ? '/seller/dashboard' : '/profile'"
-            >
-              <ui-icon name="user" [size]="15" />
-              <span class="signin-label">{{ firstName(currentUser.name) }}</span>
-            </a>
+            <div class="account-wrap">
+              <button
+                type="button"
+                class="signin-btn account-btn"
+                [class.is-seller]="isSeller()"
+                [attr.aria-expanded]="accountOpen()"
+                aria-haspopup="menu"
+                [attr.aria-label]="'Account menu for ' + currentUser.name"
+                (click)="toggleAccount(); $event.stopPropagation()"
+              >
+                <span class="avatar" aria-hidden="true">{{ initial(currentUser.name) }}</span>
+                <span class="signin-label">{{ firstName(currentUser.name) }}</span>
+                @if (isSeller()) {
+                  <span class="role-chip">Seller</span>
+                }
+                <ui-icon name="chevron-down" [size]="13" />
+              </button>
+
+              @if (accountOpen()) {
+                <div
+                  class="account-menu"
+                  role="menu"
+                  animate.enter="kc-pop-enter"
+                  animate.leave="kc-pop-leave"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="account-head">
+                    <span class="avatar lg" aria-hidden="true">{{ initial(currentUser.name) }}</span>
+                    <div class="account-id">
+                      <strong>{{ currentUser.name }}</strong>
+                      <span class="account-email">{{ currentUser.email }}</span>
+                      <span class="account-role" [class.seller]="isSeller()">
+                        {{ isSeller() ? 'Seller & buyer account' : 'Buyer account' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- A seller account is a buyer account too: the same person
+                       shops here. So this is an extra section rather than a
+                       replacement, and the shopping links below stay. -->
+                  @if (isSeller()) {
+                    <p class="account-section">Your store</p>
+                    <a routerLink="/seller/dashboard" role="menuitem" (click)="accountOpen.set(false)">
+                      <ui-icon name="grid" [size]="16" /> Seller dashboard
+                    </a>
+                    <a routerLink="/seller/orders" role="menuitem" (click)="accountOpen.set(false)">
+                      <ui-icon name="package" [size]="16" /> Incoming orders
+                    </a>
+                    @if (myStore(); as store) {
+                      <a [routerLink]="['/stores', store.id]" role="menuitem" (click)="accountOpen.set(false)">
+                        <ui-icon name="store" [size]="16" /> View my store
+                        <span class="hint">as shoppers see it</span>
+                      </a>
+                    }
+                  }
+
+                  <p class="account-section">Your shopping</p>
+                  <a routerLink="/profile" role="menuitem" (click)="accountOpen.set(false)">
+                    <ui-icon name="user" [size]="16" /> My profile
+                  </a>
+                  <a routerLink="/orders" role="menuitem" (click)="accountOpen.set(false)">
+                    <ui-icon name="box" [size]="16" /> My orders
+                  </a>
+                  <a routerLink="/wishlist" role="menuitem" (click)="accountOpen.set(false)">
+                    <ui-icon name="heart" [size]="16" /> Wishlist
+                  </a>
+
+                  <button type="button" class="sign-out" role="menuitem" (click)="signOut()">
+                    <ui-icon name="arrow-right" [size]="16" /> Sign out
+                  </button>
+                </div>
+              }
+            </div>
           } @else {
             <a
               class="signin-btn"
@@ -500,6 +567,164 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         background: rgba(142, 48, 33, .14);
         border-color: rgba(142, 48, 33, .3);
       }
+
+      /* ---------------------------------------------------- account menu */
+      .account-wrap {
+        position: relative;
+      }
+      .account-btn {
+        cursor: pointer;
+        padding-left: 6px;
+      }
+      /* A seller signs in with the same account they shop with, so the header
+         is the only place that can say which they are. Without this the
+         button was just a first name, identical to a buyer's, with no hint
+         that a dashboard existed at all. */
+      .account-btn.is-seller {
+        background: rgba(38, 60, 49, .08);
+        border-color: rgba(38, 60, 49, .2);
+        color: var(--color-forest);
+      }
+      .account-btn.is-seller:hover {
+        background: rgba(38, 60, 49, .14);
+        border-color: rgba(38, 60, 49, .32);
+      }
+      .avatar {
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        flex: 0 0 26px;
+        border-radius: var(--radius-full);
+        background: var(--color-accent);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .account-btn.is-seller .avatar {
+        background: var(--color-forest);
+      }
+      .avatar.lg {
+        width: 38px;
+        height: 38px;
+        flex-basis: 38px;
+        font-size: 16px;
+      }
+      .role-chip {
+        border-radius: var(--radius-full);
+        background: var(--color-forest);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+        padding: 3px 7px;
+        line-height: 1;
+      }
+      .account-menu {
+        position: absolute;
+        top: calc(100% + 10px);
+        right: 0;
+        z-index: 60;
+        width: 268px;
+        max-width: calc(100vw - 24px);
+        padding: 8px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-raised);
+        box-shadow: var(--shadow-md);
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .account-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 8px 12px;
+        border-bottom: 1px solid var(--color-border);
+        margin-bottom: 6px;
+      }
+      .account-id {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+      }
+      .account-id strong {
+        font-size: 13.5px;
+        color: var(--color-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .account-email {
+        font-size: 11.5px;
+        color: var(--color-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .account-role {
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: var(--color-muted-2);
+      }
+      .account-role.seller {
+        color: var(--color-forest);
+      }
+      .account-section {
+        margin: 8px 0 3px;
+        padding-inline: 8px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+        color: var(--color-muted-2);
+      }
+      .account-menu a,
+      .account-menu .sign-out {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 9px 8px;
+        border: 0;
+        border-radius: var(--radius-sm);
+        background: none;
+        color: var(--color-text);
+        font: inherit;
+        font-size: 13.5px;
+        text-align: left;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .account-menu a:hover,
+      .account-menu .sign-out:hover {
+        background: var(--color-bg-hover);
+      }
+      .account-menu ui-icon {
+        color: var(--color-muted);
+        flex: 0 0 auto;
+      }
+      .account-menu .hint {
+        margin-left: auto;
+        font-size: 10.5px;
+        color: var(--color-muted-2);
+        white-space: nowrap;
+      }
+      .sign-out {
+        margin-top: 6px;
+        border-top: 1px solid var(--color-border) !important;
+        border-radius: 0 0 var(--radius-sm) var(--radius-sm) !important;
+        padding-top: 12px !important;
+        color: var(--color-accent) !important;
+      }
+      .sign-out ui-icon {
+        color: var(--color-accent) !important;
+      }
       .menu-wrap {
         position: relative;
       }
@@ -589,6 +814,14 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
           padding: 9px 11px;
           margin-left: 0;
         }
+        /* The name goes before the chip does. "Srey" is something a seller
+           already knows; that this account can reach a dashboard is the part
+           the header exists to tell them, and colour alone is too weak a cue
+           to carry it on its own. */
+        .account-btn {
+          padding-left: 6px;
+          padding-right: 8px;
+        }
         .nav-actions {
           gap: 2px;
         }
@@ -600,6 +833,17 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         .logo-mark { width: 32px; height: 32px; }
         .signin-label { display: none; }
         .signin-btn { padding-inline: 11px; margin-left: 0; }
+        /* Avatar + chip only. The chevron is the first thing to go: at this
+           width the whole row is 21px too wide for the viewport and it was
+           clipping the hamburger off the right edge, and a disclosure arrow
+           earns less than the word it sits next to. */
+        .account-btn {
+          gap: 5px;
+          padding-left: 5px;
+          padding-right: 8px;
+        }
+        .account-btn > ui-icon { display: none; }
+        .role-chip { font-size: 9.5px; padding: 3px 6px; }
         .wishlist-btn { display: none; }
         .menu-btn { width: 38px; }
       }
@@ -611,6 +855,7 @@ export class NavbarComponent implements AfterViewInit {
   private readonly cart = inject(CartService);
   private readonly wishlist = inject(WishlistService);
   private readonly auth = inject(AuthService);
+  private readonly sellers = inject(SellerService);
   private readonly flyToCart = inject(FlyToCartService);
 
   @ViewChild('cartBtn') private readonly cartBtn?: ElementRef<HTMLElement>;
@@ -621,7 +866,18 @@ export class NavbarComponent implements AfterViewInit {
   protected readonly scrolled = signal(false);
   protected readonly hidden = signal(false);
   protected readonly langMenuOpen = signal(false);
+  protected readonly accountOpen = signal(false);
   protected readonly language = signal<'en' | 'km'>('en');
+
+  /**
+   * The signed-in seller's own store, used for the "View my store" link so
+   * they can see the public storefront a shopper sees. Loaded once, lazily,
+   * the first time the menu is opened by a seller — putting it in the
+   * constructor would fire a seller-only request for every anonymous visitor
+   * who ever loads the header.
+   */
+  protected readonly myStore = signal<SellerStore | null>(null);
+  private myStoreRequested = false;
 
   protected readonly cartCount = this.cart.count;
   protected readonly wishlistCount = this.wishlist.count;
@@ -659,6 +915,7 @@ export class NavbarComponent implements AfterViewInit {
         this.url.set(event.urlAfterRedirects);
         this.menuOpen.set(false);
         this.searchOpen.set(false);
+        this.accountOpen.set(false);
       });
 
     // Resolve the session once so the header can show a profile link instead
@@ -715,6 +972,39 @@ export class NavbarComponent implements AfterViewInit {
     return name.split(' ')[0];
   }
 
+  protected initial(name: string): string {
+    return (name.trim()[0] ?? '?').toUpperCase();
+  }
+
+  protected toggleAccount(): void {
+    const opening = !this.accountOpen();
+    this.accountOpen.set(opening);
+    if (opening) {
+      this.menuOpen.set(false);
+      this.langMenuOpen.set(false);
+      this.loadMyStore();
+    }
+  }
+
+  /** First open only; a seller's store does not change while they browse. */
+  private loadMyStore(): void {
+    if (!this.isSeller() || this.myStoreRequested) return;
+    this.myStoreRequested = true;
+    this.sellers.getMyStores().subscribe({
+      next: (stores) => this.myStore.set(stores[0] ?? null),
+      // A missing store is not an error worth surfacing in the header: the
+      // link simply does not render, and the dashboard still gets them there.
+      error: () => this.myStore.set(null),
+    });
+  }
+
+  protected signOut(): void {
+    this.accountOpen.set(false);
+    this.myStore.set(null);
+    this.myStoreRequested = false;
+    this.auth.logout().subscribe(() => void this.router.navigateByUrl('/'));
+  }
+
   /** No translation system yet — this just remembers the choice for the badge. */
   protected selectLanguage(lang: 'en' | 'km'): void {
     this.language.set(lang);
@@ -746,6 +1036,14 @@ export class NavbarComponent implements AfterViewInit {
 
   @HostListener('document:click')
   onDocumentClick() {
+    this.langMenuOpen.set(false);
+    this.menuOpen.set(false);
+    this.accountOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape() {
+    this.accountOpen.set(false);
     this.langMenuOpen.set(false);
     this.menuOpen.set(false);
   }

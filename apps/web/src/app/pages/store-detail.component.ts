@@ -2,6 +2,8 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
+import { SellerService } from '../core/api/seller.service';
+import { AuthService } from '../core/auth/auth.service';
 import { CatalogService } from '../core/catalog/catalog.service';
 import { Product, ProductSort } from '../core/catalog/catalog.models';
 import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
@@ -53,6 +55,18 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
       </section>
     } @else if (store(); as s) {
       <main class="store-theme" [class.theme-clay]="s.theme === 'CLAY'" [class.theme-gold]="s.theme === 'GOLD'" [class.theme-midnight]="s.theme === 'MIDNIGHT'">
+        <!-- A seller browsing their own storefront saw exactly what a shopper
+             saw, with no way back to the dashboard and no sign of which of the
+             two they were looking at. -->
+        @if (isOwnStore()) {
+          <div class="owner-bar">
+            <span class="owner-tag"><ui-icon name="store" [size]="13" /> Your store</span>
+            <span class="owner-copy">This is how shoppers see it.</span>
+            <a class="owner-action" routerLink="/seller/dashboard">
+              Edit in dashboard <ui-icon name="arrow-right" [size]="14" />
+            </a>
+          </div>
+        }
         @if (s.announcement) {
           <div class="store-announcement"><ui-icon name="sparkles" [size]="14" /> {{ s.announcement }}</div>
         }
@@ -209,6 +223,12 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
     .store-theme.theme-clay { --store-accent: #963827; --store-soft: #f6e9e4; }
     .store-theme.theme-gold { --store-accent: #9a691b; --store-soft: #f7efdc; }
     .store-theme.theme-midnight { --store-accent: #263750; --store-soft: #e8edf4; }
+    .owner-bar { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 12px; padding: 9px 18px; background: var(--color-forest); color: #fff; font-size: 12.5px; }
+    .owner-tag { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: var(--radius-full); background: rgba(255, 255, 255, .16); font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .owner-copy { color: rgba(255, 255, 255, .82); }
+    .owner-action { display: inline-flex; align-items: center; gap: 6px; color: #fff; font-weight: 700; text-decoration: none; border-bottom: 1px solid rgba(255, 255, 255, .5); }
+    .owner-action:hover { border-bottom-color: #fff; }
+    @media (max-width: 560px) { .owner-bar { font-size: 11.5px; padding: 8px 14px; } .owner-copy { display: none; } }
     .store-announcement { min-height: 34px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 7px 18px; color: #fff; background: var(--store-accent); font-size: 11px; font-weight: 750; letter-spacing: .02em; text-align: center; }
     .crumbs { display: flex; gap: 7px; margin-bottom: 9px; color: var(--color-muted); font-size: 10.5px; }
     .crumbs a:hover { color: var(--color-accent); }
@@ -328,6 +348,8 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
 export class StoreDetailComponent {
   private readonly route = inject(ActivatedRoute);
   protected readonly catalog = inject(CatalogService);
+  private readonly auth = inject(AuthService);
+  private readonly sellers = inject(SellerService);
   protected readonly activeCategory = signal<string | null>(null);
   protected readonly activeSection = signal<'products' | 'about' | 'reviews'>('products');
   private readonly storeId = toSignal(this.route.paramMap.pipe(map((params) => params.get('id') ?? '')), { initialValue: this.route.snapshot.paramMap.get('id') ?? '' });
@@ -373,7 +395,33 @@ export class StoreDetailComponent {
   });
   private lastRequestedStoreId = '';
 
+  /**
+   * Whether the visitor owns the store they are looking at.
+   *
+   * Presentation only — it reveals nothing a shopper cannot already see, and
+   * every action it offers is re-checked against the authenticated seller on
+   * the server (findOwnedStore). Resolved from the seller's own store list
+   * rather than any id in the URL, so a crafted link cannot fake ownership.
+   */
+  protected readonly isOwnStore = computed(() => {
+    const storeId = this.store()?.id;
+    return Boolean(storeId && this.ownedStoreIds().includes(storeId));
+  });
+  private readonly ownedStoreIds = signal<string[]>([]);
+
   constructor() {
+    // Only sellers have stores to own, so anonymous and buyer visitors never
+    // pay for this request.
+    effect(() => {
+      const role = this.auth.user()?.role;
+      if ((role !== 'SELLER' && role !== 'ADMIN') || this.ownedStoresRequested) return;
+      this.ownedStoresRequested = true;
+      this.sellers.getMyStores().subscribe({
+        next: (stores) => this.ownedStoreIds.set(stores.map((store) => store.id)),
+        error: () => this.ownedStoreIds.set([]),
+      });
+    });
+
     effect(() => {
       const storeId = this.store()?.id ?? '';
       if (!storeId || storeId === this.lastRequestedStoreId) return;
@@ -389,6 +437,8 @@ export class StoreDetailComponent {
       });
     });
   }
+  private ownedStoresRequested = false;
+
   protected countCategory(category: string): number { return this.products().filter((product) => product.categoryName === category).length; }
   protected setSort(event: Event): void {
     this.sort.set((event.target as HTMLSelectElement).value as ProductSort);
