@@ -1,4 +1,13 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CatalogService } from '../core/catalog/catalog.service';
@@ -7,7 +16,7 @@ import { FooterComponent } from '../components/shared/layout/footer/footer.compo
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
 import { ProductRailComponent } from '../components/user/catalog/product-rail/product-rail.component';
 import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-slider.component';
-import { PromoImageMarqueeComponent } from '../components/user/home/promo-image-marquee/promo-image-marquee.component';
+import { ProductCardComponent } from '../components/user/catalog/product-card/product-card.component';
 import { Product } from '../core/catalog/catalog.models';
 
 interface CategoryShelf {
@@ -21,12 +30,11 @@ interface CategoryShelf {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavbarComponent, FooterComponent, IconComponent, ProductRailComponent, HeroSliderComponent, PromoImageMarqueeComponent],
+  imports: [CommonModule, RouterLink, NavbarComponent, FooterComponent, IconComponent, ProductRailComponent, ProductCardComponent, HeroSliderComponent],
   template: `
   <app-navbar></app-navbar>
 
   <app-hero-slider />
-  <app-promo-image-marquee />
 
   @if (catalog.productError()) {
     <section class="container catalog-notice" role="alert">
@@ -46,8 +54,12 @@ interface CategoryShelf {
       <h2>Browse by category</h2>
       <a routerLink="/categories" class="see-all">View all <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
     </div>
-    <div class="category-strip" [class.showing-popular]="showPopularCategories()">
-      @if (!showPopularCategories()) {
+    <div
+      class="category-rail"
+      [class.more-left]="railMoreLeft()"
+      [class.more-right]="railMoreRight()"
+    >
+      <div class="category-strip" #catRail (scroll)="onRailScroll()">
         @for (c of categories(); track c.slug) {
           <a
             class="category-poster"
@@ -55,33 +67,30 @@ interface CategoryShelf {
             [routerLink]="['/categories', c.slug]"
             [attr.aria-label]="c.name"
           >
-            @if (categoryPosterImage(c.slug); as image) {
-              <img [src]="image" [alt]="c.name" loading="lazy" />
-            } @else {
-              <div class="cat-icon"><ui-icon [name]="c.icon" [size]="26" [strokeWidth]="1.6"></ui-icon></div>
-            }
+            <span class="cat-visual">
+              <span class="cat-copy">
+                <span class="cat-name">{{ c.name }}</span>
+                <span class="cat-go"><ui-icon name="arrow-right" [size]="15"></ui-icon></span>
+              </span>
+              <span class="cat-art">
+                @if (categoryPosterImage(c.slug); as image) {
+                  <img [src]="image" alt="" loading="lazy" (error)="categoryPosterFailed(c.slug)" />
+                } @else {
+                  <ui-icon [name]="c.icon" [size]="46" [strokeWidth]="1.2"></ui-icon>
+                }
+              </span>
+            </span>
           </a>
         }
-      } @else {
-        @for (c of popularCategories; track c.label) {
-          <a class="category-pill popular-category" routerLink="/products" [queryParams]="{ search: c.search }">
-            <div class="cat-icon"><ui-icon [name]="c.icon" [size]="20" [strokeWidth]="1.6"></ui-icon></div>
-            <span>{{ c.label }}</span>
-          </a>
-        }
-      }
-      <button type="button" class="category-pill more" (click)="showPopularCategories.update(value => !value)">
-        <div class="cat-icon"><ui-icon [name]="showPopularCategories() ? 'arrow-left' : 'arrow-right'" [size]="18"></ui-icon></div>
-        <span>{{ showPopularCategories() ? 'Main categories' : 'More categories' }}</span>
-      </button>
+      </div>
     </div>
   </section>
 
   <section class="container section" aria-label="Seller offers">
     @if (dealCategories().length) {
       <div class="section-head">
-        <h2>Shop by category</h2>
-        <a routerLink="/products" class="see-all">See all products <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
+        <h2>Best deals</h2>
+        <a routerLink="/products" [queryParams]="{ sale: '1' }" class="see-all">Shop all deals <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
       </div>
       <div class="deals-strip">
         @for (deal of dealCategories(); track deal.category.slug) {
@@ -92,9 +101,22 @@ interface CategoryShelf {
             [queryParams]="deal.hasDeal ? { category: deal.category.slug, sale: '1' } : { category: deal.category.slug }"
           >
             <div class="deal-poster-inner">
-              @if (deal.hasDeal) {
-                <span class="deal-badge">On sale</span>
+              @if (categoryPosterImage(deal.category.slug); as image) {
+                <img
+                  class="deal-photo"
+                  [src]="image"
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  (error)="categoryPosterFailed(deal.category.slug)"
+                />
               }
+              <div class="deal-top">
+                <span class="deal-icon"><ui-icon [name]="deal.category.icon" [size]="15"></ui-icon></span>
+                @if (deal.hasDeal) {
+                  <span class="deal-badge">On sale</span>
+                }
+              </div>
               <span class="deal-name">{{ deal.category.name }}</span>
               <span class="deal-count">
                 {{ deal.storeCount }} store{{ deal.storeCount === 1 ? '' : 's' }} ·
@@ -114,24 +136,64 @@ interface CategoryShelf {
     }
   </section>
 
-  <section class="container section">
-    <app-product-rail
-      title="Best sellers"
-      badge="Best seller"
-      [products]="bestSellers()"
-      linkRoute="/products"
-      [linkParams]="{ sort: 'featured' }"
-    />
-  </section>
+  <section class="container section discover">
+    <header class="discover-head">
+      <span class="discover-eyebrow">Every store, every shelf</span>
+      <h2>The whole marketplace</h2>
+      <p>{{ catalog.allProducts().length }} products from {{ discoverStoreCount() }} Cambodian sellers - filter by department, then narrow it down.</p>
+    </header>
 
-  <section class="container section">
-    <app-product-rail
-      title="New arrivals"
-      badge="New"
-      [products]="newArrivals()"
-      linkRoute="/products"
-      [linkParams]="{ sort: 'newest' }"
-    />
+    <div class="discover-filters" role="group" aria-label="Filter by department">
+      <button
+        type="button"
+        class="chip"
+        [class.active]="discoverCategory() === 'all'"
+        (click)="selectDiscoverCategory('all')"
+      >All <span>{{ catalog.allProducts().length }}</span></button>
+      @for (c of discoverCategories(); track c.slug) {
+        <button
+          type="button"
+          class="chip"
+          [class.active]="discoverCategory() === c.slug"
+          (click)="selectDiscoverCategory(c.slug)"
+        >{{ c.name }} <span>{{ c.count }}</span></button>
+      }
+    </div>
+
+    @if (discoverSubcategories().length) {
+      <div class="discover-filters subs" role="group" aria-label="Filter by sub-category">
+        <button
+          type="button"
+          class="chip sub"
+          [class.active]="discoverSubcategory() === 'all'"
+          (click)="discoverSubcategory.set('all')"
+        >All of {{ discoverCategoryName() }}</button>
+        @for (sc of discoverSubcategories(); track sc.name) {
+          <button
+            type="button"
+            class="chip sub"
+            [class.active]="discoverSubcategory() === sc.name"
+            (click)="discoverSubcategory.set(sc.name)"
+          >{{ sc.name }} <span>{{ sc.count }}</span></button>
+        }
+      </div>
+    }
+
+    @if (discoverProducts().length) {
+      <div class="discover-grid">
+        @for (product of discoverProducts(); track product.id) {
+          <app-product-card [product]="product" />
+        }
+      </div>
+      <div class="discover-more">
+        <a class="more-btn" routerLink="/products">More products <ui-icon name="arrow-right" [size]="14" /></a>
+        <a class="more-hint" routerLink="/products">
+          Open the full catalogue - {{ catalog.allProducts().length }} products from {{ discoverStoreCount() }} stores
+        </a>
+      </div>
+    } @else {
+      <p class="discover-empty">Nothing in this department yet.</p>
+    }
   </section>
 
   <section class="container section">
@@ -201,6 +263,7 @@ interface CategoryShelf {
               </nav>
             }
           </div>
+          @if (shelf.products.length) {
           <app-product-rail
             [title]="shelf.name"
             [products]="shelf.products"
@@ -208,6 +271,18 @@ interface CategoryShelf {
             [linkParams]="{ category: shelf.slug }"
             linkLabel="Shop department"
           />
+          } @else {
+            <a class="department-preview" [routerLink]="['/categories', shelf.slug]">
+              <div class="department-preview-copy">
+                <h3>{{ shelf.name }}</h3>
+                <p>{{ shelf.description }}</p>
+                <span class="department-preview-cta">Explore department <ui-icon name="arrow-right" [size]="16" /></span>
+              </div>
+              @if (categoryPosterImage(shelf.slug); as image) {
+                <img [src]="image" alt="" loading="lazy" (error)="categoryPosterFailed(shelf.slug)" />
+              }
+            </a>
+          }
         </div>
       }
     </section>
@@ -296,11 +371,17 @@ interface CategoryShelf {
     .see-all { color: var(--color-text-secondary); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
     .see-all:hover { color: var(--color-accent); }
 
-    .category-strip { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; }
+    /* Fixed tile size, not a fraction of the row — a fraction-based grid
+       still stretches each tile wider on a wide screen even with lots of
+       columns, since empty trailing tracks are invisible but still 1fr wide.
+       auto-fill with a fixed track size means the tile is exactly this size
+       on every screen; a wide screen just fits more per row, it never grows
+       the tiles themselves. */
     .category-pill {
-      border: 1px solid var(--color-border); border-radius: 12px; padding: 12px 7px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 5px; background: #fff;
-      min-height: 88px;
+      border: 1px solid var(--color-border); border-radius: 8px; padding: 5px 3px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2px; background: #fff;
+      width: 104px;
+      min-height: 50px;
       transition: all var(--dur-base) var(--ease-standard);
       color: inherit;
       cursor: pointer;
@@ -315,23 +396,211 @@ interface CategoryShelf {
     .category-pill[data-category="kids-family"] { background: #f5f1fa; }
     .category-pill { transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
     .category-pill:hover { border-color: var(--color-accent); box-shadow: var(--shadow-sm); transform: translateY(-2px); }
-    .category-poster {
-      display: block; position: relative; overflow: hidden; border-radius: 12px;
-      aspect-ratio: 4 / 3.15; background: var(--color-muted, #f1ede4);
-      border: 1px solid var(--color-border); cursor: pointer;
-      transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+    /* width + min-width:0 are both needed: without them the aspect-ratio
+       gives this a min-content width that overflows its (small) grid track,
+       so the tile renders far wider than the track it sits in. */
+    /* A horizontal rail. Cards keep a landscape ratio at a fixed width, so how
+       many you see is just a function of viewport - no breakpoint juggling. */
+    /* ---------------------------------------------------------- discover
+       The one catalogue section, given more weight than a normal shelf so it
+       reads as the centre of the page rather than another rail. */
+    .discover { padding-top: clamp(40px, 5vw, 72px); }
+    .discover-head { max-width: 720px; }
+    .discover-eyebrow {
+      color: var(--color-accent, #8e3021);
+      display: inline-block;
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
     }
-    .category-poster:hover { border-color: var(--color-accent); box-shadow: var(--shadow-sm); transform: translateY(-2px); }
-    .category-poster img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 220ms ease; }
-    .category-poster:hover img { transform: scale(1.04); }
-    .category-poster[data-category="fashion"] { background: #fff3ed; }
-    .category-poster[data-category="food-groceries"] { background: #f1f7ef; }
-    .category-poster[data-category="home-living"] { background: #faf3e9; }
-    .category-poster[data-category="arts-culture"] { background: #fff8e9; }
-    .category-poster[data-category="beauty-wellness"] { background: #fcf1f3; }
-    .category-poster[data-category="electronics"] { background: #eff5fa; }
-    .category-poster[data-category="kids-family"] { background: #f5f1fa; }
-    .category-poster .cat-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--color-accent); }
+    .discover-head h2 {
+      font-size: clamp(34px, 4.4vw, 60px);
+      letter-spacing: -.025em;
+      line-height: 1.02;
+      margin-top: 12px;
+    }
+    .discover-head h2::after {
+      background: var(--color-accent, #8e3021);
+      border-radius: 2px;
+      content: '';
+      display: block;
+      height: 3px;
+      margin-top: 18px;
+      width: 68px;
+    }
+    .discover-head p {
+      color: var(--color-text-secondary, #6b5f52);
+      font-size: 14.5px;
+      line-height: 1.6;
+      margin-top: 16px;
+    }
+
+    .discover-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 26px;
+    }
+    .discover-filters.subs { margin-top: 12px; }
+    .discover-filters .chip {
+      background: var(--color-surface, #fff);
+      border: 1px solid var(--color-border, #e6ddd1);
+      border-radius: 999px;
+      color: var(--color-text, #2b2118);
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 650;
+      padding: 9px 16px;
+      transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+    }
+    .discover-filters .chip span {
+      color: var(--color-text-muted, #9b8f80);
+      font-size: 11.5px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+    .discover-filters .chip:hover { border-color: var(--color-accent, #8e3021); }
+    .discover-filters .chip.active {
+      background: var(--color-accent, #8e3021);
+      border-color: var(--color-accent, #8e3021);
+      color: #fff;
+    }
+    .discover-filters .chip.active span { color: rgba(255, 255, 255, .72); }
+    .discover-filters .chip.sub { font-size: 12.5px; padding: 7px 14px; }
+
+    .discover-grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+      margin-top: 28px;
+    }
+    .discover-more {
+      align-items: center;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 30px;
+    }
+    /* A quiet second way through to the same page - there for anyone who wants
+       the whole catalogue rather than the next slice, without competing with
+       the button above it. */
+    .more-hint {
+      color: var(--color-text, #2b2118);
+      font-size: 12.5px;
+      opacity: .42;
+      text-decoration: none;
+      transition: opacity 160ms ease;
+    }
+    .more-hint:hover { opacity: .85; text-decoration: underline; text-underline-offset: 3px; }
+    .discover-more .more-btn {
+      align-items: center;
+      background: var(--color-accent, #8e3021);
+      border: 1px solid var(--color-accent, #8e3021);
+      border-radius: 999px;
+      color: #fff;
+      display: inline-flex;
+      font-size: 14px;
+      font-weight: 700;
+      gap: 9px;
+      padding: 13px 30px;
+      text-decoration: none;
+      transition: opacity 150ms ease;
+    }
+    .discover-more .more-btn:hover { opacity: .88; }
+    .discover-empty { color: var(--color-text-muted, #9b8f80); margin-top: 28px; }
+
+    @media (max-width: 640px) {
+      .discover-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    }
+
+    .category-rail { position: relative; margin-top: 6px; }
+    .category-section { padding-top: 34px !important; }
+    .category-section .section-head { margin-bottom: 14px; }
+
+    /* Edge fades, shown only when there is more to scroll to, so the rail reads
+       as "keep going" rather than always looking clipped. */
+    .category-rail::before,
+    .category-rail::after {
+      content: ''; position: absolute; top: 0; bottom: 0; width: clamp(44px, 7vw, 92px);
+      pointer-events: none; z-index: 3; opacity: 0; transition: opacity 260ms ease;
+    }
+    .category-rail::before {
+      left: -1px;
+      background: linear-gradient(to right, var(--color-bg) 10%, rgba(255, 253, 248, 0));
+    }
+    .category-rail::after {
+      right: -1px;
+      background: linear-gradient(to left, var(--color-bg) 10%, rgba(255, 253, 248, 0));
+    }
+    .category-rail.more-left::before,
+    .category-rail.more-right::after { opacity: 1; }
+
+    .category-strip {
+      display: flex;
+      gap: clamp(12px, 1.2vw, 18px);
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .category-strip::-webkit-scrollbar { display: none; }
+
+    .category-poster {
+      display: block;
+      flex: 0 0 clamp(200px, 21vw, 252px);
+      scroll-snap-align: start;
+      min-width: 0; padding: 0; border: 0; background: none;
+      cursor: pointer; color: inherit; font-family: inherit; text-align: left;
+    }
+    .category-poster .cat-visual {
+      position: relative; display: block; overflow: hidden;
+      width: 100%; aspect-ratio: 2.15 / 1; border-radius: 16px;
+      background: var(--color-muted, #f1ede4);
+      transition: transform 200ms ease, box-shadow 200ms ease;
+    }
+    .category-poster:hover .cat-visual {
+      box-shadow: 0 10px 24px -12px rgba(60, 40, 20, .45); transform: translateY(-3px);
+    }
+    .cat-copy {
+      position: absolute; inset: 0; z-index: 2;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 13px 15px;
+    }
+    .cat-name {
+      font-size: 14px; font-weight: 700; line-height: 1.3; color: #3d2b1a; max-width: 62%;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .cat-go {
+      display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(255, 255, 255, .6); color: #3d2b1a;
+      transition: background 180ms ease, transform 180ms ease;
+    }
+    .cat-go ui-icon { transform: rotate(-45deg); }
+    .category-poster:hover .cat-go { background: #fff; transform: translateX(2px); }
+    /* Transparent product photography sits over each category’s tinted card. */
+    .cat-art {
+      position: absolute; top: 0; right: 0; bottom: 0; width: 46%;
+      display: grid; place-items: center; z-index: 1;
+    }
+    .cat-art img { width: 100%; height: 100%; object-fit: contain; display: block; transition: transform 220ms ease; }
+    .cat-art ui-icon { color: #3d2b1a; opacity: .22; transform: scale(1.4); }
+    .category-poster:hover .cat-art img { transform: scale(1.04); }
+
+    @media (max-width: 640px) {
+      .category-poster { flex: 0 0 74%; }
+      .cat-name { font-size: 15px; }
+    }
+
+    .category-poster[data-category="food-groceries"] .cat-visual { background: linear-gradient(115deg, #e8f3e2, #c7e3ba); }
+    .category-poster[data-category="home-living"] .cat-visual { background: linear-gradient(115deg, #faf0dd, #eed8b2); }
+    .category-poster[data-category="arts-culture"] .cat-visual { background: linear-gradient(115deg, #fff4d9, #ffdf9e); }
+    .category-poster[data-category="fashion"] .cat-visual { background: linear-gradient(115deg, #ffeae0, #ffcab1); }
+    .category-poster[data-category="beauty-wellness"] .cat-visual { background: linear-gradient(115deg, #fdeaef, #f9c0d0); }
+    .category-poster[data-category="electronics"] .cat-visual { background: linear-gradient(115deg, #e9f1fa, #c3daf0); }
+    .category-poster[data-category="kids-family"] .cat-visual { background: linear-gradient(115deg, #f1ebfa, #d6c5ef); }
     .offers-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 16px 20px; border: 1px solid #e8ded2; border-radius: 12px; background: #fcf0e8; }
     .offers-strip strong { color: var(--color-accent); font-size: 14px; }
     .offers-strip p { margin: 4px 0 0; color: var(--color-text-secondary); font-size: 12px; }
@@ -351,6 +620,28 @@ interface CategoryShelf {
       display: flex; flex-direction: column; justify-content: flex-end; gap: 4px;
       padding: 13px; color: #fff;
     }
+    /* The category illustration sits behind the label. The flat colour below
+       stays as the fallback: it is what shows while the image loads, and what
+       remains if it 404s (see categoryPosterFailed). */
+    .deal-photo {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; z-index: 0;
+    }
+    /* White text over an arbitrary photo is a coin flip, so darken the bottom
+       where the name and count sit. Weighted to the bottom so the artwork
+       itself stays bright in the upper half. */
+    .deal-poster-inner::after {
+      content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: linear-gradient(
+        to top,
+        rgba(0, 0, 0, .74) 0%,
+        rgba(0, 0, 0, .52) 30%,
+        rgba(0, 0, 0, .12) 58%,
+        rgba(0, 0, 0, .22) 100%
+      );
+    }
+    .deal-top, .deal-name, .deal-count, .deal-arrow { position: relative; z-index: 2; }
+    .deal-arrow, .deal-top { position: absolute; }
     .deal-poster[data-category="fashion"] .deal-poster-inner { background: #c14e6b; }
     .deal-poster[data-category="food-groceries"] .deal-poster-inner { background: #34664f; }
     .deal-poster[data-category="home-living"] .deal-poster-inner { background: #ba7d3e; }
@@ -358,8 +649,16 @@ interface CategoryShelf {
     .deal-poster[data-category="electronics"] .deal-poster-inner { background: #446789; }
     .deal-poster[data-category="kids-family"] .deal-poster-inner { background: #7c62b0; }
     .deal-poster[data-category="arts-culture"] .deal-poster-inner { background: #b1852a; }
+    .deal-top {
+      position: absolute; top: 10px; left: 10px; right: 40px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .deal-icon {
+      flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(255,255,255,.22); display: flex; align-items: center; justify-content: center;
+    }
     .deal-badge {
-      position: absolute; top: 10px; left: 10px; padding: 3px 7px; border-radius: 5px;
+      padding: 3px 7px; border-radius: 5px;
       background: rgba(255,255,255,.92); color: #28231f; font-size: 8.5px; font-weight: 800;
       letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-body);
     }
@@ -377,11 +676,9 @@ interface CategoryShelf {
     .see-all ui-icon { transition: transform 180ms ease; }
     .see-all:hover { text-decoration: underline; text-underline-offset: 4px; }
     .see-all:hover ui-icon { transform: translateX(3px); }
-    .category-pill.more { background: var(--color-accent); color: #fff; justify-content: center; }
-    .popular-category { animation: category-in 220ms ease both; }
+    /* Matches the landscape category cards beside it so the row stays even. */
     @keyframes category-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
     .cat-icon { color: var(--color-accent); }
-    .category-pill.more .cat-icon { color: #fff; }
     .category-pill span { font-size: 11px; font-weight: 650; line-height: 1.25; }
     .category-pill small { display: none; }
 
@@ -395,6 +692,14 @@ interface CategoryShelf {
     .marketplace-eyebrow { color: var(--color-accent); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     .marketplace-heading h2 { font-size: clamp(26px, 2.4vw, 36px); margin-top: 5px; }
     .category-shelf { padding: 23px 0 15px; }
+    .department-preview { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: clamp(18px, 3vw, 32px); border-radius: 16px; background: var(--color-accent-soft); color: var(--color-text); }
+    .department-preview-copy { min-width: 0; }
+    .department-preview h3 { font-size: clamp(20px, 2vw, 28px); }
+    .department-preview p { margin: 8px 0 16px; color: var(--color-text-secondary); line-height: 1.5; }
+    .department-preview-cta { display: inline-flex; align-items: center; gap: 8px; color: var(--color-accent); font-weight: 600; }
+    .department-preview img { width: clamp(88px, 20vw, 180px); height: clamp(88px, 20vw, 180px); object-fit: contain; flex: 0 0 auto; }
+    .department-preview:hover .department-preview-cta { text-decoration: underline; }
+    .department-preview:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; }
     .category-shelf + .category-shelf { border-top: 1px solid var(--color-border); }
     .shelf-context { align-items: center; display: flex; gap: 16px; justify-content: flex-end; margin-bottom: 7px; }
     .subcategory-links { display: flex; gap: 7px; max-width: 62%; overflow-x: auto; padding: 2px 1px 5px; scrollbar-width: none; }
@@ -515,7 +820,6 @@ interface CategoryShelf {
 
     @media (max-width: 980px) {
       .hero-inner { grid-template-columns: 1fr; }
-      .category-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .confidence-grid { grid-template-columns: 1fr 1fr; gap: 16px 0; }
       .confidence-item:nth-child(2) { border-right: 0; }
       .confidence-item:nth-child(3) { padding-left: 0; }
@@ -530,10 +834,6 @@ interface CategoryShelf {
       .section { padding: 14px 16px; }
       .catalog-notice { align-items: flex-start; margin-inline: 16px; padding: 13px; }
       .catalog-notice button { flex: 0 0 auto; }
-      .category-strip { display: flex; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
-      .category-strip::-webkit-scrollbar { display: none; }
-      .category-pill { flex: 0 0 112px; }
-      .category-poster { flex: 0 0 112px; }
       .fashion-intro { align-items: flex-start; flex-direction: column; gap: 4px; }
       .marketplace-explorer { padding-top: 20px; }
       .marketplace-heading { padding-bottom: 13px; }
@@ -551,9 +851,13 @@ interface CategoryShelf {
       .collections-head { align-items: center; }
       .collections-grid { display: flex; gap: 12px; grid-template-columns: none; height: auto; overflow-x: auto; padding-bottom: 4px; scroll-padding-left: 16px; scroll-snap-type: x mandatory; scrollbar-width: none; }
       .collections-grid::-webkit-scrollbar { display: none; }
-      .hero-tile, .split-tile { flex: 0 0 82%; scroll-snap-align: start; }
-      .hero-tile { grid-row: auto; height: 300px; }
-      .split-tile { flex-direction: column; height: 300px; }
+      .hero-tile, .split-tile { flex: 0 0 68%; scroll-snap-align: start; }
+      .hero-tile { grid-row: auto; height: 230px; }
+      .split-tile { flex-direction: column; height: 230px; }
+
+      /* The 300px marquee chip is more than three-quarters of a phone screen
+         width for a single store — shrink it so more than one is ever visible. */
+      .store-chip { flex-basis: 210px; max-width: 210px; min-width: 210px; width: 210px; }
       .split-copy, .split-image { flex: 1 1 50%; }
       .split-copy p, .tile-content p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
       .split-tile.peach .split-image::before { background: linear-gradient(0deg, #f7ece0 0%, rgba(247, 236, 224, 0) 35%); }
@@ -564,22 +868,22 @@ interface CategoryShelf {
 export class HomeComponent {
   protected readonly catalog = inject(CatalogService);
 
-  // Everything below is derived from CatalogService, so the homepage shows the
-  // same catalog as the products page instead of its own hardcoded copy.
-  //
-  // The tiles are in stock order, not the fixture's fixed list order — an
-  // empty department (Fashion & Accessories has 0 live products right now)
-  // has no business leading the row a shopper sees first. Ties keep the
-  // fixture's original relative order rather than reshuffling alphabetically.
-  readonly categories = computed(() => {
-    const withCounts = this.catalog.categories.map((category, index) => ({
-      category,
-      index,
-      count: this.catalog.countByCategory(category.slug),
-    }));
-    withCounts.sort((a, b) => b.count - a.count || a.index - b.index);
-    return withCounts.map((entry) => entry.category);
-  });
+  constructor() {
+    // Categories arrive asynchronously, so the rail's scroll width is not known
+    // at construction. Re-measure once the list lands (after the DOM has caught
+    // up), and again whenever the viewport changes how many cards fit.
+    effect(() => {
+      this.categories();
+      setTimeout(() => this.syncRail());
+    });
+
+    const onResize = () => this.syncRail();
+    window.addEventListener('resize', onResize, { passive: true });
+    inject(DestroyRef).onDestroy(() => window.removeEventListener('resize', onResize));
+  }
+
+  // Keep the home tiles in the same canonical order as the navigation menu.
+  readonly categories = computed(() => this.catalog.categories);
   readonly stores = computed(() => this.catalog.allStores());
 
   /**
@@ -605,41 +909,134 @@ export class HomeComponent {
       .sort((a, b) => b.productCount - a.productCount);
   });
 
-  /**
-   * A real photo to stand in for the category, not a fabricated banner —
-   * whichever in-stock product in it ranks highest by the same discovery
-   * scoring the department shelves use. Null only if the category has no
-   * product with a real image yet.
-   */
-  protected categoryPosterImage(slug: string): string | null {
-    const ranked = this.catalog
-      .allProducts()
-      .filter((product) => product.categorySlug === slug && product.image)
-      .sort((a, b) => this.discoveryScore(b) - this.discoveryScore(a));
-    return ranked[0]?.image ?? null;
-  }
-  readonly showPopularCategories = signal(false);
+  private readonly categoryIllustrations = new Set([
+    'food-groceries', 'home-living', 'arts-culture', 'fashion',
+    'beauty-wellness', 'electronics', 'kids-family',
+  ]);
+  private readonly failedCategoryIllustrations = signal<ReadonlySet<string>>(new Set());
 
-  readonly popularCategories = [
-    { label: 'Home Decoration', search: 'home decoration', icon: 'home' },
-    { label: 'Daily Supplements', search: 'daily supplements', icon: 'heart' },
-    { label: 'Natural Skincare', search: 'natural skincare', icon: 'sparkles' },
-    { label: 'Snacks & Dried Fruit', search: 'snacks dried fruit', icon: 'leaf' },
-    { label: 'Gifts Under $20', search: 'gifts under 20', icon: 'gift' },
-    { label: 'Kitchen Essentials', search: 'kitchen essentials', icon: 'store' },
-    { label: 'Traditional Textiles', search: 'traditional textiles', icon: 'tag' },
-  ];
+  protected categoryPosterImage(slug: string): string | null {
+    return this.categoryIllustrations.has(slug) && !this.failedCategoryIllustrations().has(slug)
+      ? `/categories/${slug}.png`
+      : null;
+  }
+
+  protected categoryPosterFailed(slug: string): void {
+    this.failedCategoryIllustrations.update(slugs => new Set([...slugs, slug]));
+  }
+  // ---------------------------------------------------------------- category rail
+  private readonly railEl = viewChild<ElementRef<HTMLElement>>('catRail');
+
+  /** Whether content is scrolled off each edge, so the fades only show when
+   *  there is actually more to reach. */
+  protected readonly railMoreLeft = signal(false);
+  protected readonly railMoreRight = signal(false);
+
+  protected onRailScroll(): void {
+    this.syncRail();
+  }
+
+  private syncRail(): void {
+    const el = this.railEl()?.nativeElement;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    this.railMoreLeft.set(el.scrollLeft > 4);
+    this.railMoreRight.set(max > 4 && el.scrollLeft < max - 4);
+  }
+
 
   // Computed, not plain fields: the catalog arrives from the API after this
   // component is constructed, so a snapshot taken here would stay empty.
   // Rails scroll horizontally, so they take more than a grid row would.
-  readonly bestSellers = computed(() => this.catalog.bestSellers(8));
-  readonly newArrivals = computed(() => this.catalog.newArrivals(8));
-  readonly fashionEdit = computed(() => {
-    const fashionTerms = /fashion|clothing|scarf|krama|wear|jewelry|accessor|bag|hairpin|earring|necklace|bracelet|wallet|belt|shoe/i;
+  // ------------------------------------------------------------- discover
+  // One section in place of separate Best sellers / New arrivals rails: the
+  // whole catalogue, filtered by department and then sub-category, ranked by
+  // the same discovery score the shelves use.
+  readonly discoverCategory = signal<string>('all');
+  readonly discoverSubcategory = signal<string>('all');
+
+  protected selectDiscoverCategory(slug: string): void {
+    this.discoverCategory.set(slug);
+    this.discoverSubcategory.set('all');
+  }
+
+  /** Departments present in live inventory, fullest first. */
+  readonly discoverCategories = computed(() => {
+    const counts = new Map<string, { slug: string; name: string; count: number }>();
+    for (const product of this.catalog.allProducts()) {
+      if (!product.categorySlug) continue;
+      const entry = counts.get(product.categorySlug) ?? {
+        slug: product.categorySlug,
+        name: product.categoryName,
+        count: 0,
+      };
+      entry.count += 1;
+      counts.set(product.categorySlug, entry);
+    }
+    return [...counts.values()].sort((a, b) => b.count - a.count);
+  });
+
+  readonly discoverCategoryName = computed(
+    () =>
+      this.discoverCategories().find((c) => c.slug === this.discoverCategory())
+        ?.name ?? 'all',
+  );
+
+  /** Sub-categories inside the selected department; empty while showing all. */
+  readonly discoverSubcategories = computed(() => {
+    const slug = this.discoverCategory();
+    if (slug === 'all') return [];
+    const counts = new Map<string, number>();
+    for (const product of this.catalog.allProducts()) {
+      if (product.categorySlug !== slug || !product.subcategory) continue;
+      counts.set(product.subcategory, (counts.get(product.subcategory) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  });
+
+  readonly discoverStoreCount = computed(
+    () =>
+      new Set(
+        this.catalog
+          .allProducts()
+          .map((product) => product.sellerName)
+          .filter(Boolean),
+      ).size,
+  );
+
+  readonly discoverProducts = computed(() => {
+    const category = this.discoverCategory();
+    const subcategory = this.discoverSubcategory();
     return this.catalog
       .allProducts()
+      .filter((product) => category === 'all' || product.categorySlug === category)
+      .filter(
+        (product) => subcategory === 'all' || product.subcategory === subcategory,
+      )
+      .sort((a, b) => this.discoveryScore(b) - this.discoveryScore(a))
+      .slice(0, 20);
+  });
+  readonly fashionEdit = computed(() => {
+    const fashionTerms = /fashion|clothing|scarf|krama|wear|jewelry|accessor|bag|hairpin|earring|necklace|bracelet|wallet|belt|shoe/i;
+    // Matching on copy alone put a corn snack in here, because its description
+    // mentioned a sharing "bag". Edible departments can never be fashion, so
+    // they are excluded before the keywords run; the keywords still catch
+    // genuinely wearable pieces filed under crafts, like a krama from Weaving.
+    const edibleDepartments = new Set([
+      'food-groceries',
+      'food-drink',
+      'dried-fruits',
+      'local-food',
+      'palm-sugar',
+      'rice-products',
+    ]);
+    return this.catalog
+      .allProducts()
+      .filter((product) => !edibleDepartments.has(product.categorySlug))
       .filter((product) =>
+        product.categorySlug === 'fashion-accessories' ||
         fashionTerms.test(
           [
             product.name,
@@ -653,16 +1050,9 @@ export class HomeComponent {
       .slice(0, 8);
   });
 
-  /**
-   * Department shelves are generated from live inventory—not a manually
-   * repeated homepage list. Departments with no products stay out of the
-   * buyer feed, the fullest departments appear first, and each row ranks
-   * orderable products using sales, review confidence and recency.
-   */
+  /** Every department stays discoverable, in navigation order, with live products where available. */
   readonly categoryShelves = computed<CategoryShelf[]>(() => {
     const products = this.catalog.allProducts();
-    if (!products.length) return [];
-
     return this.categories()
       .map((category) => {
         const categoryProducts = products.filter(
@@ -688,13 +1078,8 @@ export class HomeComponent {
           description: category.description,
           products: rankedProducts,
           subcategories,
-          inventoryCount: categoryProducts.length,
         };
-      })
-      .filter((shelf) => shelf.inventoryCount > 0)
-      .sort((a, b) => b.inventoryCount - a.inventoryCount)
-      .slice(0, 5)
-      .map(({ inventoryCount: _inventoryCount, ...shelf }) => shelf);
+      });
   });
 
   readonly heroCollection = {
