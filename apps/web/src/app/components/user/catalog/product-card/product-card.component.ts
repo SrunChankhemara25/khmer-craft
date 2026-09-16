@@ -234,7 +234,19 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         gap: 12px;
         transition: transform 220ms ease, filter 220ms ease;
       }
-      .product-photo { width: 100%; object-fit: cover; object-position: center; display: block; }
+      /* cover, not contain: the catalogue is lifestyle photography, mostly
+         square 800x800, so containing it inside a 4:3.15 card left the photo's
+         own white studio background floating as a visible box with bare card
+         around it. Cover fills the tile edge to edge and trims about 10% off
+         the top and bottom, which on these shots is empty backdrop.
+
+         If a future seller uploads a tall packshot where the label sits near
+         an edge, the fix is object-position on that card - not going back to
+         contain, which made every well-shot photo look unfinished. */
+      .product-photo {
+        width: 100%; height: 100%; display: block;
+        object-fit: cover; object-position: center;
+      }
       @media (hover: hover) and (pointer: fine) {
         .product-card:hover {
           border-color: rgba(142, 48, 33, .26);
@@ -684,6 +696,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
   ],
 })
 export class ProductCardComponent {
+
   readonly product = input.required<Product>();
   readonly badge = input<'Best seller' | 'New' | null>(null);
   readonly variant = input<'default' | 'editorial'>('default');
