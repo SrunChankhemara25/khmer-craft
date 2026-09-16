@@ -204,12 +204,18 @@ import { ProductRailComponent } from '../components/user/catalog/product-rail/pr
         gap: 40px;
         align-items: start;
       }
+      /* Same square box and same cover as the product card, so a product does
+         not change shape when you click it. It used to be a fixed 460px tall
+         with object-fit: contain, which showed the whole image letterboxed
+         while the card showed a cropped one - the same photo looking like two
+         different photos either side of a click. */
       .main-image {
-        height: 460px;
+        aspect-ratio: 1;
+        height: auto;
         border-radius: var(--radius-lg);
         font-size: 13px;
       }
-      .product-photo { display: block; object-fit: contain; width: 100%; background: var(--color-bg-alt); }
+      .product-photo { display: block; object-fit: cover; width: 100%; height: 100%; background: var(--color-bg-alt); }
       .info {
         display: flex;
         flex-direction: column;

@@ -227,22 +227,22 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         overflow: hidden;
         background: var(--color-bg-alt);
       }
+      /* Square, because the catalogue is square: 14 of 18 LyLy images, and
+         most of Cloth and Skincare, are 800x800. A 4:3.15 box cropped 21% off
+         the height of every one of them - and sellers put their Khmer
+         headline along the top edge, so that is the first thing lost. Match
+         the box to the source and nothing is cropped at all. */
       .product-thumb {
-        aspect-ratio: 4 / 3.15;
+        aspect-ratio: 1;
         min-height: clamp(176px, 12vw, 222px);
         flex-direction: column;
         gap: 12px;
         transition: transform 220ms ease, filter 220ms ease;
       }
-      /* cover, not contain: the catalogue is lifestyle photography, mostly
-         square 800x800, so containing it inside a 4:3.15 card left the photo's
-         own white studio background floating as a visible box with bare card
-         around it. Cover fills the tile edge to edge and trims about 10% off
-         the top and bottom, which on these shots is empty backdrop.
-
-         If a future seller uploads a tall packshot where the label sits near
-         an edge, the fix is object-position on that card - not going back to
-         contain, which made every well-shot photo look unfinished. */
+      /* cover, paired with the square box above: a square source now fills it
+         exactly, with no crop and no letterboxed white rectangle floating in
+         the middle of the tile. Only the minority of non-square uploads
+         (3:4 and 4:5) lose anything, and they lose it evenly. */
       .product-photo {
         width: 100%; height: 100%; display: block;
         object-fit: cover; object-position: center;
