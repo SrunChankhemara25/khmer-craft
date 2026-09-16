@@ -108,7 +108,7 @@ const CLOSE_DELAY_MS = 220;
               }
             </div>
 
-            <aside class="promo">
+            <aside class="promo" [style.--category-image]="'url(/categories/' + cat.slug + '.png)'">
               <h3>{{ cat.name }}</h3>
               <p>{{ cat.tagline }}</p>
               <a
@@ -211,6 +211,9 @@ const CLOSE_DELAY_MS = 220;
          row avoids a viewport measurement gap when the sticky header moves. */
       .panel {
         position: absolute;
+        /* Exactly on the row's bottom edge. Pulling it up even a few pixels
+           makes the panel's own border-top land inside the nav row, cutting
+           into the space under the labels instead of continuing the line. */
         top: 100%;
         left: 0;
         right: 0;
@@ -241,7 +244,10 @@ const CLOSE_DELAY_MS = 220;
       }
       .panel-inner {
         display: grid;
-        grid-template-columns: minmax(420px, 1.55fr) minmax(150px, .55fr) 340px;
+        /* Wider promo column: at 340px in a 220px-tall panel the card had the
+           headline, a two-line description and the button crammed into its top
+           half with the artwork squeezed against the right edge. */
+        grid-template-columns: minmax(400px, 1.45fr) minmax(150px, .5fr) 430px;
         align-items: start;
         gap: 32px;
         height: 220px;
@@ -249,7 +255,7 @@ const CLOSE_DELAY_MS = 220;
         /* padding-block, not the shorthand: this element is also .container,
            and a padding shorthand would reset the horizontal padding that
            keeps the columns aligned with the logo above. */
-        padding-block: 13px 10px;
+        padding-block: 9px 12px;
       }
       h4 {
         font-size: 10px;
@@ -308,35 +314,57 @@ const CLOSE_DELAY_MS = 220;
       }
 
       .promo {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
+        /* The grid aligns its columns to the top, which left this card only as
+           tall as its own text — a short block with empty panel beneath it.
+           Stretching it fills the panel's full height without making the
+           panel itself any taller. */
+        align-self: stretch;
         min-height: 0;
-        padding: 18px 20px;
-        border-radius: var(--radius-md);
+        padding: 22px 24px;
+        border-radius: var(--radius-lg);
         background: var(--color-accent-soft);
+      }
+      .promo::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background-image: var(--category-image);
+        background-position: right center;
+        background-size: auto 135%;
+        background-repeat: no-repeat;
+        opacity: .28;
+        pointer-events: none;
       }
       .promo h3 {
         font-family: var(--font-heading);
-        font-size: 19px;
+        font-size: 24px;
+        letter-spacing: -.01em;
       }
       .promo p {
-        margin: 6px 0 12px;
+        margin: 8px 0 14px;
+        max-width: 24ch;
         color: var(--color-text-secondary);
-        font-size: 12.5px;
-        line-height: 1.45;
+        font-size: 13.5px;
+        line-height: 1.5;
       }
       .promo-cta {
         display: inline-flex;
         align-items: center;
         gap: 7px;
         margin-top: auto;
-        padding: 8px 14px;
+        padding: 11px 20px;
         border-radius: var(--radius-full);
         background: var(--color-accent);
         color: #fff;
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 13.5px;
+        font-weight: 650;
       }
       .promo-cta:hover {
         background: var(--color-accent-hover);
@@ -346,6 +374,7 @@ const CLOSE_DELAY_MS = 220;
         .panel-inner {
           grid-template-columns: minmax(0, 1.5fr) minmax(150px, .6fr);
           gap: 28px;
+          height: 220px;
         }
         .promo {
           display: none;
