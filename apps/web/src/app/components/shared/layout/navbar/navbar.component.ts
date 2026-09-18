@@ -794,11 +794,28 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         .search-placeholder {
           display: none;
         }
+        /* Once it is just a magnifier, the pill border and fill around it are
+           a box drawn around an icon — and the wishlist and cart beside it are
+           bare icons, so the search looked like a different kind of control
+           for no reason. */
         .search-bar {
+          /* flex, not width alone: the 1180px rule sets min-width: 0 so the
+             bar can shrink with the viewport, and at phone width that let it
+             collapse to 0 with its icon spilling outside. Fixing the basis and
+             refusing to shrink keeps the tap target intact. */
+          flex: 0 0 36px;
           width: 36px;
+          min-width: 36px;
           padding: 0;
           justify-content: center;
+          border: 0;
+          background: none;
           border-radius: var(--radius-sm);
+        }
+        .search-bar:hover {
+          background: var(--color-bg-hover);
+          border-color: transparent;
+          box-shadow: none;
         }
         .lang-menu {
           right: -8px;

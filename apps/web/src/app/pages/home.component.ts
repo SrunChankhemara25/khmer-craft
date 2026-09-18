@@ -572,8 +572,11 @@ interface CategoryShelf {
     .category-poster:hover .cat-art img { transform: scale(1.04); }
 
     @media (max-width: 640px) {
-      .category-poster { flex: 0 0 74%; }
-      .cat-name { font-size: 15px; }
+      /* 74% meant one and a half tiles filled the screen, so the row read as a
+         single huge banner and nothing suggested there were seven of them.
+         At 40% two and a half are visible and the row is obviously scrollable. */
+      .category-poster { flex: 0 0 40%; }
+      .cat-name { font-size: 12.5px; }
     }
 
     .category-poster[data-category="food-groceries"] .cat-visual { background: linear-gradient(115deg, #e8f3e2, #c7e3ba); }
@@ -595,6 +598,12 @@ interface CategoryShelf {
       flex: 0 0 132px; scroll-snap-align: start; display: block;
       padding: 3px; border-radius: 16px; background: #fff;
       text-decoration: none; transition: transform 200ms ease, box-shadow 200ms ease;
+    }
+    /* After the base rule, not before it — an earlier media query loses to a
+       later rule of equal specificity, which is why the first attempt at this
+       silently did nothing. */
+    @media (max-width: 640px) {
+      .deal-poster { flex: 0 0 114px; }
     }
     .deal-poster:hover { transform: translateY(-3px); box-shadow: 0 12px 24px rgba(40, 32, 22, .16); }
     .deal-poster-inner {
