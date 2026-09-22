@@ -8,6 +8,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 import { SellerService, SellerStore } from '../../../../core/api/seller.service';
@@ -22,7 +23,7 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
 
 @Component({
   selector: 'app-navbar',
-  imports: [RouterLink, IconComponent, SearchOverlayComponent, CategoryMenuComponent, CartDrawerComponent],
+  imports: [RouterLink, IconComponent, SearchOverlayComponent, CategoryMenuComponent, CartDrawerComponent, NgTemplateOutlet],
   template: `
     <!-- Announcement bar: scrolls away with the page (not sticky) — only the
          actual navigation below it stays pinned while browsing. -->
@@ -224,36 +225,8 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
             </a>
           }
 
-          <div class="menu-wrap">
-            <button
-              type="button"
-              class="menu-btn"
-              aria-label="Menu"
-              [attr.aria-expanded]="menuOpen()"
-              (click)="menuOpen.set(!menuOpen()); $event.stopPropagation()"
-            >
-              <ui-icon [name]="menuOpen() ? 'x' : 'menu'" [size]="20" />
-            </button>
-            @if (menuOpen()) {
-              <nav
-                class="mobile-menu"
-                animate.enter="kc-pop-enter"
-                animate.leave="kc-pop-leave"
-                (click)="$event.stopPropagation()"
-              >
-                <a routerLink="/" (click)="menuOpen.set(false)">Home</a>
-                <a routerLink="/products" (click)="menuOpen.set(false)">All products</a>
-                <a routerLink="/categories" (click)="menuOpen.set(false)">Categories</a>
-                <a routerLink="/stores" (click)="menuOpen.set(false)">All stores</a>
-                <!-- Same shortcuts the category bar shows on wide screens —
-                     the bar hides them below 1400px since there isn't room
-                     to fit them without clipping off-screen. -->
-                <a routerLink="/products" [queryParams]="{ collection: 'new-arrivals' }" (click)="menuOpen.set(false)">New Arrivals</a>
-                <a routerLink="/products" [queryParams]="{ collection: 'best-sellers' }" (click)="menuOpen.set(false)">Best Sellers</a>
-                <a routerLink="/categories/arts-culture" [queryParams]="{ sub: 'souvenirs-gifts' }" (click)="menuOpen.set(false)">Gifts</a>
-                <a class="sale" routerLink="/products" [queryParams]="{ sale: '1' }" (click)="menuOpen.set(false)">Sale</a>
-              </nav>
-            }
+          <div class="menu-slot nav-menu-slot" [class.keep]="sellerArea()">
+            <ng-container [ngTemplateOutlet]="menuBlock" />
           </div>
         </div>
       </div>
@@ -261,7 +234,11 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
       <!-- Shopper navigation. A seller has no use for the category tree, so
            the row is replaced with their own links. -->
       @if (!sellerArea()) {
-        <app-category-menu />
+        <app-category-menu>
+          <div nav-lead class="menu-slot row-menu-slot">
+            <ng-container [ngTemplateOutlet]="menuBlock" />
+          </div>
+        </app-category-menu>
       } @else {
         <nav class="seller-row">
           <div class="seller-row-inner container">
@@ -300,6 +277,47 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
     @if (cartOpen()) {
       <app-cart-drawer animate.leave="kc-fade-leave" (closed)="closeCart()" />
     }
+
+    <!--
+      The menu lives in one template and is mounted twice: up in the navbar
+      actions on wide screens, and down at the left of the category row on a
+      phone. Defining it once keeps the button and its dropdown together —
+      the panel anchors to whichever slot is showing — without maintaining two
+      copies of the same eight links.
+    -->
+    <ng-template #menuBlock>
+      <div class="menu-wrap">
+            <button
+              type="button"
+              class="menu-btn"
+              aria-label="Menu"
+              [attr.aria-expanded]="menuOpen()"
+              (click)="menuOpen.set(!menuOpen()); $event.stopPropagation()"
+            >
+              <ui-icon [name]="menuOpen() ? 'x' : 'menu'" [size]="20" />
+            </button>
+            @if (menuOpen()) {
+              <nav
+                class="mobile-menu"
+                animate.enter="kc-pop-enter"
+                animate.leave="kc-pop-leave"
+                (click)="$event.stopPropagation()"
+              >
+                <a routerLink="/" (click)="menuOpen.set(false)">Home</a>
+                <a routerLink="/products" (click)="menuOpen.set(false)">All products</a>
+                <a routerLink="/categories" (click)="menuOpen.set(false)">Categories</a>
+                <a routerLink="/stores" (click)="menuOpen.set(false)">All stores</a>
+                <!-- Same shortcuts the category bar shows on wide screens —
+                     the bar hides them below 1400px since there isn't room
+                     to fit them without clipping off-screen. -->
+                <a routerLink="/products" [queryParams]="{ collection: 'new-arrivals' }" (click)="menuOpen.set(false)">New Arrivals</a>
+                <a routerLink="/products" [queryParams]="{ collection: 'best-sellers' }" (click)="menuOpen.set(false)">Best Sellers</a>
+                <a routerLink="/categories/arts-culture" [queryParams]="{ sub: 'souvenirs-gifts' }" (click)="menuOpen.set(false)">Gifts</a>
+                <a class="sale" routerLink="/products" [queryParams]="{ sale: '1' }" (click)="menuOpen.set(false)">Sale</a>
+              </nav>
+            }
+          </div>
+    </ng-template>
   `,
   styles: [
     `
@@ -734,6 +752,18 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
       .sign-out ui-icon {
         color: var(--color-accent) !important;
       }
+      /* One of these two slots is showing at any width; the other is display
+         none, so the menu exists once in the accessibility tree. */
+      .nav-menu-slot { display: block; }
+      .row-menu-slot { display: none; }
+      @media (max-width: 980px) {
+        .nav-menu-slot { display: none; }
+        .row-menu-slot { display: block; }
+        /* Seller pages replace the category row with their own, so the slot
+           the hamburger moves into does not exist there. Without this the
+           menu had nowhere to render at all on those pages. */
+        .nav-menu-slot.keep { display: block; }
+      }
       .menu-wrap {
         position: relative;
       }
@@ -766,6 +796,14 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
         border-radius: var(--radius-sm);
         background: #fff;
         box-shadow: var(--shadow-sm);
+      }
+      /* right: 0 is correct in the navbar, where the button sits at the right
+         edge. In the category row the button is at the LEFT edge, so anchoring
+         the panel's right edge to it threw the whole 180px panel off-screen —
+         it rendered as an empty white sliver. */
+      .row-menu-slot .mobile-menu {
+        right: auto;
+        left: 0;
       }
       .mobile-menu a {
         padding: 9px 10px;

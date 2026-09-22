@@ -39,6 +39,11 @@ const CLOSE_DELAY_MS = 220;
   imports: [RouterLink, RouterLinkActive, IconComponent],
   template: `
     <div class="cat-bar" (mouseleave)="scheduleClose()">
+      <!-- Projected, not owned: the button belongs to the navbar, which holds
+           the menu's open state. It sits outside .cat-row because that row
+           scrolls horizontally on a phone, and a control inside a scroller
+           slides away with the content. -->
+      <div class="cat-lead"><ng-content select="[nav-lead]" /></div>
       <nav class="cat-row container" aria-label="Product categories">
         <div class="cat-items">
           @for (category of categories; track category.slug) {
@@ -393,21 +398,53 @@ const CLOSE_DELAY_MS = 220;
           display: none;
         }
       }
+      /* Desktop keeps the hamburger up in the navbar actions; this slot is
+         only used once the row takes it over. */
+      .cat-lead { display: none; }
+
       @media (max-width: 980px) {
         /* One scrolling strip — centring is meaningless once the row is
            wider than the screen. The shortcut pills are already
            display:none from the 1400px breakpoint above by this width. */
         .cat-row {
-          justify-content: flex-start;
+          justify-content: center;
           overflow-x: auto;
-          gap: clamp(14px, 1.6vw, 30px);
+          gap: clamp(7px, 2.1vw, 30px);
           scrollbar-width: none;
         }
         .cat-row::-webkit-scrollbar {
           display: none;
         }
         .cat-items {
-          justify-content: flex-start;
+          justify-content: center;
+          margin-inline: auto;
+          gap: clamp(7px, 2.1vw, 22px);
+        }
+        /* The hamburger moves down into this row and anchors its left edge,
+           with matching space reserved on the right so the categories centre
+           against the viewport rather than against the leftover gap. */
+        .cat-lead {
+          display: flex;
+          position: absolute;
+          left: 6px;
+          top: 50%;
+          transform: translateY(-50%);
+          z-index: 2;
+          /* The row scrolls underneath when the labels still will not fit, so
+             the button needs its own ground — otherwise a category slides
+             under it and the two read as one smudge. */
+          background: var(--color-bg, #fffdf8);
+          box-shadow: 6px 0 6px -4px var(--color-bg, #fffdf8);
+        }
+        .cat-row {
+          padding-left: 40px;
+          padding-right: 8px;
+        }
+        /* Shrink with the viewport so all seven still fit rather than
+           scrolling: at 320px the row has ~270px to work with, which 12.5px
+           type cannot do but 10px can. */
+        .cat-item {
+          font-size: clamp(10px, 2.85vw, 12.5px);
         }
         .panel {
           display: none;
