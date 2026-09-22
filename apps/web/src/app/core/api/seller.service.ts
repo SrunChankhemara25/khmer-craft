@@ -5,6 +5,16 @@ import { API_URL } from './api.config';
 
 export type SellerPlan = 'STARTER' | 'STANDARD' | 'PREMIUM';
 
+export interface SellerApplication {
+  id: string;
+  storeName: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  status: string;
+  createdAt?: string;
+}
+
 export interface SellerStore {
   id: string;
   slug: string;
@@ -103,6 +113,14 @@ export interface StoreCategoryDTO {
 @Injectable({ providedIn: 'root' })
 export class SellerService {
   private readonly http = inject(HttpClient);
+
+  /**
+   * Seller applications awaiting review. ADMIN-only on the server
+   * (sellers.routes.ts), so a non-admin calling this gets a 403.
+   */
+  listSellerApplications() {
+    return this.http.get<SellerApplication[]>(`${API_URL}/sellers/apply`);
+  }
 
   getMyStores() {
     return this.http.get<SellerStore[]>(`${API_URL}/sellers/my-stores`);

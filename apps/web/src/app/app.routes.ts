@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { buyerGuard } from './core/auth/auth.guard';
+import { adminGuard } from './core/auth/admin.guard';
 import { sellerGuard } from './core/auth/seller.guard';
 
 /**
@@ -251,6 +252,15 @@ export const routes: Routes = [
         (module) => module.ChangePassword,
       ),
     title: 'Change password | KhmerCraft',
+  },
+  {
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadComponent: () =>
+      import('./features/admin/overview/admin-overview').then(
+        (m) => m.AdminOverviewComponent,
+      ),
+    title: 'Administration | KhmerCraft',
   },
   {
     path: 'admin/login',

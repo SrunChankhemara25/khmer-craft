@@ -144,7 +144,9 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
               >
                 <span class="avatar" aria-hidden="true">{{ initial(currentUser.name) }}</span>
                 <span class="signin-label">{{ firstName(currentUser.name) }}</span>
-                @if (isSeller()) {
+                @if (isAdmin()) {
+                  <span class="role-chip">Admin</span>
+                } @else if (isSeller()) {
                   <span class="role-chip">Seller</span>
                 }
                 <ui-icon name="chevron-down" [size]="13" />
@@ -163,8 +165,8 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
                     <div class="account-id">
                       <strong>{{ currentUser.name }}</strong>
                       <span class="account-email">{{ currentUser.email }}</span>
-                      <span class="account-role" [class.seller]="isSeller()">
-                        {{ isSeller() ? 'Seller & buyer account' : 'Buyer account' }}
+                      <span class="account-role" [class.seller]="isSeller() || isAdmin()">
+                        {{ isAdmin() ? 'Administrator' : isSeller() ? 'Seller & buyer account' : 'Buyer account' }}
                       </span>
                     </div>
                   </div>
@@ -186,6 +188,13 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
                         <span class="hint">as shoppers see it</span>
                       </a>
                     }
+                  }
+
+                  @if (isAdmin()) {
+                    <p class="account-section">Administration</p>
+                    <a routerLink="/admin" role="menuitem" (click)="accountOpen.set(false)">
+                      <ui-icon name="shield" [size]="16" /> Marketplace overview
+                    </a>
                   }
 
                   <p class="account-section">Your shopping</p>
@@ -972,10 +981,16 @@ export class NavbarComponent implements AfterViewInit {
   });
 
   /** Signed in with a seller (or admin) account. */
-  protected readonly isSeller = computed(() => {
-    const role = this.user()?.role;
-    return role === 'SELLER' || role === 'ADMIN';
-  });
+  /**
+   * Strictly SELLER. This drives the "Seller" chip and the Your store links,
+   * and an admin has no store — including ADMIN here gave them a chip they had
+   * not earned and a "View my store" link to a storefront that does not exist.
+   * Admins still reach seller screens through sellerGuard; they just do not get
+   * a seller's chrome.
+   */
+  protected readonly isSeller = computed(() => this.user()?.role === 'SELLER');
+
+  protected readonly isAdmin = computed(() => this.user()?.role === 'ADMIN');
 
   protected isPath(path: string): boolean {
     return this.url().split('?')[0].startsWith(path);
