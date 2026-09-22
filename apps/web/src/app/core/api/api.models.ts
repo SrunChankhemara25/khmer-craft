@@ -17,6 +17,7 @@ export interface ApiProduct {
   price: number;
   compareAtPrice: number | null;
   category: string;
+  subcategory: string | null;
   sellerId: string | null;
   sellerName: string;
   storeName: string | null;
@@ -32,6 +33,35 @@ export interface ApiProduct {
   updatedAt: string;
 }
 
+export interface ApiStore {
+  id: string;
+  slug: string;
+  name: string;
+  location: string | null;
+  rating: number;
+  reviewCount: number;
+  categoryName: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  tagline: string | null;
+  announcement: string | null;
+  theme: 'FOREST' | 'CLAY' | 'GOLD' | 'MIDNIGHT';
+  phoneNumber: string | null;
+  showContact: boolean;
+  featuredProductIds: string[];
+}
+
+export interface ApiStoreList {
+  stores: ApiStore[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export interface ApiProductDetail extends ApiProduct {
   relatedProducts: ApiProduct[];
 }
@@ -43,6 +73,35 @@ export interface ApiProductList {
   limit: number;
   totalPages: number;
   appliedFilters: Record<string, string | number | null>;
+}
+
+/** GET /api/products/mine has no filter echo — it's always "everything I own". */
+export interface ApiMyProductList {
+  products: ApiProduct[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/**
+ * Mirrors createProductSchema on the server. Ownership fields (sellerName,
+ * sellerUserId) are deliberately absent — the server stamps those from the
+ * session, and rejects a payload that tries to send them.
+ */
+export interface ApiCreateProductInput {
+  name: string;
+  description?: string;
+  price: number;
+  compareAtPrice?: number;
+  category: string;
+  subcategory?: string;
+  location?: string;
+  image?: string;
+  images?: string[];
+  stock: number;
+  status: ApiStockStatus;
+  storeId?: string;
 }
 
 export interface ApiCartItem {
@@ -79,7 +138,7 @@ export type OrderStatus =
   | 'CANCELLED';
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
-export type PaymentMethod = 'COD' | 'ABA_DEMO' | 'STRIPE_SANDBOX';
+export type PaymentMethod = 'COD' | 'ABA_PAYWAY' | 'ABA_DEMO' | 'STRIPE_SANDBOX';
 
 export interface ApiDeliveryInfo {
   fullName: string;
@@ -120,6 +179,7 @@ export interface ApiOrder {
   deliveryInfo: ApiDeliveryInfo;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
+  hasPaymentTranId: boolean;
   orderStatus: OrderStatus;
   subtotal: number;
   deliveryFee: number;
@@ -127,6 +187,12 @@ export interface ApiOrder {
   statusHistory: ApiStatusEvent[];
   createdAt: string;
   updatedAt: string;
+}
+
+/** What the web app POSTs, as an auto-submitted form, to hand the buyer off to PayWay. */
+export interface ApiPaywayCheckoutSession {
+  checkoutUrl: string;
+  fields: Record<string, string>;
 }
 
 /** A seller's view adds their own share of a possibly multi-seller order. */

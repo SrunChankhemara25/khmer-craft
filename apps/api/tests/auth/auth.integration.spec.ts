@@ -30,6 +30,7 @@ const registerBuyer = (email = 'buyer@khmercraft.test') =>
     name: 'Sophea Chan',
     email,
     password: strongPassword,
+    confirmPassword: strongPassword,
     phone: '012345678',
   });
 
@@ -137,6 +138,7 @@ describe('buyer authentication', () => {
       name: 'Sophea Chan',
       email: 'protected@khmercraft.test',
       password: strongPassword,
+      confirmPassword: strongPassword,
     });
     const authenticated = await agent.patch('/auth/change-password').send({
       currentPassword: strongPassword,

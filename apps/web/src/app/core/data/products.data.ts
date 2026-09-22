@@ -1,4 +1,5 @@
 import { Product, StockStatus } from '../catalog/catalog.models';
+import { CATEGORIES, classifyCategory } from './categories.data';
 
 const stockStatus = (stock: number): StockStatus =>
   stock === 0 ? 'out-of-stock' : stock <= 5 ? 'low-stock' : 'in-stock';
@@ -19,6 +20,7 @@ interface Seed {
   createdAt: string;
   collections: string[];
   description: string;
+  image?: string;
 }
 
 /**
@@ -29,6 +31,57 @@ interface Seed {
  * badges and the disabled Add-to-Cart path are exercised in the UI.
  */
 const SEED: Seed[] = [
+  {
+    id: 'p101', name: 'Indigo Krama Panel Shirt', price: 34, compareAtPrice: 42,
+    categorySlug: 'fashion-shirts', categoryName: 'Shirts', storeId: 's006', sellerName: 'Sovann Style Studio',
+    rating: 4.9, reviewCount: 48, stock: 18, soldCount: 122, createdAt: '2026-08-01', collections: ['new-arrivals', 'best-sellers'],
+    description: 'A relaxed navy shirt finished with handwoven krama panels and natural shell buttons.', image: '/assets/stores/khmer-style-hero.png',
+  },
+  {
+    id: 'p102', name: 'Rose Silk Wrap Skirt', price: 48, categorySlug: 'fashion-women', categoryName: 'Women', storeId: 's006', sellerName: 'Sovann Style Studio',
+    rating: 4.8, reviewCount: 37, stock: 12, soldCount: 94, createdAt: '2026-07-28', collections: ['new-arrivals'],
+    description: 'A contemporary wrap skirt in luminous rose Khmer silk with a comfortable adjustable waist.', image: '/assets/stores/khmer-style-hero.png',
+  },
+  {
+    id: 'p103', name: 'Natural Silk Day Blouse', price: 29, categorySlug: 'fashion-women', categoryName: 'Women', storeId: 's006', sellerName: 'Sovann Style Studio',
+    rating: 4.7, reviewCount: 29, stock: 21, soldCount: 76, createdAt: '2026-07-21', collections: ['new-arrivals'],
+    description: 'A soft natural-silk blouse cut for warm days, with a clean neckline and easy drape.', image: '/assets/stores/khmer-style-hero.png',
+  },
+  {
+    id: 'p104', name: 'Midnight Tailored Trousers', price: 38, categorySlug: 'fashion-men', categoryName: 'Men', storeId: 's006', sellerName: 'Sovann Style Studio',
+    rating: 4.8, reviewCount: 33, stock: 16, soldCount: 81, createdAt: '2026-07-16', collections: ['best-sellers'],
+    description: 'Lightweight tailored trousers designed to pair with the studio’s krama-panel shirts.', image: '/assets/stores/khmer-style-hero.png',
+  },
+  {
+    id: 'p105', name: 'Everyday Woven Overshirt', price: 41, categorySlug: 'fashion-shirts', categoryName: 'Shirts', storeId: 's006', sellerName: 'Sovann Style Studio',
+    rating: 4.9, reviewCount: 51, stock: 9, soldCount: 140, createdAt: '2026-06-30', collections: ['best-sellers'],
+    description: 'A breathable indigo overshirt combining modern proportion with traditional woven detailing.', image: '/assets/stores/khmer-style-hero.png',
+  },
+  {
+    id: 'p106', name: 'Keo Romeat Mango Box', price: 12, categorySlug: 'fresh-fruit', categoryName: 'Mangoes', storeId: 's007', sellerName: 'Mekong Fresh Market',
+    rating: 4.9, reviewCount: 86, stock: 30, soldCount: 260, createdAt: '2026-08-05', collections: ['new-arrivals', 'best-sellers', 'agro-products'],
+    description: 'Fragrant Cambodian Keo Romeat mangoes selected ripe-firm and packed in a reusable box.', image: '/assets/stores/cambodia-fruits-hero.png',
+  },
+  {
+    id: 'p107', name: 'Sweet Pineapple Pair', price: 7.5, categorySlug: 'fresh-fruit', categoryName: 'Pineapple', storeId: 's007', sellerName: 'Mekong Fresh Market',
+    rating: 4.8, reviewCount: 61, stock: 42, soldCount: 188, createdAt: '2026-08-02', collections: ['new-arrivals', 'agro-products'],
+    description: 'Two farm-ripe pineapples with golden flesh, selected for sweetness and delivered with crown intact.', image: '/assets/stores/cambodia-fruits-hero.png',
+  },
+  {
+    id: 'p108', name: 'Dragon Fruit Basket', price: 9.25, categorySlug: 'fresh-fruit', categoryName: 'Dragon Fruit', storeId: 's007', sellerName: 'Mekong Fresh Market',
+    rating: 4.7, reviewCount: 44, stock: 28, soldCount: 151, createdAt: '2026-07-29', collections: ['agro-products'],
+    description: 'A basket of bright red dragon fruit with crisp white flesh from farms near the Mekong.', image: '/assets/stores/cambodia-fruits-hero.png',
+  },
+  {
+    id: 'p109', name: 'Rambutan Family Pack', price: 6.75, categorySlug: 'fresh-fruit', categoryName: 'Rambutan', storeId: 's007', sellerName: 'Mekong Fresh Market',
+    rating: 4.8, reviewCount: 73, stock: 35, soldCount: 224, createdAt: '2026-07-25', collections: ['best-sellers', 'agro-products'],
+    description: 'Juicy red rambutan harvested in the morning and packed as a generous family-size bundle.', image: '/assets/stores/cambodia-fruits-hero.png',
+  },
+  {
+    id: 'p110', name: 'Tropical Discovery Box', price: 18.5, categorySlug: 'fresh-fruit', categoryName: 'Fruit Boxes', storeId: 's007', sellerName: 'Mekong Fresh Market',
+    rating: 4.9, reviewCount: 102, stock: 20, soldCount: 318, createdAt: '2026-07-20', collections: ['best-sellers', 'agro-products'],
+    description: 'A changing seasonal selection of mango, mangosteen, rambutan, dragon fruit and citrus.', image: '/assets/stores/cambodia-fruits-hero.png',
+  },
   {
     id: 'p001', name: 'Handmade Khmer Silk Scarf', price: 12.5, compareAtPrice: 16,
     categorySlug: 'weaving', categoryName: 'Weaving',
@@ -193,12 +246,125 @@ const SEED: Seed[] = [
   },
 ];
 
-export const PRODUCTS: Product[] = SEED.map((seed) => ({
-  ...seed,
-  slug: seed.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, ''),
-  image: null,
-  status: stockStatus(seed.stock),
-}));
+const CORE_PRODUCTS: Product[] = SEED.map((seed) => {
+  const classification = classifyCategory(seed.categorySlug);
+  return {
+    ...seed,
+    ...classification,
+    slug: seed.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, ''),
+    image: seed.image ?? null,
+    status: stockStatus(seed.stock),
+  };
+});
+
+/**
+ * Visual catalogue coverage for departments that do not have seller inventory
+ * yet. Every prepared subcategory gets one orderable-looking showcase card so
+ * navigation, counts and filters can be evaluated before the real catalogue is
+ * complete. API products replace these cards subcategory-by-subcategory in
+ * CatalogService, so this layer does not duplicate real stock.
+ */
+const SHOWCASE_PROFILE: Record<
+  string,
+  { storeId: string; sellerName: string; basePrice: number; image: string }
+> = {
+  fashion: {
+    storeId: 's006', sellerName: 'Sovann Style Studio', basePrice: 24,
+    image: '/assets/ads/multi-category-store-landscape.png',
+  },
+  'food-groceries': {
+    storeId: 's007', sellerName: 'Mekong Fresh Market', basePrice: 4.5,
+    image: '/assets/ads/premium-supermarket-landscape.png',
+  },
+  'home-living': {
+    storeId: 's005', sellerName: 'Takeo Bamboo Craft', basePrice: 12,
+    image: '/assets/ads/multi-category-store-landscape.png',
+  },
+  'beauty-wellness': {
+    storeId: 's006', sellerName: 'Sovann Style Studio', basePrice: 8,
+    image: '/assets/ads/multi-category-store-landscape.png',
+  },
+  electronics: {
+    storeId: 's006', sellerName: 'Sovann Style Studio', basePrice: 18,
+    image: '/assets/ads/electronics-campaign-landscape.png',
+  },
+  'kids-family': {
+    storeId: 's006', sellerName: 'Sovann Style Studio', basePrice: 9,
+    image: '/assets/ads/multi-category-store-landscape.png',
+  },
+  'arts-culture': {
+    storeId: 's001', sellerName: 'Srey Khmer Handmade Store', basePrice: 10,
+    image: '/assets/ads/multi-category-store-landscape.png',
+  },
+};
+
+const showcaseProductName = (subcategory: string): string => {
+  const exactNames: Record<string, string> = {
+    'Fresh Produce': 'Seasonal Cambodian Produce Box',
+    'Rice & Grains': 'Premium Jasmine Rice Selection',
+    'Meat & Seafood': 'Fresh Family Protein Pack',
+    'Eggs & Dairy': 'Farm Fresh Breakfast Bundle',
+    'Bakery & Bread': 'Morning Bakery Basket',
+    'Pantry & Spices': 'Cambodian Pantry Starter Set',
+    'Phones & Tablets': 'Everyday 5G Smartphone',
+    Computers: 'Slim Everyday Laptop',
+    'TV & Audio': 'Wireless Home Speaker',
+    Gaming: 'Wireless Game Controller',
+    'Home Appliances': 'Compact Home Air Purifier',
+    'Kitchen Appliances': 'Compact Digital Rice Cooker',
+    Skincare: 'Hydrating Botanical Face Serum',
+    'Makeup & Cosmetics': 'Everyday Beauty Colour Set',
+    Haircare: 'Nourishing Haircare Duo',
+    'Bath & Body': 'Lemongrass Bath Collection',
+    Furniture: 'Compact Teak Side Table',
+    'Kitchen & Dining': 'Everyday Dining Collection',
+    'Pottery & Ceramics': 'Handmade Ceramic Table Set',
+    'Bamboo & Rattan': 'Woven Rattan Home Basket',
+    'Home Décor': 'Cambodian Home Accent Set',
+    'Toys & Games': 'Wooden Creative Play Set',
+    'Learning & Educational': 'Early Learning Activity Kit',
+    'Handmade Crafts': 'Cambodian Artisan Gift Box',
+    'Textiles & Weaving': 'Handwoven Textile Collection',
+    'Art & Collectibles': 'Cambodian Art Print Set',
+    'Souvenirs & Gifts': 'Cambodian Keepsake Gift Set',
+  };
+  return exactNames[subcategory] ?? `${subcategory} Everyday Essential`;
+};
+
+export const SUBCATEGORY_SHOWCASE_PRODUCTS: Product[] = CATEGORIES.flatMap(
+  (category, categoryIndex) => {
+    const profile = SHOWCASE_PROFILE[category.slug];
+    return category.subcategories.map((subcategory, subcategoryIndex) => {
+      const price = Number(
+        (profile.basePrice + (subcategoryIndex % 6) * (profile.basePrice * 0.22)).toFixed(2),
+      );
+      return {
+        id: `showcase-${category.slug}-${subcategory.slug}`,
+        name: showcaseProductName(subcategory.name),
+        slug: `showcase-${category.slug}-${subcategory.slug}`,
+        image: profile.image,
+        price,
+        compareAtPrice: subcategoryIndex % 5 === 0 ? Number((price * 1.18).toFixed(2)) : undefined,
+        categorySlug: category.slug,
+        categoryName: category.name,
+        subcategory: subcategory.name,
+        subcategorySlug: subcategory.slug,
+        sellerName: profile.sellerName,
+        storeId: profile.storeId,
+        rating: Number((4.5 + (subcategoryIndex % 5) * 0.1).toFixed(1)),
+        reviewCount: 12 + categoryIndex * 9 + subcategoryIndex * 3,
+        stock: 8 + (subcategoryIndex % 8) * 3,
+        status: 'in-stock' as const,
+        description: `A curated ${subcategory.name.toLowerCase()} product selected for the KhmerCraft marketplace showcase.`,
+        soldCount: 24 + categoryIndex * 15 + subcategoryIndex * 7,
+        createdAt: `2026-08-${String(24 - (subcategoryIndex % 18)).padStart(2, '0')}`,
+        collections: subcategoryIndex % 3 === 0 ? ['recommended', 'new-arrivals'] : ['recommended'],
+      };
+    });
+  },
+);
+
+export const PRODUCTS: Product[] = [...CORE_PRODUCTS, ...SUBCATEGORY_SHOWCASE_PRODUCTS];

@@ -5,12 +5,18 @@ import { API_URL } from './api.config';
 import {
   ApiCart,
   ApiCreatedOrder,
+  ApiCreateProductInput,
   ApiDeliveryInfo,
+  ApiMyProductList,
   ApiOrder,
   ApiOrderList,
+  ApiPaywayCheckoutSession,
+  ApiProduct,
   ApiProductDetail,
   ApiProductList,
   ApiSellerOrder,
+  ApiStore,
+  ApiStoreList,
   OrderStatus,
   PaymentMethod,
 } from './api.models';
@@ -18,6 +24,7 @@ import {
 export interface ProductQuery {
   search?: string;
   category?: string;
+  storeId?: string;
   location?: string;
   collection?: string;
   priceMin?: number;
@@ -56,6 +63,33 @@ export class CommerceApiService {
   getProduct(idOrSlug: string): Observable<ApiProductDetail> {
     return this.http.get<ApiProductDetail>(
       `${API_URL}/products/${encodeURIComponent(idOrSlug)}`,
+    );
+  }
+
+  /** SELLER/ADMIN only — the server stamps ownership from the session. */
+  createProduct(input: ApiCreateProductInput): Observable<ApiProduct> {
+    return this.http.post<ApiProduct>(`${API_URL}/products`, input);
+  }
+
+  /** The signed-in seller's own listings, drafts and archived included. */
+  myProducts(page = 1, limit = 20, storeId?: string): Observable<ApiMyProductList> {
+    let params = new HttpParams().set('page', page).set('limit', limit);
+    if (storeId) params = params.set('storeId', storeId);
+    return this.http.get<ApiMyProductList>(`${API_URL}/products/mine`, {
+      params,
+    });
+  }
+
+  // -------------------------------------------------------------- stores
+  listStores(page = 1, limit = 20): Observable<ApiStoreList> {
+    return this.http.get<ApiStoreList>(`${API_URL}/sellers/stores`, {
+      params: new HttpParams().set('page', page).set('limit', limit),
+    });
+  }
+
+  getStore(storeId: string): Observable<ApiStore> {
+    return this.http.get<ApiStore>(
+      `${API_URL}/sellers/stores/${encodeURIComponent(storeId)}`,
     );
   }
 
@@ -110,6 +144,15 @@ export class CommerceApiService {
   getOrder(idOrNumber: string): Observable<ApiOrder> {
     return this.http.get<ApiOrder>(
       `${API_URL}/orders/${encodeURIComponent(idOrNumber)}`,
+    );
+  }
+
+  // -------------------------------------------------------------- payments
+  /** Fields to auto-submit, as a form POST, to `checkoutUrl` — see payments.service.ts. */
+  createPaywayCheckout(orderId: string): Observable<ApiPaywayCheckoutSession> {
+    return this.http.post<ApiPaywayCheckoutSession>(
+      `${API_URL}/payments/aba-payway/checkout`,
+      { orderId },
     );
   }
 

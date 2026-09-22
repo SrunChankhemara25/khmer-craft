@@ -19,10 +19,49 @@ const setSessionCookies = (
 
 export const register = async (request: Request, response: Response) => {
   const result = await authService.register(request.body);
+
+  if (!result.requiresVerification) {
+    setSessionCookies(response, result.accessToken, result.refreshToken);
+    response.status(201).json({
+      message: 'Account created successfully',
+      user: result.user,
+    });
+    return;
+  }
+
+  response.status(201).json({
+    message: 'Check your email for your verification code',
+    email: result.email,
+  });
+};
+
+export const registerSeller = async (request: Request, response: Response) => {
+  const result = await authService.registerSeller(request.body);
   setSessionCookies(response, result.accessToken, result.refreshToken);
   response.status(201).json({
-    message: 'Account created successfully',
+    message: 'Store created successfully',
     user: result.user,
+    store: {
+      id: String(result.store._id),
+      slug: result.store.slug,
+      storeName: result.store.storeName,
+    },
+  });
+};
+
+export const verifyEmail = async (request: Request, response: Response) => {
+  const result = await authService.verifyEmail(request.body);
+  setSessionCookies(response, result.accessToken, result.refreshToken);
+  response.json({
+    message: 'Email verified successfully',
+    user: result.user,
+  });
+};
+
+export const resendCode = async (request: Request, response: Response) => {
+  await authService.resendCode(request.body);
+  response.json({
+    message: 'If that email needs verifying, a new code has been sent',
   });
 };
 

@@ -4,6 +4,23 @@ const asPositiveNumber = (value: string | undefined, fallback: number) => {
 };
 
 export const env = {
+  get smtpHost() { return process.env.SMTP_HOST; },
+  get smtpPort() { return asPositiveNumber(process.env.SMTP_PORT, 587); },
+  get smtpUser() { return process.env.SMTP_USER; },
+  get smtpPassword() { return process.env.SMTP_PASSWORD; },
+  get mailFrom() { return process.env.MAIL_FROM; },
+  /**
+   * Whether a real transactional-email provider is actually wired up. Used
+   * to decide, at registration time, between requiring email verification
+   * (once SMTP_* is set — see .env.example) and auto-verifying accounts
+   * (when it isn't, so registration is never a dead end nothing can ever
+   * deliver a code for). See auth.service.ts#register.
+   */
+  get isEmailConfigured() {
+    return Boolean(
+      this.smtpHost && this.smtpUser && this.smtpPassword && this.mailFrom,
+    );
+  },
   get nodeEnv() {
     return process.env.NODE_ENV ?? 'development';
   },
@@ -51,6 +68,42 @@ export const env = {
   },
   get accountLockMinutes() {
     return asPositiveNumber(process.env.ACCOUNT_LOCK_MINUTES, 15);
+  },
+  /**
+   * ABA PayWay merchant credentials. Deliberately not asserted at boot —
+   * unlike JWT_SECRET, a deployment without them is still valid (payment is
+   * one feature, not the whole API); `payments.service.ts` throws a clear
+   * 500 the moment someone actually tries to check out with ABA_PAYWAY
+   * instead. Never log these, and never accept them from a request body.
+   */
+  get paywayMerchantId() {
+    return process.env.PAYWAY_MERCHANT_ID;
+  },
+  get paywayApiKey() {
+    return process.env.PAYWAY_API_KEY;
+  },
+  /**
+   * Sandbox by default on purpose: pointing at the live PayWay endpoint
+   * should be an explicit opt-in (setting PAYWAY_BASE_URL in production),
+   * never the fallback a forgotten env var quietly lands on.
+   */
+  get paywayBaseUrl() {
+    return process.env.PAYWAY_BASE_URL ?? 'https://checkout-sandbox.payway.com.kh';
+  },
+  /**
+   * Where PayWay's server-to-server webhook reaches this API. Only a real,
+   * publicly reachable URL works here — on a local dev machine this must be
+   * a tunnel (ngrok, cloudflared) pointed at this API, since ABA's servers
+   * cannot reach localhost. Falls back to apiPublicUrl + the callback route.
+   */
+  get paywayCallbackUrl() {
+    return (
+      process.env.PAYWAY_CALLBACK_URL ??
+      `${this.apiPublicUrl}/api/payments/aba-payway/callback`
+    );
+  },
+  get apiPublicUrl() {
+    return process.env.API_PUBLIC_URL ?? 'http://localhost:3001';
   },
 };
 

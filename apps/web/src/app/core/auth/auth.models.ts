@@ -18,6 +18,22 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
+/**
+ * Registering no longer starts a session — the account exists but is
+ * unverified until the emailed code is entered on /verify.
+ */
+export interface RegisterResponse {
+  message: string;
+  email: string;
+  /** Only present outside production — see auth.service.ts on the API. */
+  devCode?: string;
+}
+
+export interface ResendCodeResponse {
+  message: string;
+  devCode?: string;
+}
+
 export interface MessageResponse {
   message: string;
 }

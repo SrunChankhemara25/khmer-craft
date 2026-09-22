@@ -10,14 +10,20 @@ import {
   logout,
   refresh,
   register,
+  registerSeller,
+  resendCode,
   resetPassword,
+  verifyEmail,
 } from './auth.controller';
 import {
   changePasswordSchema,
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  registerSellerSchema,
+  resendCodeSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
 } from './auth.validation';
 import {
   loginRateLimit,
@@ -32,6 +38,24 @@ router.post(
   registrationRateLimit,
   validate(registerSchema),
   register,
+);
+router.post(
+  '/register-seller',
+  registrationRateLimit,
+  validate(registerSellerSchema),
+  registerSeller,
+);
+router.post(
+  '/verify-email',
+  loginRateLimit,
+  validate(verifyEmailSchema),
+  verifyEmail,
+);
+router.post(
+  '/resend-code',
+  passwordResetRateLimit,
+  validate(resendCodeSchema),
+  resendCode,
 );
 router.post('/login', loginRateLimit, validate(loginSchema), login);
 router.post('/refresh', refresh);
@@ -51,7 +75,7 @@ router.post(
 router.patch(
   '/change-password',
   authenticate,
-  authorize('BUYER'),
+  authorize('BUYER', 'SELLER'),
   validate(changePasswordSchema),
   changePassword,
 );

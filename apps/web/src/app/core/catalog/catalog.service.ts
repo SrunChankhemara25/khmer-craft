@@ -2,60 +2,111 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CommerceApiService } from '../api/commerce-api.service';
 import { ApiProduct } from '../api/api.models';
-import { CATEGORIES, findCategory } from '../data/categories.data';
-import { PRODUCTS as FALLBACK_PRODUCTS } from '../data/products.data';
-import { STORES, findStore } from '../data/stores.data';
+import {
+  CATEGORIES,
+  classifyCategory,
+  findCategory,
+  subcategorySlug,
+} from '../data/categories.data';
 import { Category, Product, ProductQuery, Store } from './catalog.models';
+import { ApiStore } from '../api/api.models';
 
 /**
  * The catalog the UI reads.
  *
- * Products come from the API and are held in a signal, so every derived view
- * (homepage rails, the products grid, related items) recomputes when they
- * load. The identifiers therefore match the server's, which is what makes
- * add-to-cart work — the previous mock ids would have 404'd.
+ * Products and stores both come from the API and are held in signals, so
+ * every derived view (homepage rails, the products grid, related items,
+ * the store directory) recomputes when they load. Product identifiers
+ * therefore match the server's, which is what makes add-to-cart work — the
+ * previous mock ids would have 404'd.
  *
- * If the API cannot be reached the bundled fixtures are used instead, so the
- * storefront still renders something during a backend outage. That is a
- * display-only fallback: those ids are not real, so cart actions against them
- * will fail, and `usingFallback` is exposed so the UI can say so.
+ * API failures stay failures. Rendering local fixture products as live stock
+ * creates broken cart actions and misleading availability, so callers receive
+ * an empty result plus an explicit error signal that they can retry.
  *
- * TODO(api): categories and stores are still local fixtures — there are no
- * endpoints for them yet.
+ * TODO(api): categories are still a local fixture — there is no endpoint for
+ * them yet.
  */
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
   private readonly api = inject(CommerceApiService);
 
   private readonly products = signal<Product[]>([]);
+  private readonly _stores = signal<Store[]>([]);
   readonly loaded = signal(false);
-  readonly usingFallback = signal(false);
+  readonly storesLoaded = signal(false);
+  readonly productError = signal('');
+  readonly storeError = signal('');
 
   readonly categories: Category[] = CATEGORIES;
-  readonly stores: Store[] = STORES;
 
   constructor() {
     void this.load();
+    void this.loadStores();
+  }
+
+  /** Live store list. Fixtures are intentionally never exposed as inventory. */
+  get stores(): Store[] {
+    return this._stores();
+  }
+
+  allStores(): Store[] {
+    return this._stores();
   }
 
   /** Fetch the whole catalog once. It is small; pagination is a UI concern. */
   async load(): Promise<void> {
+    this.loaded.set(false);
+    this.productError.set('');
     try {
       const response = await firstValueFrom(
         this.api.listProducts({ limit: 60 }),
       );
       this.products.set(response.products.map(toProduct));
-      this.usingFallback.set(false);
     } catch {
-      this.products.set(FALLBACK_PRODUCTS);
-      this.usingFallback.set(true);
+      this.products.set([]);
+      this.productError.set(
+        'We could not load the marketplace right now. Please try again.',
+      );
     } finally {
       this.loaded.set(true);
     }
   }
 
+  /** Fetch the store directory once, same fallback pattern as products. */
+  async loadStores(): Promise<void> {
+    this.storesLoaded.set(false);
+    this.storeError.set('');
+    try {
+      const response = await firstValueFrom(this.api.listStores(1, 60));
+      this._stores.set(response.stores.map(toStore));
+    } catch {
+      this._stores.set([]);
+      this.storeError.set(
+        'We could not load stores right now. Please try again.',
+      );
+    } finally {
+      this.storesLoaded.set(true);
+    }
+  }
+
   allProducts(): Product[] {
     return this.products();
+  }
+
+  /**
+   * Loads a complete public storefront directly from the API. The marketplace
+   * home catalogue is intentionally paged, so filtering its first page would
+   * make larger sellers appear to have missing products.
+   */
+  async productsForStore(storeId: string): Promise<Product[]> {
+    const first = await firstValueFrom(this.api.listProducts({ storeId, page: 1, limit: 60 }));
+    const products = [...first.products];
+    for (let page = 2; page <= first.totalPages; page += 1) {
+      const response = await firstValueFrom(this.api.listProducts({ storeId, page, limit: 60 }));
+      products.push(...response.products);
+    }
+    return products.map(toProduct);
   }
 
   productById(id: string): Product | undefined {
@@ -75,12 +126,21 @@ export class CatalogService {
   }
 
   store(id: string): Store | undefined {
-    return findStore(id);
+    return this._stores().find((candidate) => candidate.id === id || candidate.slug === id);
   }
 
   countByCategory(slug: string): number {
     return this.products().filter((product) => product.categorySlug === slug)
       .length;
+  }
+
+  /** Product count for a sub-category, used by the chips and filter list. */
+  countBySubcategory(categorySlug: string, subSlug: string): number {
+    return this.products().filter(
+      (product) =>
+        product.categorySlug === categorySlug &&
+        product.subcategorySlug === subSlug,
+    ).length;
   }
 
   countByStore(storeId: string): number {
@@ -131,6 +191,12 @@ export class CatalogService {
       );
     }
 
+    if (query.subcategory) {
+      results = results.filter(
+        (product) => product.subcategorySlug === query.subcategory,
+      );
+    }
+
     if (query.collection) {
       results = results.filter((product) =>
         product.collections.includes(query.collection!),
@@ -139,6 +205,30 @@ export class CatalogService {
 
     if (query.storeId) {
       results = results.filter((product) => product.storeId === query.storeId);
+    }
+
+    if (query.priceMin !== undefined) {
+      results = results.filter((product) => product.price >= query.priceMin!);
+    }
+
+    if (query.priceMax !== undefined) {
+      results = results.filter((product) => product.price <= query.priceMax!);
+    }
+
+    if (query.minRating !== undefined) {
+      results = results.filter((product) => product.rating >= query.minRating!);
+    }
+
+    if (query.inStockOnly) {
+      results = results.filter((product) => product.status !== 'out-of-stock');
+    }
+
+    if (query.onSaleOnly) {
+      results = results.filter(
+        (product) =>
+          product.compareAtPrice !== undefined &&
+          product.compareAtPrice > product.price,
+      );
     }
 
     switch (query.sort) {
@@ -165,6 +255,30 @@ export class CatalogService {
     return results;
   }
 
+  /**
+   * How many products a filter would return *given the rest of the filters*.
+   *
+   * Counting against the full catalogue would show a number the user cannot
+   * reach — clicking a "12" and landing on 3 results reads as a bug. This
+   * applies every other active filter first, so the count is what they will
+   * actually get.
+   */
+  countWith(base: ProductQuery, override: Partial<ProductQuery>): number {
+    return this.search({ ...base, ...override }).length;
+  }
+
+  /** Cheapest and dearest in a set, for the price slider bounds. */
+  priceRange(query: ProductQuery): { min: number; max: number } {
+    const prices = this.search(query).map((product) => product.price);
+    if (!prices.length) {
+      return { min: 0, max: 0 };
+    }
+    return {
+      min: Math.floor(Math.min(...prices)),
+      max: Math.ceil(Math.max(...prices)),
+    };
+  }
+
   related(product: Product, limit = 4): Product[] {
     return this.products()
       .filter(
@@ -183,12 +297,13 @@ export class CatalogService {
  * categories as free text ("Palm Sugar") while the UI routes on slugs.
  */
 const toProduct = (api: ApiProduct): Product => {
-  const categorySlug = api.category
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-
-  const store = STORES.find((candidate) => candidate.name === api.sellerName);
+  const classification = classifyCategory(api.category);
+  // The API's own subcategory (set by the seller at listing time) is the
+  // real value — classifyCategory only fills one in for the handful of old
+  // narrow category labels ("fresh-fruit" etc.) that predate the seller
+  // being able to pick a subcategory at all. Prefer the real one whenever
+  // the seller actually set it, so the store page can group by it.
+  const subcategory = api.subcategory ?? classification.subcategory;
 
   return {
     id: api.id,
@@ -197,10 +312,14 @@ const toProduct = (api: ApiProduct): Product => {
     image: api.image,
     price: api.price,
     compareAtPrice: api.compareAtPrice ?? undefined,
-    categorySlug,
-    categoryName: api.category,
+    ...classification,
+    subcategory,
+    subcategorySlug: subcategory ? subcategorySlug(subcategory) : null,
     sellerName: api.sellerName,
-    storeId: store?.id ?? api.sellerId ?? '',
+    // The product's own sellerId now points at a real Seller/store document
+    // (see sellers.service.ts) — no more guessing the store by matching names
+    // against a fixture.
+    storeId: api.sellerId ?? '',
     rating: api.rating,
     reviewCount: api.reviewCount,
     stock: api.stock,
@@ -212,6 +331,26 @@ const toProduct = (api: ApiProduct): Product => {
     collections: collectionsFor(api),
   };
 };
+
+/** Map a server store onto the shape the UI renders. */
+const toStore = (api: ApiStore): Store => ({
+  id: api.id,
+  slug: api.slug,
+  name: api.name,
+  location: api.location ?? '',
+  rating: api.rating,
+  reviewCount: api.reviewCount,
+  categoryName: api.categoryName ?? '',
+  description: api.description ?? '',
+  tagline: api.tagline ?? '',
+  announcement: api.announcement ?? '',
+  theme: api.theme ?? 'FOREST',
+  phoneNumber: api.phoneNumber ?? '',
+  showContact: api.showContact,
+  logoUrl: api.logoUrl,
+  bannerUrl: api.bannerUrl,
+  featuredProductIds: api.featuredProductIds ?? [],
+});
 
 /**
  * Collections are computed client-side from the category and sales figures,

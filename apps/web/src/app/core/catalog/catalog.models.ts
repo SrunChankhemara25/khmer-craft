@@ -19,6 +19,9 @@ export interface Product {
   compareAtPrice?: number;
   categorySlug: string;
   categoryName: string;
+  /** Second level, e.g. "Bowls & Plates". Null until a seller sets one. */
+  subcategory: string | null;
+  subcategorySlug: string | null;
   sellerName: string;
   storeId: string;
   rating: number;
@@ -34,22 +37,41 @@ export interface Product {
   collections: string[];
 }
 
+export interface Subcategory {
+  slug: string;
+  name: string;
+}
+
 export interface Category {
   slug: string;
   name: string;
   description: string;
+  /** Longer line for the category landing page banner. */
+  tagline: string;
   /** Icon name understood by `shared/icon.component`. */
   icon: string;
+  /** Placeholder caption until real banner imagery exists. */
+  banner: string;
+  subcategories: Subcategory[];
 }
 
 export interface Store {
   id: string;
+  slug?: string;
   name: string;
   location: string;
   rating: number;
   reviewCount: number;
   categoryName: string;
   description: string;
+  tagline?: string;
+  announcement?: string;
+  theme?: 'FOREST' | 'CLAY' | 'GOLD' | 'MIDNIGHT';
+  phoneNumber?: string;
+  showContact?: boolean;
+  logoUrl?: string | null;
+  bannerUrl?: string | null;
+  featuredProductIds?: string[];
 }
 
 export interface CartItem {
@@ -74,7 +96,17 @@ export type ProductSort =
 export interface ProductQuery {
   search?: string;
   category?: string;
+  subcategory?: string;
   collection?: string;
   storeId?: string;
+  /** Inclusive price bounds. */
+  priceMin?: number;
+  priceMax?: number;
+  /** Minimum star rating, e.g. 4 for "4 stars & up". */
+  minRating?: number;
+  /** Hide anything a buyer cannot actually order right now. */
+  inStockOnly?: boolean;
+  /** Only items marked down from a compareAtPrice. */
+  onSaleOnly?: boolean;
   sort?: ProductSort;
 }

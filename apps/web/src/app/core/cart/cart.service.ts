@@ -308,6 +308,8 @@ export class CartService {
       price: item.price,
       categorySlug: known?.categorySlug ?? '',
       categoryName: known?.categoryName ?? '',
+      subcategory: known?.subcategory ?? null,
+      subcategorySlug: known?.subcategorySlug ?? null,
       sellerName: item.sellerName,
       storeId: item.sellerId ?? known?.storeId ?? '',
       rating: known?.rating ?? 0,
