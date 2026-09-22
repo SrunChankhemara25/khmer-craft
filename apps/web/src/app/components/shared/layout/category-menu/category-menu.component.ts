@@ -388,11 +388,16 @@ const CLOSE_DELAY_MS = 220;
       }
       /* Touch: the row scrolls sideways and the panels never open — each item
          is still a link to its category page. */
-      /* Below this, there just isn't room to fit all 7 categories plus the
-         shortcut pills on one line without clipping off the edge of the
-         screen — so the shortcuts step out entirely and the categories
-         alone get to be centred, which is all that fits comfortably here. */
-      @media (max-width: 1400px) {
+      /*
+       * The shortcuts used to drop out below 1400px, which was measured when
+       * every department carried its full name — "Fashion & Accessories" and
+       * the rest come to ~1100px on their own. Short labels take over at
+       * 1180px now, which frees roughly 400px, so the pills fit comfortably
+       * all the way down to a tablet: 683px of content in a 1016px row at
+       * iPad width. They only step out on a phone, where the row also gives
+       * up its left edge to the menu button.
+       */
+      @media (max-width: 700px) {
         .cat-divider,
         .shortcut {
           display: none;
@@ -476,7 +481,13 @@ export class CategoryMenuComponent {
    * category twice, and the hidden copy still counts toward the row's
    * intrinsic width, which is the thing being economised in the first place.
    */
-  private readonly compactQuery = globalThis.matchMedia?.('(max-width: 1080px)');
+  /*
+   * 1180px, matching the width at which full labels plus the shortcut pills
+   * stop fitting on one line (they need ~1130px together). Shortening the
+   * labels at the same point is what lets the pills survive down to tablet
+   * widths instead of disappearing.
+   */
+  private readonly compactQuery = globalThis.matchMedia?.('(max-width: 1180px)');
   protected readonly compactLabels = signal(this.compactQuery?.matches ?? false);
 
   protected label(category: Category): string {
