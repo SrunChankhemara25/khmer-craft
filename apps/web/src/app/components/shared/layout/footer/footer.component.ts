@@ -76,16 +76,21 @@ import { IconComponent } from '../../ui/icon/icon.component';
       display: flex;
       justify-content: space-between;
     }
+    /*
+     * There are five children here — the brand block plus four link columns —
+     * so any grid with four or two tracks leaves the last column stranded on
+     * its own row with a band of empty space beside it. Below the full-width
+     * layout the brand takes a row of its own and the four link columns share
+     * the next one evenly, which divides cleanly at both 4 and 2 tracks.
+     */
     @media (max-width: 1180px) {
-      .footer-grid { grid-template-columns: 1.6fr 1fr 1fr 1fr; }
-    }
-    @media (max-width: 900px) {
-      .footer-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
-      .footer-bottom { flex-direction: column; gap: 6px; }
-    }
-    @media (max-width: 560px) {
-      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .footer-grid { grid-template-columns: repeat(4, minmax(110px, 1fr)); }
       .footer-brand { grid-column: 1 / -1; }
+      .footer-brand p { max-width: 46ch; }
+    }
+    @media (max-width: 720px) {
+      .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 20px; }
+      .footer-bottom { flex-direction: column; gap: 6px; }
     }
   `]
 })
