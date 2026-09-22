@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   inject,
   signal,
 } from '@angular/core';
@@ -53,7 +54,7 @@ const CLOSE_DELAY_MS = 220;
             [attr.aria-expanded]="openSlug() === category.slug"
             (click)="close()"
           >
-              {{ category.name }}
+              {{ label(category) }}
             </a>
           }
 
@@ -429,6 +430,29 @@ export class CategoryMenuComponent {
 
   protected readonly categories = this.catalog.categories;
   protected readonly shopBy = SHOP_BY;
+
+  /**
+   * "Fashion & Accessories" at full width, "Fashion" once the row is tight.
+   *
+   * Swapped in the component rather than by rendering both labels and hiding
+   * one in CSS: two copies in the DOM means a screen reader announces the
+   * category twice, and the hidden copy still counts toward the row's
+   * intrinsic width, which is the thing being economised in the first place.
+   */
+  private readonly compactQuery = globalThis.matchMedia?.('(max-width: 1080px)');
+  protected readonly compactLabels = signal(this.compactQuery?.matches ?? false);
+
+  protected label(category: Category): string {
+    return this.compactLabels() ? category.shortName ?? category.name : category.name;
+  }
+
+  constructor() {
+    const query = this.compactQuery;
+    if (!query) return;
+    const onChange = (event: MediaQueryListEvent) => this.compactLabels.set(event.matches);
+    query.addEventListener('change', onChange);
+    inject(DestroyRef).onDestroy(() => query.removeEventListener('change', onChange));
+  }
 
   /** Slug of the category whose panel is open, or null. */
   protected readonly openSlug = signal<string | null>(null);

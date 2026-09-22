@@ -52,6 +52,12 @@ export interface Subcategory {
 export interface Category {
   slug: string;
   name: string;
+  /**
+   * One-word label for places where the full name does not fit — the category
+   * nav row once it starts scrolling, and the home page tiles on a phone.
+   * Falls back to `name` where a category is already short enough.
+   */
+  shortName?: string;
   description: string;
   /** Longer line for the category landing page banner. */
   tagline: string;

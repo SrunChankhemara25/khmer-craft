@@ -17,7 +17,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
 import { ProductRailComponent } from '../components/user/catalog/product-rail/product-rail.component';
 import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-slider.component';
 import { ProductCardComponent } from '../components/user/catalog/product-card/product-card.component';
-import { Product } from '../core/catalog/catalog.models';
+import { Category, Product } from '../core/catalog/catalog.models';
 
 interface CategoryShelf {
   slug: string;
@@ -69,7 +69,7 @@ interface CategoryShelf {
           >
             <span class="cat-visual">
               <span class="cat-copy">
-                <span class="cat-name">{{ c.name }}</span>
+                <span class="cat-name">{{ categoryLabel(c) }}</span>
                 <span class="cat-go"><ui-icon name="arrow-right" [size]="15"></ui-icon></span>
               </span>
               <span class="cat-art">
@@ -866,6 +866,7 @@ export class HomeComponent {
     const onResize = () => {
       this.syncRail();
       this.measureColumns();
+      this.narrowTiles.set(this.narrowQuery?.matches ?? false);
     };
     window.addEventListener('resize', onResize, { passive: true });
     inject(DestroyRef).onDestroy(() => window.removeEventListener('resize', onResize));
@@ -920,6 +921,18 @@ export class HomeComponent {
 
   protected dealPoster(slug: string): string | null {
     return this.DEAL_POSTERS.has(slug) ? `/categories/posters/${slug}.webp` : null;
+  }
+
+  /**
+   * Short label on phones, where a tile is ~137px wide and the full name
+   * either wraps to two lines or gets clipped mid-word. Matches the category
+   * nav row, which does the same thing at its own breakpoint.
+   */
+  private readonly narrowQuery = globalThis.matchMedia?.('(max-width: 640px)');
+  protected readonly narrowTiles = signal(this.narrowQuery?.matches ?? false);
+
+  protected categoryLabel(category: Category): string {
+    return this.narrowTiles() ? category.shortName ?? category.name : category.name;
   }
 
   protected categoryPosterImage(slug: string): string | null {

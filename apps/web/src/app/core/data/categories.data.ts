@@ -19,6 +19,7 @@ export const CATEGORIES: Category[] = [
   {
     slug: 'fashion',
     name: 'Fashion & Accessories',
+    shortName: 'Fashion',
     description: 'Clothing, footwear, bags, jewelry and traditional style',
     tagline: 'Everyday fashion and Cambodian design, from independent labels to heritage textiles.',
     icon: 'tag',
@@ -44,6 +45,7 @@ export const CATEGORIES: Category[] = [
   {
     slug: 'food-groceries',
     name: 'Food & Groceries',
+    shortName: 'Food',
     description: 'Fresh food, pantry staples, drinks and Cambodian specialties',
     tagline: 'Farm-fresh produce and the ingredients that make Cambodian kitchens work.',
     icon: 'store',
@@ -70,6 +72,7 @@ export const CATEGORIES: Category[] = [
   {
     slug: 'home-living',
     name: 'Home & Living',
+    shortName: 'Home',
     description: 'Furniture, kitchenware, décor and household essentials',
     tagline: 'Useful and beautiful things for every Cambodian home.',
     icon: 'home',
@@ -96,6 +99,7 @@ export const CATEGORIES: Category[] = [
   {
     slug: 'beauty-wellness',
     name: 'Beauty & Wellness',
+    shortName: 'Beauty',
     description: 'Skincare, personal care, wellness and natural products',
     tagline: 'Daily care and wellbeing from trusted Cambodian sellers.',
     icon: 'heart',
@@ -146,6 +150,7 @@ export const CATEGORIES: Category[] = [
   {
     slug: 'kids-family',
     name: 'Kids & Family',
+    shortName: 'Kids',
     description: 'Baby essentials, children’s clothing, toys and school supplies',
     tagline: 'Practical, playful and family-ready products for every stage.',
     icon: 'users',
@@ -170,6 +175,7 @@ export const CATEGORIES: Category[] = [
   {
     slug: 'arts-culture',
     name: 'Arts & Culture',
+    shortName: 'Arts',
     description: 'Crafts, art, books, music, textiles and Cambodian heritage',
     tagline: 'Creative work that carries Cambodian skill, identity and stories forward.',
     icon: 'sparkles',
