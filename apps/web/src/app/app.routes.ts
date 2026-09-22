@@ -80,6 +80,17 @@ export const routes: Routes = [
       import('./pages/checkout.component').then((m) => m.CheckoutComponent),
     title: 'Checkout | KhmerCraft',
   },
+  {
+    // Where an ABA_PAYWAY order goes to actually be paid: the KHQR from ABA,
+    // plus polling that settles the order once ABA confirms the transaction.
+    path: 'checkout/pay/:orderNumber',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./pages/payway-payment.component').then(
+        (m) => m.PaywayPaymentComponent,
+      ),
+    title: 'Pay with ABA | KhmerCraft',
+  },
   { path: 'checkout/shipping', pathMatch: 'full', redirectTo: 'checkout' },
   { path: 'checkout/payment', pathMatch: 'full', redirectTo: 'checkout' },
   { path: 'checkout/review', pathMatch: 'full', redirectTo: 'checkout' },
@@ -254,12 +265,12 @@ export const routes: Routes = [
     title: 'Change password | KhmerCraft',
   },
   {
+    // Khemara's admin area, lazily loaded as a child route tree behind
+    // adminGuard. The guard is ours: the branch this came from had no route
+    // protection on it at all.
     path: 'admin',
     canActivate: [adminGuard],
-    loadComponent: () =>
-      import('./features/admin/overview/admin-overview').then(
-        (m) => m.AdminOverviewComponent,
-      ),
+    loadChildren: () => import('./admin/admin.routes').then((m) => m.ADMIN_ROUTES),
     title: 'Administration | KhmerCraft',
   },
   {
