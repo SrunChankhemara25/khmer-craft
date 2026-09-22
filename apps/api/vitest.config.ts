@@ -15,6 +15,5 @@ export default defineConfig({
     // Cap concurrent files so six MongoMemoryServer instances plus bcrypt do
     // not saturate the machine. Slower wall-clock, but deterministic.
     maxWorkers: 2,
-    minWorkers: 1,
   },
 });
