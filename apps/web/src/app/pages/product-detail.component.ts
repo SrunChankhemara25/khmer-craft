@@ -461,7 +461,14 @@ import { Product } from '../core/catalog/catalog.models';
       .missing > ui-icon { color: var(--color-accent); }
       .spin { animation: spin 900ms linear infinite; }
       @keyframes spin { to { transform: rotate(360deg); } }
-      @media (max-width: 900px) {
+      /*
+       * 680px, not 900px. A tablet is 768-834px wide in portrait, so at 900 it
+       * fell into the phone layout: the image went full width and every detail
+       * — price, stock, add to cart — dropped below the fold, with the space
+       * beside the image left empty. Two columns still work comfortably here;
+       * a 748px row splits into roughly 354px each side.
+       */
+      @media (max-width: 680px) {
         .gallery { grid-template-columns: minmax(0, 1fr); }
         .shot-rail { flex-direction: row; max-height: none; overflow-x: auto; }
         .shot { flex: 0 0 64px; width: 64px; }
@@ -474,6 +481,8 @@ import { Product } from '../core/catalog/catalog.models';
         .main-image {
           height: 320px;
         }
+      }
+      @media (max-width: 900px) {
         .product-grid {
           grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         }
