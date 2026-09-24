@@ -65,6 +65,12 @@ export interface IProduct extends Document {
   rating: number;
   reviewCount: number;
   stock: number;
+  /**
+   * Where this product is physically kept — see models/Warehouse.ts. Optional
+   * because every product that existed before locations did has none, and a
+   * seller with one shop never has to think about it.
+   */
+  warehouseId?: mongoose.Types.ObjectId;
   soldCount: number;
   status: ProductStatus;
   createdAt: Date;
@@ -106,6 +112,7 @@ const ProductSchema = new Schema<IProduct>(
     rating: { type: Number, default: 0, min: 0, max: 5 },
     reviewCount: { type: Number, default: 0, min: 0 },
     stock: { type: Number, default: 0, min: 0 },
+    warehouseId: { type: Schema.Types.ObjectId, ref: 'Warehouse', index: true },
     soldCount: { type: Number, default: 0, min: 0 },
 
     status: {

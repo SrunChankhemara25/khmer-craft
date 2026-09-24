@@ -34,6 +34,7 @@ export const toProductResponse = (product: IProduct) => ({
   rating: product.rating,
   reviewCount: product.reviewCount,
   stock: product.stock,
+  warehouseId: product.warehouseId ? String(product.warehouseId) : null,
   soldCount: product.soldCount,
   status: product.status,
   createdAt: product.createdAt,
@@ -287,6 +288,7 @@ export const createProduct = async (seller: IUser, input: CreateProductInput) =>
     images: images ?? [],
     variants,
     stock: input.stock,
+    warehouseId: input.warehouseId,
     status: input.status,
   });
 
@@ -361,6 +363,13 @@ export const updateProduct = async (
     }));
   }
   if (input.stock !== undefined) product.stock = input.stock;
+  // null clears it — a seller moving a product out of a location without
+  // choosing another should not leave it pointing at somewhere it is not.
+  if (input.warehouseId !== undefined) {
+    product.warehouseId = input.warehouseId
+      ? new mongoose.Types.ObjectId(input.warehouseId)
+      : undefined;
+  }
   if (input.status !== undefined) product.status = input.status;
 
   await product.save();

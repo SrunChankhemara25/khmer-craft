@@ -106,6 +106,8 @@ export const createProductSchema = z
       .max(12)
       .optional(),
     stock: z.number().int().min(0).max(1_000_000).default(0),
+    /** Which stock location holds this — see models/Warehouse.ts. */
+    warehouseId: z.string().regex(/^[a-f\d]{24}$/i, 'Choose a valid location').optional(),
     status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).default('ACTIVE'),
     sellerId: z.string().optional(),
   })
@@ -141,6 +143,7 @@ export const updateProductSchema = z
       .max(12)
       .optional(),
     stock: z.number().int().min(0).max(1_000_000).optional(),
+    warehouseId: z.string().regex(/^[a-f\d]{24}$/i, 'Choose a valid location').nullable().optional(),
     status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).optional(),
   })
   .strip()
