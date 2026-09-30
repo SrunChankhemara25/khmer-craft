@@ -7,15 +7,9 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-<<<<<<< HEAD:apps/web/src/app/features/auth/reset-password/reset-password.ts
-import { apiErrorMessage, AuthService } from '../../../core/auth/auth.service';
-import { AuthLayout } from '../../../shared/auth-layout/auth-layout';
-import { IconComponent } from '../../../shared/icon.component';
-=======
 import { apiErrorMessage, AuthService } from '../../../../core/auth/auth.service';
 import { AuthLayout } from '../../../../components/shared/authentication/auth-layout/auth-layout';
 import { IconComponent } from '../../../../components/shared/ui/icon/icon.component';
->>>>>>> origin/develop:apps/web/src/app/features/authentication/buyer/reset-password/reset-password.ts
 
 @Component({
   selector: 'app-reset-password',
@@ -86,7 +80,7 @@ export class ResetPassword {
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: () => this.complete.set(true),
-        error: (error) => this.error.set(apiErrorMessage(error)),
+        error: (error: unknown) => this.error.set(apiErrorMessage(error)),
       });
   }
 }

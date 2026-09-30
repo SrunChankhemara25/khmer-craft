@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { buyerGuard } from './core/auth/auth.guard';
 import { sellerGuard } from './core/auth/seller.guard';
+import { adminGuard } from './admin/admin.guard';
 
 /**
  * Everything is lazy-loaded. The storefront branch imported all 19 page
@@ -65,7 +66,6 @@ export const routes: Routes = [
       import('./pages/wishlist.component').then((m) => m.WishlistComponent),
     title: 'Your wishlist | KhmerCraft',
   },
-
   // ------------------------------------------------------------------ checkout
   // Guarded: an anonymous visitor is sent to /login with a returnUrl rather
   // than filling in a delivery address they cannot submit.
@@ -90,7 +90,6 @@ export const routes: Routes = [
       ),
     title: 'Order confirmed | KhmerCraft',
   },
-
   // ----------------------------------------------------------------- marketing
   {
     path: 'about',
@@ -136,7 +135,6 @@ export const routes: Routes = [
   },
   // The spec uses /become-seller; keep both spellings working.
   { path: 'become-seller', pathMatch: 'full', redirectTo: 'become-a-seller' },
-
   // ------------------------------------------------------------------- account
   {
     path: 'profile',
@@ -152,7 +150,6 @@ export const routes: Routes = [
       import('./features/user/account/orders/orders').then((m) => m.Orders),
     title: 'My orders | KhmerCraft',
   },
-
   // ------------------------------------------------------------------- seller
   {
     path: 'seller/login',
@@ -189,7 +186,6 @@ export const routes: Routes = [
       ),
     title: 'Incoming orders | KhmerCraft',
   },
-
   // ---------------------------------------------------------------------- auth
   {
     path: 'login',
@@ -253,6 +249,8 @@ export const routes: Routes = [
     title: 'Change password | KhmerCraft',
   },
   {
+    // Listed BEFORE the guarded 'admin' route below so the login page itself
+    // stays reachable without a session.
     path: 'admin/login',
     loadComponent: () =>
       import('./features/admin/authentication/login/admin-login').then(
@@ -260,7 +258,14 @@ export const routes: Routes = [
       ),
     title: 'Admin sign in | KhmerCraft',
   },
-
+  {
+    // The admin workspace. Every /admin/* URL except the login above passes
+    // through adminGuard, which requires an ADMIN session.
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadChildren: () =>
+      import('./admin/admin.routes').then((r) => r.ADMIN_ROUTES),
+  },
   // ------------------------------------------------------------- support pages
   // One component driven by route data — these differ only in copy.
   {
@@ -298,7 +303,6 @@ export const routes: Routes = [
     data: { page: 'privacy' },
     title: 'Privacy policy | KhmerCraft',
   },
-
   // A real 404 rather than a silent redirect, so a broken link stays visible
   // instead of quietly dumping the visitor on the homepage.
   {

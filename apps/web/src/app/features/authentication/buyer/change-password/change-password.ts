@@ -7,15 +7,9 @@ import {
 } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
-<<<<<<< HEAD:apps/web/src/app/features/auth/change-password/change-password.ts
-import { apiErrorMessage, AuthService } from '../../../core/auth/auth.service';
-import { AuthLayout } from '../../../shared/auth-layout/auth-layout';
-import { IconComponent } from '../../../shared/icon.component';
-=======
 import { apiErrorMessage, AuthService } from '../../../../core/auth/auth.service';
 import { AuthLayout } from '../../../../components/shared/authentication/auth-layout/auth-layout';
 import { IconComponent } from '../../../../components/shared/ui/icon/icon.component';
->>>>>>> origin/develop:apps/web/src/app/features/authentication/buyer/change-password/change-password.ts
 
 @Component({
   selector: 'app-change-password',
@@ -89,7 +83,7 @@ export class ChangePassword {
           this.form.reset();
           this.success.set('Your password has been changed.');
         },
-        error: (error) => this.error.set(apiErrorMessage(error)),
+        error: (error: unknown) => this.error.set(apiErrorMessage(error)),
       });
   }
 

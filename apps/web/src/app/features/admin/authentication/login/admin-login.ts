@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { apiErrorMessage, AuthService } from '../../../../core/auth/auth.service';
 import { AuthLayout } from '../../../../components/shared/authentication/auth-layout/auth-layout';
@@ -12,6 +12,8 @@ import { AuthLayout } from '../../../../components/shared/authentication/auth-la
 })
 export class AdminLogin {
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
@@ -39,7 +41,15 @@ export class AdminLogin {
       .login(email, password, 'ADMIN')
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: () => this.success.set('Administrator access confirmed.'),
+        next: () => {
+          this.success.set('Administrator access confirmed.');
+          // Enter the workspace instead of stranding the admin on the form:
+          // honour the guard's returnUrl, else land on the dashboard.
+          const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+          void this.router.navigateByUrl(
+            returnUrl && returnUrl.startsWith('/') ? returnUrl : '/admin/dashboard',
+          );
+        },
         error: (error) =>
           this.error.set(
             apiErrorMessage(error, 'Administrator credentials are incorrect.'),

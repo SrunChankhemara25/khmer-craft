@@ -3,7 +3,12 @@ import { IconComponent } from './icon.component';
 
 export interface MenuItem { label: string; icon?: string; danger?: boolean; action: string }
 
-@Component({ selector: 'kc-menu', standalone: true, imports: [IconComponent], template: `
+@Component({
+  selector: 'kc-menu',
+  standalone: true,
+  imports: [IconComponent],
+  host: { '(document:keydown.escape)': 'open.set(false)' },
+  template: `
   <div class="menu-wrap">
     <button class="icon-btn" aria-label="More actions" data-tip="More actions"
       (click)="$event.stopPropagation(); open.set(!open())">
@@ -19,7 +24,8 @@ export interface MenuItem { label: string; icon?: string; danger?: boolean; acti
         }
       </div>
     }
-  </div>` })
+  </div>`,
+})
 export class MenuComponent {
   items = input<MenuItem[]>([]);
   pick = output<string>();
