@@ -303,13 +303,54 @@ export class CatalogService {
     };
   }
 
+  /**
+   * Products worth showing next to this one.
+   *
+   * Category alone is too coarse to mean "related": Electronics holds phones,
+   * kettles and headphones, so filtering on it and taking the first few put a
+   * rice cooker under an iPhone. These are ranked instead, strongest signal
+   * first:
+   *
+   *   subcategory  — "Phones & Tablets" is the narrowest thing sellers record
+   *   same seller  — ships together, and a buyer browsing a store wants more
+   *   similar price — a $299 phone does not belong beside a $3 snack, even in
+   *                  the same aisle
+   *
+   * Same category is still required, so nothing wildly unrelated appears. Ties
+   * break on real sales rather than catalogue order, which is what made the
+   * old list look arbitrary.
+   */
   related(product: Product, limit = 4): Product[] {
-    return this.products()
-      .filter(
-        (candidate) =>
-          candidate.id !== product.id &&
-          candidate.categorySlug === product.categorySlug,
-      )
+    const candidates = this.products().filter(
+      (candidate) =>
+        candidate.id !== product.id &&
+        candidate.categorySlug === product.categorySlug,
+    );
+
+    const score = (candidate: Product): number => {
+      let points = 0;
+      if (
+        product.subcategorySlug &&
+        candidate.subcategorySlug === product.subcategorySlug
+      ) {
+        points += 40;
+      }
+      if (candidate.storeId === product.storeId) points += 25;
+
+      // Full marks at the same price, fading to nothing once one is more than
+      // double the other — close enough that a shopper reads them as
+      // alternatives rather than a different tier of product.
+      if (product.price > 0 && candidate.price > 0) {
+        const ratio =
+          Math.min(product.price, candidate.price) /
+          Math.max(product.price, candidate.price);
+        points += Math.max(0, (ratio - 0.5) * 2) * 20;
+      }
+      return points;
+    };
+
+    return [...candidates]
+      .sort((a, b) => score(b) - score(a) || b.soldCount - a.soldCount)
       .slice(0, limit);
   }
 }
