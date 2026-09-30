@@ -6,13 +6,14 @@ import { BadgeComponent } from '../ui/badge.component';
 import { BarChartComponent, LineChartComponent } from '../ui/charts.component';
 import { dstr, initials, money } from '../ui/format';
 import { LiveStripComponent } from '../ui/live-strip.component';
+import { IconComponent } from '../ui/icon.component';
 
 @Component({
   standalone: true,
-    imports: [StatComponent, BadgeComponent, BarChartComponent, LineChartComponent, RouterLink, LiveStripComponent],
+    imports: [StatComponent, BadgeComponent, BarChartComponent, LineChartComponent, RouterLink, LiveStripComponent, IconComponent],
   template: `
   @if (d.ready()) {
-        <div class="page-head"><div><h1 class="page-title">Dashboard</h1><p class="page-sub">Marketplace health at a glance</p></div></div>
+        <div class="page-head dashboard-head"><div><h1 class="page-title">Dashboard</h1><p class="page-sub">Marketplace health at a glance</p></div><span class="dashboard-status"><span class="status-dot"></span>All systems operational</span></div>
     <kc-live-strip></kc-live-strip>
 
     <div class="grid stats mb">
@@ -21,11 +22,12 @@ import { LiveStripComponent } from '../ui/live-strip.component';
       <kc-stat label="Total Products" icon="box" [value]="d.products().length" [hint]="pendingProducts + ' awaiting review'"></kc-stat>
       <kc-stat label="Total Orders" icon="cart" [value]="d.orders().length" [hint]="openOrders + ' open'"></kc-stat>
     </div>
-    <div class="grid stats mb">
-      <kc-stat label="Total Revenue" icon="wallet" [value]="money(d.revenue())" hint="commission + boost fees"></kc-stat>
-      <kc-stat label="Pending Seller Approvals" icon="alert" [value]="pendingSellers"></kc-stat>
-      <kc-stat label="Pending Reports" icon="flag" [value]="openReports"></kc-stat>
-      <kc-stat label="Pending Complaints" icon="message" [value]="openComplaints"></kc-stat>
+    <div class="dashboard-queue mb" aria-label="Admin work queue">
+      <div class="queue-intro"><span class="eyebrow">Needs attention</span><strong>Operational queue</strong><span class="muted">Prioritize the items waiting for an Admin decision.</span></div>
+      <a class="queue-item" routerLink="/admin/sellers"><span class="queue-value">{{pendingSellers}}</span><span><b>Seller reviews</b><small>Pending approval</small></span><kc-icon name="back" [size]="14"></kc-icon></a>
+      <a class="queue-item" routerLink="/admin/reports"><span class="queue-value">{{openReports}}</span><span><b>Reports</b><small>Open cases</small></span><kc-icon name="back" [size]="14"></kc-icon></a>
+      <a class="queue-item" routerLink="/admin/complaints"><span class="queue-value">{{openComplaints}}</span><span><b>Complaints</b><small>Need review</small></span><kc-icon name="back" [size]="14"></kc-icon></a>
+      <a class="queue-item" routerLink="/admin/payments"><span class="queue-value">{{pendingPayments}}</span><span><b>Payments</b><small>Awaiting action</small></span><kc-icon name="back" [size]="14"></kc-icon></a>
     </div>
 
     <div class="grid half mb">
@@ -101,6 +103,7 @@ export class DashboardComponent {
   openOrders = this.d.orders().filter(o => o.status === 'pending' || o.status === 'processing').length;
   openReports = this.d.reports().filter(r => r.status === 'open').length;
   openComplaints = this.d.complaints().filter(c => c.status !== 'resolved').length;
+  pendingPayments = this.d.payments().filter(p => p.status === 'pending').length;
   newBuyers = this.d.buyers().filter(b => this.monthDiff(b.registeredAt) === 0).length;
   newSellers = this.d.sellers().filter(s => this.monthDiff(s.appliedAt) === 0).length;
   best = [...this.d.products()].sort((a, b) => b.sold - a.sold).slice(0, 5);

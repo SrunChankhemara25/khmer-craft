@@ -42,6 +42,8 @@ const I: Record<string, string> = {
   'chevrons-right': '<path d="m13 17 5-5-5-5"/><path d="m6 17 5-5-5-5"/>',
   'sidebar-collapse': '<path d="M20 6H10"/><path d="M16 12H10"/><path d="M13 18H10"/>',
   'sidebar-expand': '<path d="M4 6h10"/><path d="M8 12h6"/><path d="M11 18h3"/>',
+  menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
+  'sidebar-close': '<path d="M5 6h14"/><path d="M8 12h11"/><path d="M11 18h8"/>',
 };
 
 @Component({

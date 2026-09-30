@@ -21,7 +21,7 @@ import { dstr, initials, money } from '../ui/format';
       </select>
     </div>
 
-    <div class="card"><table class="tbl">
+    <div class="card management-table"><table class="tbl">
       <thead><tr><th>Name</th><th>Email</th><th>Registered</th><th class="right">Orders</th><th class="right">Spending</th><th>Status</th><th class="right">Actions</th></tr></thead>
       <tbody>
         @for (b of rows(); track b.id) {

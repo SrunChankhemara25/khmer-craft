@@ -1,9 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
 import { AdminService } from '../admin-data.service';
-import { AdminApiService, LiveProduct, SellerApplication } from '../admin-api.service';
+import { AdminApiService, LiveProduct } from '../admin-api.service';
 import { ApiStore } from '../../core/api/api.models';
-import { apiErrorMessage } from '../../core/auth/auth.service';
 import { BadgeComponent } from '../ui/badge.component';
 import { ConfirmComponent } from '../ui/confirm.component';
 import { IconComponent } from '../ui/icon.component';
@@ -25,20 +23,18 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
 
 /**
  * Sellers = seller accounts and their stores (one and the same here).
- * Signup is open — no approval gate; the request queue only grants the
- * verified badge (real API writes).
- *
  * Account status (active / suspended / deactivated) is an audited admin
  * decision stored in this workspace until the backend gains
  * PATCH /api/admin/users/:id/status — see the note under the table.
  */
 @Component({
   standalone: true,
-  imports: [BadgeComponent, ConfirmComponent, IconComponent, MenuComponent, StateComponent, StatComponent, RouterLink],
+  imports: [BadgeComponent, ConfirmComponent, IconComponent, MenuComponent, StateComponent, StatComponent],
   template: `
   <!-- ============ FULL-SCREEN STORE PROFILE ============ -->
   @if (profile(); as s) {
-    <div class="page-head">
+    <div class="seller-profile">
+    <div class="page-head seller-profile-head">
       <div style="display:flex;align-items:center;gap:12px">
         <button class="icon-btn" aria-label="Back to sellers" data-tip="Back to sellers" (click)="closeProfile()"><kc-icon name="back" [size]="15"></kc-icon></button>
         <span class="thumb" style="width:44px;height:44px;font-size:14px">{{initials(s.name)}}</span>
@@ -52,7 +48,6 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
         </div>
       </div>
       <div class="cell-actions">
-        <a class="btn btn-sm" [routerLink]="['/stores', s.id]">Open storefront</a>
         <button class="btn btn-sm" (click)="loadProfileProducts(s.id)">Refresh</button>
       </div>
     </div>
@@ -64,14 +59,14 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
       </div>
     }
 
-    <div class="grid g3 mb">
+    <div class="grid g3 mb profile-metrics">
       <kc-stat label="Listings published" icon="box" [value]="profileProducts().length"></kc-stat>
       <kc-stat label="Store rating" icon="star" [value]="s.reviewCount ? s.rating + ' / 5' : 'New store'"></kc-stat>
       <kc-stat label="Customer reviews" icon="message" [value]="s.reviewCount"></kc-stat>
     </div>
 
     <div class="grid duo mb">
-      <div class="card card-pad">
+      <div class="card card-pad profile-info">
         <h3 class="card-title" style="margin-bottom:10px">Account & store details</h3>
         <div class="kv"><span class="k">Store slug</span>{{s.slug}}</div>
         <div class="kv"><span class="k">Account status</span><kc-badge [value]="acct(s)"></kc-badge></div>
@@ -81,14 +76,14 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
         @if (ext(s).verifiedAt) { <div class="kv"><span class="k">Verified since</span>{{dstr(ext(s).verifiedAt!)}}</div> }
         @if (ext(s).verificationExplanation) { <p class="muted" style="margin-top:10px;font-size:12px;line-height:1.5">{{ext(s).verificationExplanation}}</p> }
       </div>
-      <div class="card card-pad">
+      <div class="card card-pad profile-about">
         <h3 class="card-title" style="margin-bottom:10px">About this seller</h3>
         <p class="muted" style="font-size:12.5px;line-height:1.6">{{ext(s).description || 'The seller has not written a store story yet.'}}</p>
         @if (s.announcement) { <p class="muted" style="font-size:12px;margin-top:10px"><b>Announcement:</b> {{s.announcement}}</p> }
       </div>
     </div>
 
-    <div class="card">
+    <div class="card management-table">
       <div class="card-head"><h3 class="card-title">Listing history — every post this store has published</h3>
         <span class="muted">{{profileProducts().length}} shown</span></div>
       @if (profileLoading()) { <kc-state mode="loading" compact message="Loading this store's listings…"></kc-state> }
@@ -115,35 +110,27 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
         </table>
       }
     </div>
-  } @else {
+    </div>
+  }
+  @if (!profile()) {
 
   <!-- ============ LIST / REQUESTS ============ -->
   <div class="page-head">
     <div><h1 class="page-title">Sellers</h1>
-      <p class="page-sub">Seller accounts and their stores — signup is open; verification is reviewed here and account status is managed here</p></div>
+      <p class="page-sub">Seller accounts and their stores — inspect storefronts and manage account status from one workspace</p></div>
   </div>
 
   <div class="toolbar">
-    <div class="tabs">
-      <button class="tab" [class.active]="tab() === 'stores'" (click)="tab.set('stores')">Seller accounts</button>
-      <button class="tab" [class.active]="tab() === 'requests'" (click)="tab.set('requests')">Verification requests</button>
-    </div>
-    @if (tab() === 'stores') {
-      <input class="input input-search" placeholder="Filter loaded stores…" [value]="q()" (input)="q.set($any($event.target).value)"/>
-      <select class="input" [value]="acctFilter()" (change)="acctFilter.set($any($event.target).value)">
-        <option value="all">All account statuses</option><option value="active">Active</option>
-        <option value="suspended">Suspended</option><option value="deactivated">Deactivated</option>
-      </select>
-      <span class="grow"></span>
-      <button class="btn btn-sm" (click)="loadStores()">Refresh</button>
-    } @else {
-      <span class="grow"></span>
-      <button class="btn btn-sm" (click)="loadApps()">Refresh</button>
-    }
+    <input class="input input-search" placeholder="Filter loaded stores…" [value]="q()" (input)="q.set($any($event.target).value)"/>
+    <select class="input" [value]="acctFilter()" (change)="acctFilter.set($any($event.target).value)">
+      <option value="all">All account statuses</option><option value="active">Active</option>
+      <option value="suspended">Suspended</option><option value="deactivated">Deactivated</option>
+    </select>
+    <span class="grow"></span>
+    <button class="btn btn-sm" (click)="loadStores()">Refresh</button>
   </div>
 
-  @if (tab() === 'stores') {
-    <div class="card">
+  <div class="card management-table">
       @if (storesLoading()) { <kc-state mode="loading" message="Loading seller accounts…"></kc-state> }
       @else if (storesError()) { <kc-state mode="error" [message]="storesError()" (retry)="loadStores()"></kc-state> }
       @else if (!storeRows().length) { <kc-state mode="empty" message="No seller accounts match these filters."></kc-state> }
@@ -178,46 +165,6 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
     </div>
   }
 
-  @if (tab() === 'requests') {
-    <p class="sim-note live-note" style="margin:0 0 12px">Sellers sign up freely — these requests only grant the <b>verified badge</b>. Verifying stamps the store immediately; rejecting requires a written reason.</p>
-    @if (actionError()) {
-      <div class="notice-row" role="alert"><kc-icon name="alert" [size]="14"></kc-icon> {{actionError()}}
-        <button class="link" (click)="actionError.set('')">Dismiss</button></div>
-    }
-    <div class="card">
-      @if (appsLoading()) { <kc-state mode="loading" message="Loading verification requests…"></kc-state> }
-      @else if (appsError()) { <kc-state mode="error" [message]="appsError()" (retry)="loadApps()"></kc-state> }
-      @else if (!apps().length) { <kc-state mode="empty" message="No verification requests in the queue."></kc-state> }
-      @else {
-        <table class="tbl">
-          <thead><tr><th>Applicant</th><th>Province</th><th>Category</th><th>Phone</th><th>Submitted</th><th>Status</th><th class="right">Actions</th></tr></thead>
-          <tbody>
-            @for (a of apps(); track a.id) {
-              <tr>
-                <td><div class="cell-flex"><span class="thumb">{{initials(a.firstName + ' ' + a.lastName)}}</span>
-                  <div><div class="cell-main">{{a.firstName}} {{a.lastName}}</div>
-                    @if (a.rejectionReason) { <div class="cell-sub" style="color:var(--red)">Reason: {{a.rejectionReason}}</div> }</div></div></td>
-                <td>{{a.province}}</td><td class="cell-sub">{{a.primaryCategory}}</td><td class="cell-sub">{{a.phoneNumber}}</td>
-                <td class="cell-sub">{{dstr(a.submittedAt)}}</td>
-                <td><kc-badge [value]="label(a.status)"></kc-badge></td>
-                <td class="right"><div class="cell-actions">
-                  @if (a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW') {
-                    <button class="btn btn-sm btn-primary" [disabled]="busyId() === a.id" (click)="askVerify(a)">
-                      {{ busyId() === a.id ? '…' : 'Verify' }}</button>
-                    <kc-menu [items]="menuForApp(a)" (pick)="appAct($event, a)"></kc-menu>
-                  } @else if (a.status === 'APPROVED') {
-                    <kc-menu [items]="menuForApp(a)" (pick)="appAct($event, a)"></kc-menu>
-                  } @else { <span class="muted">—</span> }
-                </div></td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      }
-    </div>
-  }
-  }
-
   <!-- listing inspector drawer -->
   @if (selProduct(); as p) {
     <div class="drawer-back" (click)="selProduct.set(null)"></div>
@@ -235,7 +182,6 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
         <div class="sect">Description</div>
         <p class="muted" style="margin:0;line-height:1.6">{{p.description || 'No description provided.'}}</p>
         <div class="sect">Storefront</div>
-        <a class="btn btn-primary" [routerLink]="['/product', p.id]">Open product page</a>
       </div>
     </div>
   }
@@ -246,7 +192,7 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
   }`,
   styles: [`
     .pager{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:12px 16px;border-top:1px solid var(--line)}
-    .sim-note{padding:10px 16px;border:1px solid var(--line);border-radius:10px;font-size:11.5px;font-weight:600;background:var(--amber-050);color:var(--amber)}
+    .sim-note{padding:11px 14px;border:0;border-left:3px solid var(--amber);border-radius:6px;font-size:11.5px;font-weight:600;background:var(--amber-050);color:var(--amber)}
     .live-note{background:var(--green-050);color:var(--green);border-color:transparent}
     .notice-row{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:9px 14px;border-radius:10px;background:var(--amber-050);color:var(--amber);font-size:12px;font-weight:600}
     .notice-row .link{margin-left:auto}
@@ -255,9 +201,7 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
 export class SellersComponent {
   d = inject(AdminService);
   private readonly api = inject(AdminApiService);
-  private readonly router = inject(Router);
 
-  tab = signal<'stores' | 'requests'>('stores');
   q = signal('');
   page = signal(1);
   stores = signal<StoreExt[]>([]);
@@ -273,25 +217,17 @@ export class SellersComponent {
   profileError = signal('');
   selProduct = signal<LiveProduct | null>(null);
 
-  apps = signal<SellerApplication[]>([]);
-  appsLoading = signal(true);
-  appsError = signal('');
-  actionError = signal('');
-  busyId = signal('');
   confirmReq = signal<ConfirmRequest | null>(null);
 
   dstr = dstr; money = money; initials = initials;
   ext = (s: ApiStore): StoreExt => s as StoreExt;
   acct = (s: ApiStore): AccountStatus => this.override()[s.id] ?? 'active';
-  label = (status: string) => ({ DRAFT: 'Draft', SUBMITTED: 'Submitted', UNDER_REVIEW: 'Under review', APPROVED: 'Verified', REJECTED: 'Rejected', SUSPENDED: 'Suspended' } as Record<string, string>)[status] ?? status;
-
   constructor() {
     try {
       const raw = localStorage.getItem(STATUS_KEY);
       if (raw) this.override.set(JSON.parse(raw));
     } catch { localStorage.removeItem(STATUS_KEY); }
     this.loadStores();
-    this.loadApps();
   }
 
   storeRows = computed(() => {
@@ -326,7 +262,7 @@ export class SellersComponent {
 
   // ---------------------------------------------------- account status control
   menuForStore(s: StoreExt): MenuItem[] {
-    const m: MenuItem[] = [{ label: 'Open storefront', icon: 'store', action: 'storefront' }];
+    const m: MenuItem[] = [];
     const status = this.acct(s);
     if (status === 'active') {
       m.push({ label: 'Suspend account', icon: 'ban', danger: true, action: 'suspended' });
@@ -338,7 +274,6 @@ export class SellersComponent {
   }
 
   storeAct(action: string, s: StoreExt) {
-    if (action === 'storefront') { void this.router.navigate(['/stores', s.id]); return; }
     if (action === 'active') {
       this.confirmReq.set({
         title: `Reactivate ${s.name}?`, label: 'Reactivate', requireReason: false,
@@ -366,56 +301,5 @@ export class SellersComponent {
     this.d.toast(`Account ${status}`);
   }
 
-  // -------------------------------------------------- verification requests
-  loadApps() {
-    this.appsLoading.set(true); this.appsError.set('');
-    this.api.applications().subscribe({
-      next: (list) => { this.apps.set(list); this.appsLoading.set(false); },
-      error: () => { this.apps.set([]); this.appsError.set('Could not load the request queue. Are you signed in as ADMIN?'); this.appsLoading.set(false); },
-    });
-  }
-  menuForApp(a: SellerApplication): MenuItem[] {
-    const m: MenuItem[] = [];
-    if (a.status === 'SUBMITTED') m.push({ label: 'Start review', icon: 'search', action: 'review' });
-    if (a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW') m.push({ label: 'Reject request', icon: 'x', danger: true, action: 'reject' });
-    if (a.status === 'APPROVED') m.push({ label: 'Suspend verification', icon: 'ban', danger: true, action: 'suspend' });
-    return m;
-  }
-  appAct(action: string, a: SellerApplication) {
-    const name = `${a.firstName} ${a.lastName}`;
-    if (action === 'review') { this.decide(a, 'UNDER_REVIEW', 'Request moved to review'); return; }
-    if (action === 'reject') {
-      this.confirmReq.set({ title: `Reject ${name}'s verification request?`, label: 'Reject', requireReason: true,
-        msg: 'The seller keeps their account and store — only the verified badge is refused. The reason is stored on the request and shown to the seller.',
-        fn: (reason) => this.decide(a, 'REJECTED', 'Request rejected', reason) });
-      return;
-    }
-    if (action === 'suspend') {
-      this.confirmReq.set({ title: `Suspend ${name}'s verification?`, label: 'Suspend', requireReason: true,
-        msg: 'The verified badge is removed from their store. The reason is stored in the audit log.',
-        fn: (reason) => this.decide(a, 'SUSPENDED', 'Verification suspended', reason) });
-    }
-  }
-  askVerify(a: SellerApplication) {
-    this.confirmReq.set({ title: `Verify ${a.firstName} ${a.lastName}'s store?`, label: 'Verify', requireReason: false,
-      msg: 'The store gets the verified badge immediately (or as soon as the seller finishes creating it).',
-      fn: () => this.decide(a, 'APPROVED', 'Store verified') });
-  }
-  private decide(a: SellerApplication, decision: 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED', msg: string, reason?: string) {
-    if (this.busyId()) return;
-    this.busyId.set(a.id); this.actionError.set('');
-    this.api.reviewApplication(a.id, decision, reason || undefined).subscribe({
-      next: () => {
-        this.busyId.set('');
-        this.d.log(`Verification ${decision.toLowerCase()}: ${a.firstName} ${a.lastName}`,
-          decision === 'APPROVED' ? 'approved' : decision === 'REJECTED' ? 'rejected' : decision === 'SUSPENDED' ? 'suspended' : 'pending',
-          { target: a.id, reason });
-        this.d.toast(msg);
-        this.api.refreshBadges();
-        this.loadApps();
-      },
-      error: (e) => { this.busyId.set(''); this.actionError.set(apiErrorMessage(e, 'The server refused that decision.')); },
-    });
-  }
   runConfirm(reason: string) { const c = this.confirmReq(); if (c) c.fn(reason); this.confirmReq.set(null); }
 }

@@ -1,5 +1,4 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { AdminApiService, LiveProduct } from '../admin-api.service';
 import { ApiStore } from '../../core/api/api.models';
 import { BadgeComponent } from '../ui/badge.component';
@@ -14,7 +13,7 @@ import { initials, money } from '../ui/format';
  */
 @Component({
   standalone: true,
-  imports: [BadgeComponent, IconComponent, StateComponent, RouterLink],
+  imports: [BadgeComponent, IconComponent, StateComponent],
   template: `
   <div class="page-head">
     <div><h1 class="page-title">Stores</h1>
@@ -94,8 +93,6 @@ import { initials, money } from '../ui/format';
           }
         }
 
-        <div class="sect">Storefront</div>
-        <a class="btn btn-primary" [routerLink]="['/stores', s.id]">Open public storefront</a>
       </div>
     </div>
   }`,

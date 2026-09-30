@@ -1,14 +1,11 @@
 {
   "name": "khmer-craft",
   "version": "1.0.0",
-  "description": "KhmerCraft — multi-vendor marketplace for Cambodian handicrafts",
+  "description": "KhmerCraft Admin frontend",
   "scripts": {
-    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "dev": "npm run dev:web",
     "dev:web": "cd apps/web && ng serve",
-    "dev:web-preview": "cd apps/web && ng serve --port 4300",
-    "dev:api": "cd apps/api && npm run dev"
+    "dev:web-preview": "cd apps/web && ng serve --port 4300"
   },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  }
+  "devDependencies": {}
 }
