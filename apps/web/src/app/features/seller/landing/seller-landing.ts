@@ -90,7 +90,7 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
       </section>
 
       <!-- What this actually is. Three plain statements. -->
-      <section class="stage claims">
+      <section class="stage claims band">
         @for (claim of claims; track claim.title) {
           <article class="claim reveal">
             <kc-icon [name]="claim.icon" [size]="26" />
@@ -115,7 +115,7 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
         </ol>
       </section>
 
-      <section class="stage tools">
+      <section class="stage tools band">
         <h2 class="section-title reveal">Everything the workspace gives you.</h2>
         <div class="tool-grid">
           @for (tool of workspace; track tool.title) {
@@ -143,7 +143,7 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
       </section>
 
       <!-- The honest case for a marketplace over a social page. -->
-      <section class="stage compare">
+      <section class="stage compare band">
         <h2 class="section-title reveal">Why a storefront beats a chat thread.</h2>
         <div class="compare-grid">
           @for (row of comparison; track row.point) {
@@ -169,7 +169,7 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
         <a class="btn ghost faq-more" routerLink="/become-a-seller/faq">Read all questions</a>
       </section>
 
-      <section class="stage closing">
+      <section class="stage closing band">
         <h2 class="reveal">Start with one product.</h2>
         <p class="lede reveal">Opening a storefront takes a few minutes, and nothing is published until you say so.</p>
         <div class="cta reveal">
@@ -201,20 +201,44 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
   styles: [`
     /* Apple-ish restraint: one idea per screen, a lot of air, near-monochrome
        with the brand clay used once or twice rather than everywhere. */
-    .lp { background: #fff; color: #111; }
+    /* Soft rather than stark: warm off-white ground, ink softened off pure
+       black, and each section given a faint wash instead of a hairline rule —
+       the colour separates them, so the borders are not needed. */
+    .lp { background: #fffdf9; color: #2b2721; overflow-x: clip; }
+    .lp section { position: relative; }
+    .band::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto;
+      top: 0; bottom: 0;
+      left: 50%;
+      width: 100vw;
+      transform: translateX(-50%);
+      background: inherit;
+      /* 0, not -1: a negative index drops it behind .lp's own background,
+         which then paints over the band and it never shows. Sitting at 0 with
+         the section's content lifted above keeps it visible. */
+      z-index: 0;
+    }
+    .band > * { position: relative; z-index: 1; }
     .stage { max-width: 1080px; margin: 0 auto; padding: clamp(72px, 11vw, 150px) 24px; text-align: center; }
     .kicker { margin: 0 0 18px; color: #8e3021; font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
     h1 { margin: 0; font-family: var(--font-heading); font-weight: 600; font-size: clamp(40px, 7.4vw, 84px); line-height: 1.03; letter-spacing: -.035em; }
-    .lede { max-width: 30ch; margin: 22px auto 0; color: #5c5750; font-size: clamp(16px, 1.7vw, 21px); line-height: 1.55; }
+    .lede { max-width: 30ch; margin: 22px auto 0; color: #6b645a; font-size: clamp(16px, 1.7vw, 21px); line-height: 1.55; }
     .cta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
     .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 26px; border: 1px solid transparent; border-radius: 999px; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; transition: transform 160ms ease, background 160ms ease; }
     .btn.solid { background: #8e3021; color: #fff; }
     .btn.solid:hover { background: #6e2419; transform: translateY(-1px); }
-    .btn.ghost { border-color: #ddd6ca; color: #111; background: #fff; }
-    .btn.ghost:hover { border-color: #111; }
+    .btn.ghost { border-color: rgba(143,120,86,.28); color: #2b2721; background: rgba(255,255,255,.7); }
+    .btn.ghost:hover { border-color: rgba(143,120,86,.6); background: #fff; }
     .fine { margin-top: 16px; color: #8d8577; font-size: 13px; }
 
     /* ---- device mockups ------------------------------------------------ */
+    .hero {
+      background:
+        radial-gradient(120% 82% at 50% -12%, #fdeee6 0%, rgba(253,238,230,0) 62%),
+        radial-gradient(80% 60% at 84% 8%, #eef4ec 0%, rgba(238,244,236,0) 58%);
+    }
     .showcase { padding-top: 0; }
     .devices { position: relative; display: flex; justify-content: center; align-items: flex-end; }
     .laptop { width: min(100%, 760px); }
@@ -249,36 +273,36 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
 
     /* ---- content -------------------------------------------------------- */
     .section-title { margin: 0 0 clamp(32px, 5vw, 56px); font-family: var(--font-heading); font-weight: 600; font-size: clamp(27px, 3.6vw, 44px); letter-spacing: -.025em; }
-    .claims { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: clamp(28px, 4vw, 52px); text-align: left; border-top: 1px solid #efeae0; }
+    .claims { background: #fbf7f0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: clamp(28px, 4vw, 52px); text-align: left; }
     .claim kc-icon { color: #8e3021; }
     .claim h2 { margin: 14px 0 8px; font-family: var(--font-heading); font-weight: 600; font-size: 20px; letter-spacing: -.015em; }
-    .claim p { margin: 0; color: #5c5750; font-size: 14.5px; line-height: 1.6; }
+    .claim p { margin: 0; color: #6b645a; font-size: 14.5px; line-height: 1.6; }
 
-    .steps { border-top: 1px solid #efeae0; }
+    .steps { background: #fffdf9; }
     .step-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: clamp(26px, 4vw, 48px); margin: 0; padding: 0; list-style: none; text-align: left; }
     .step-list li { display: flex; gap: 16px; }
-    .num { flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: #111; color: #fff; font-size: 14px; font-weight: 700; }
+    .num { flex: 0 0 auto; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #8e3021; color: #fff; font-size: 14px; font-weight: 700; }
     .step-list h3 { margin: 4px 0 7px; font-size: 17px; }
-    .step-list p { margin: 0; color: #5c5750; font-size: 14px; line-height: 1.6; }
+    .step-list p { margin: 0; color: #6b645a; font-size: 14px; line-height: 1.6; }
 
-    .tools { border-top: 1px solid #efeae0; }
+    .tools { background: #f3f7f2; }
     .tool-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; text-align: left; }
-    .tool { padding: 22px; border: 1px solid #efeae0; border-radius: 16px; background: #fffdf8; }
+    .tool { padding: 24px; border: 1px solid rgba(143,120,86,.12); border-radius: 20px; background: rgba(255,255,255,.72); }
     .tool kc-icon { color: #8e3021; }
     .tool h3 { margin: 12px 0 6px; font-size: 15.5px; }
-    .tool p { margin: 0; color: #5c5750; font-size: 13.5px; line-height: 1.6; }
+    .tool p { margin: 0; color: #6b645a; font-size: 13.5px; line-height: 1.6; }
 
     /* ---- what you can sell ---- */
-    .sell-what { border-top: 1px solid #efeae0; }
+    .sell-what { background: #fffdf9; }
     .cat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 14px; }
     .cat { margin: 0; }
-    .cat img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 14px; border: 1px solid #efeae0; }
+    .cat img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 18px; border: 1px solid rgba(143,120,86,.1); }
     .cat figcaption { margin-top: 9px; font-size: 13px; color: #5c5750; }
 
     /* ---- comparison ---- */
-    .compare { border-top: 1px solid #efeae0; }
+    .compare { background: #fbf4ef; }
     .compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; text-align: left; }
-    .compare-row { padding: 22px; border: 1px solid #efeae0; border-radius: 16px; background: #fffdf8; }
+    .compare-row { padding: 24px; border: 1px solid rgba(143,120,86,.12); border-radius: 20px; background: rgba(255,255,255,.76); }
     .compare-row h3 { margin: 0 0 14px; font-size: 16px; }
     .compare-row p { display: grid; gap: 3px; margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; }
     .compare-row p:last-child { margin-bottom: 0; }
@@ -289,9 +313,9 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
     .after span { color: #8e3021; }
 
     /* ---- faq ---- */
-    .faq { border-top: 1px solid #efeae0; }
-    .faq-list { display: grid; gap: 0; text-align: left; border-top: 1px solid #efeae0; }
-    .faq details { border-bottom: 1px solid #efeae0; }
+    .faq { background: #fffdf9; }
+    .faq-list { display: grid; gap: 0; text-align: left; border-top: 1px solid rgba(143,120,86,.16); }
+    .faq details { border-bottom: 1px solid rgba(143,120,86,.16); }
     .faq summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 19px 2px; font-size: 15.5px; font-weight: 600; cursor: pointer; list-style: none; }
     .faq summary::-webkit-details-marker { display: none; }
     .faq summary kc-icon { color: #b4aa99; transition: transform 180ms ease; flex: 0 0 auto; }
@@ -300,7 +324,7 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
     .faq-more { margin-top: 28px; }
 
     /* ---- sticky call to action ---- */
-    .sticky-cta { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.88); backdrop-filter: blur(16px); border-top: 1px solid #ece6da; transform: translateY(110%); transition: transform 260ms cubic-bezier(.16,1,.3,1); }
+    .sticky-cta { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: rgba(255,253,249,.86); backdrop-filter: blur(18px); border-top: 1px solid rgba(143,120,86,.16); transform: translateY(110%); transition: transform 260ms cubic-bezier(.16,1,.3,1); }
     .sticky-cta.show { transform: translateY(0); }
     .sticky-inner { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
     .sticky-copy { display: grid; gap: 2px; text-align: left; }
@@ -315,7 +339,7 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
     }
     @media (prefers-reduced-motion: reduce) { .sticky-cta { transition: none; } }
 
-    .closing { border-top: 1px solid #efeae0; }
+    .closing { background: linear-gradient(180deg, #fdf3ec 0%, #f6efe4 100%); }
     .closing h2 { margin: 0; font-family: var(--font-heading); font-weight: 600; font-size: clamp(30px, 4.6vw, 54px); letter-spacing: -.03em; }
 
     @media (max-width: 860px) {
