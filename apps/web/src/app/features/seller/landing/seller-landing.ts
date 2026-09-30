@@ -1,10 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { KcIcon } from '../../../components/shared/ui/kc-icon/kc-icon';
 import { ScrollReveal } from '../../../components/shared/ui/scroll-reveal/scroll-reveal.directive';
 import { SellerPortalHeader } from '../shared/seller-portal-header';
 import { SellerFooter } from '../shared/seller-footer';
-import { sellerSteps } from '../../../core/data/seller-content.data';
+import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
 
 /**
  * The page a prospective seller lands on.
@@ -128,6 +128,47 @@ import { sellerSteps } from '../../../core/data/seller-content.data';
         </div>
       </section>
 
+      <!-- What a seller can actually list, shown with the real artwork. -->
+      <section class="stage sell-what">
+        <h2 class="section-title reveal">Sell almost anything.</h2>
+        <div class="cat-row">
+          @for (c of allCategories; track c.slug) {
+            <figure class="cat reveal">
+              <img [src]="'/categories/' + c.slug + '.png'" alt="" loading="lazy" />
+              <figcaption>{{ c.label }}</figcaption>
+            </figure>
+          }
+        </div>
+        <p class="caption reveal">Seven departments, and your own categories inside your store.</p>
+      </section>
+
+      <!-- The honest case for a marketplace over a social page. -->
+      <section class="stage compare">
+        <h2 class="section-title reveal">Why a storefront beats a chat thread.</h2>
+        <div class="compare-grid">
+          @for (row of comparison; track row.point) {
+            <article class="compare-row reveal">
+              <h3>{{ row.point }}</h3>
+              <p class="before"><span>Selling in chat</span>{{ row.before }}</p>
+              <p class="after"><span>On KhmerCraft</span>{{ row.after }}</p>
+            </article>
+          }
+        </div>
+      </section>
+
+      <section class="stage faq">
+        <h2 class="section-title reveal">Questions sellers ask first.</h2>
+        <div class="faq-list">
+          @for (item of faqPreview; track item.question) {
+            <details class="reveal">
+              <summary>{{ item.question }}<kc-icon name="chevron-down" [size]="16" /></summary>
+              <p>{{ item.answer }}</p>
+            </details>
+          }
+        </div>
+        <a class="btn ghost faq-more" routerLink="/become-a-seller/faq">Read all questions</a>
+      </section>
+
       <section class="stage closing">
         <h2 class="reveal">Start with one product.</h2>
         <p class="lede reveal">Opening a storefront takes a few minutes, and nothing is published until you say so.</p>
@@ -137,6 +178,23 @@ import { sellerSteps } from '../../../core/data/seller-content.data';
         </div>
       </section>
     </main>
+
+    <!-- Follows the reader down a long page: on a marketing page the decision
+         can happen anywhere, and making someone scroll back to the top to act
+         on it loses them. Hidden until the hero's own buttons are out of
+         sight, so it never doubles up with them. -->
+    <div class="sticky-cta" [class.show]="showStickyCta()">
+      <div class="sticky-inner">
+        <div class="sticky-copy">
+          <strong>Ready to open your shop?</strong>
+          <span>Free to start. Nothing goes live until you publish it.</span>
+        </div>
+        <div class="sticky-actions">
+          <a class="btn ghost small" routerLink="/become-a-seller/pricing">See pricing</a>
+          <button type="button" class="btn solid small" (click)="startOnboarding()">Start selling</button>
+        </div>
+      </div>
+    </div>
 
     <app-seller-footer />
   `,
@@ -210,6 +268,53 @@ import { sellerSteps } from '../../../core/data/seller-content.data';
     .tool h3 { margin: 12px 0 6px; font-size: 15.5px; }
     .tool p { margin: 0; color: #5c5750; font-size: 13.5px; line-height: 1.6; }
 
+    /* ---- what you can sell ---- */
+    .sell-what { border-top: 1px solid #efeae0; }
+    .cat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 14px; }
+    .cat { margin: 0; }
+    .cat img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 14px; border: 1px solid #efeae0; }
+    .cat figcaption { margin-top: 9px; font-size: 13px; color: #5c5750; }
+
+    /* ---- comparison ---- */
+    .compare { border-top: 1px solid #efeae0; }
+    .compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; text-align: left; }
+    .compare-row { padding: 22px; border: 1px solid #efeae0; border-radius: 16px; background: #fffdf8; }
+    .compare-row h3 { margin: 0 0 14px; font-size: 16px; }
+    .compare-row p { display: grid; gap: 3px; margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; }
+    .compare-row p:last-child { margin-bottom: 0; }
+    .compare-row span { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    .before { color: #8d8577; }
+    .before span { color: #b4aa99; }
+    .after { color: #2f2a24; }
+    .after span { color: #8e3021; }
+
+    /* ---- faq ---- */
+    .faq { border-top: 1px solid #efeae0; }
+    .faq-list { display: grid; gap: 0; text-align: left; border-top: 1px solid #efeae0; }
+    .faq details { border-bottom: 1px solid #efeae0; }
+    .faq summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 19px 2px; font-size: 15.5px; font-weight: 600; cursor: pointer; list-style: none; }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary kc-icon { color: #b4aa99; transition: transform 180ms ease; flex: 0 0 auto; }
+    .faq details[open] summary kc-icon { transform: rotate(180deg); }
+    .faq details p { margin: 0 0 19px; max-width: 68ch; color: #5c5750; font-size: 14px; line-height: 1.65; }
+    .faq-more { margin-top: 28px; }
+
+    /* ---- sticky call to action ---- */
+    .sticky-cta { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.88); backdrop-filter: blur(16px); border-top: 1px solid #ece6da; transform: translateY(110%); transition: transform 260ms cubic-bezier(.16,1,.3,1); }
+    .sticky-cta.show { transform: translateY(0); }
+    .sticky-inner { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .sticky-copy { display: grid; gap: 2px; text-align: left; }
+    .sticky-copy strong { font-size: 14.5px; }
+    .sticky-copy span { color: #8d8577; font-size: 12.5px; }
+    .sticky-actions { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+    .btn.small { min-height: 40px; padding: 0 18px; font-size: 14px; }
+    @media (max-width: 640px) {
+      .sticky-copy span { display: none; }
+      .sticky-copy strong { font-size: 13.5px; }
+      .btn.small { padding: 0 14px; font-size: 13px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .sticky-cta { transition: none; } }
+
     .closing { border-top: 1px solid #efeae0; }
     .closing h2 { margin: 0; font-family: var(--font-heading); font-weight: 600; font-size: clamp(30px, 4.6vw, 54px); letter-spacing: -.03em; }
 
@@ -249,6 +354,55 @@ export class SellerPage {
       body: 'Incoming orders, payment status and stock locations live in one workspace, so nothing is tracked in a separate notebook.',
     },
   ];
+
+  protected readonly allCategories = [
+    { slug: 'fashion', label: 'Fashion' },
+    { slug: 'food-groceries', label: 'Food' },
+    { slug: 'home-living', label: 'Home' },
+    { slug: 'beauty-wellness', label: 'Beauty' },
+    { slug: 'electronics', label: 'Electronics' },
+    { slug: 'kids-family', label: 'Kids' },
+    { slug: 'arts-culture', label: 'Arts' },
+  ];
+
+  /**
+   * Most sellers here are already selling — in a chat thread or a social page.
+   * This is the honest difference, not a swipe at how they work today.
+   */
+  protected readonly comparison = [
+    {
+      point: 'Being found',
+      before: 'Buyers need your link, or need to already follow you.',
+      after: 'You appear in search and category browsing alongside every other store.',
+    },
+    {
+      point: 'Taking an order',
+      before: 'Details arrive across messages and get retyped by hand.',
+      after: 'The order arrives complete — items, quantity, address, payment status.',
+    },
+    {
+      point: 'Knowing your stock',
+      before: 'You remember it, or you check a notebook.',
+      after: 'Counts drop as things sell, and each product records where it is kept.',
+    },
+    {
+      point: 'Getting paid',
+      before: 'Screenshots of transfers, reconciled later.',
+      after: 'Payment status sits on the order itself in your dashboard.',
+    },
+  ];
+
+  /** The four asked most often; the rest live on the FAQ page. */
+  protected readonly faqPreview = faqItems.slice(0, 4);
+
+  protected readonly showStickyCta = signal(false);
+
+  constructor() {
+    // Show it only once the hero's own buttons have scrolled away.
+    const onScroll = () => this.showStickyCta.set(window.scrollY > 620);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    inject(DestroyRef).onDestroy(() => window.removeEventListener('scroll', onScroll));
+  }
 
   protected readonly steps = sellerSteps;
 
