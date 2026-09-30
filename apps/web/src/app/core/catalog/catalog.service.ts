@@ -115,6 +115,24 @@ export class CatalogService {
     return products.map(toProduct);
   }
 
+  /**
+   * The full record for one product, straight from the API.
+   *
+   * The cached list is not enough here: list responses deliberately drop
+   * `image`/`images` and send only a small thumbnail, so a page built from
+   * them has no gallery to show and no variants to pick between. The detail
+   * page is the one place that needs the whole thing.
+   */
+  async productDetail(idOrSlug: string): Promise<Product | undefined> {
+    try {
+      return toProduct(await firstValueFrom(this.api.getProduct(idOrSlug)));
+    } catch {
+      // Fall back to whatever the list already gave us rather than showing
+      // nothing — a card's worth of detail beats an error page.
+      return this.productById(idOrSlug);
+    }
+  }
+
   productById(id: string): Product | undefined {
     return this.products().find(
       (product) => product.id === id || product.slug === id,
@@ -353,6 +371,7 @@ const toStore = (api: ApiStore): Store => ({
   tagline: api.tagline ?? '',
   announcement: api.announcement ?? '',
   theme: api.theme ?? 'FOREST',
+  appearance: api.appearance,
   phoneNumber: api.phoneNumber ?? '',
   showContact: api.showContact,
   logoUrl: api.logoUrl,

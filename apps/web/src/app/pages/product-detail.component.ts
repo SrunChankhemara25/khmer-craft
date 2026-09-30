@@ -550,7 +550,13 @@ export class ProductDetailComponent {
     { initialValue: this.route.snapshot.paramMap.get('id') ?? '' },
   );
 
-  protected readonly product = computed(() => this.catalog.productById(this.id()));
+  /**
+   * Starts from the cached list so the page paints immediately, then swaps in
+   * the full record once it arrives.
+   */
+  private readonly detail = signal<Product | undefined>(undefined);
+  private lastDetailId = '';
+  protected readonly product = computed(() => this.detail() ?? this.catalog.productById(this.id()));
 
   /** A pinned photo belongs to one product; drop it when the route changes. */
   private readonly resetGalleryOnNavigate = effect(() => {
@@ -579,6 +585,18 @@ export class ProductDetailComponent {
   });
 
   constructor() {
+    // The cached list has no gallery and no variants — list responses strip
+    // them for weight — so fetch the full record for this one product.
+    effect(() => {
+      const id = this.id();
+      if (!id || id === this.lastDetailId) return;
+      this.lastDetailId = id;
+      this.detail.set(undefined);
+      void this.catalog.productDetail(id).then((full) => {
+        if (this.lastDetailId === id && full) this.detail.set(full);
+      });
+    });
+
     // Navigating between related products reuses this component instance, so
     // the quantity and any stale confirmation must reset when the id changes.
     effect(() => {

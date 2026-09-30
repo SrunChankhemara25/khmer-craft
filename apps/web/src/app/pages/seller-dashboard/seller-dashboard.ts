@@ -2,18 +2,19 @@ import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router  } from '@angular/router';
 import { finalize, firstValueFrom } from 'rxjs';
 import { API_URL } from '../../core/api/api.config';
 import { KcIcon } from '../../components/shared/ui/kc-icon/kc-icon';
 import { StoreCategoriesManagerComponent } from '../../features/seller/store-categories/store-categories-manager.component';
-import { SellerService } from '../../core/api/seller.service';
+import { WarehousesManagerComponent } from '../../features/seller/warehouses/warehouses-manager.component';
+import { SellerService, Warehouse } from '../../core/api/seller.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { CommerceApiService } from '../../core/api/commerce-api.service';
 import { OrderStatus } from '../../core/api/api.models';
 import { cartErrorMessage } from '../../core/cart/cart.service';
 
-type DashboardView = 'dashboard' | 'products' | 'add' | 'orders' | 'profile' | 'store-categories' | 'sales' | 'reviews' | 'settings';
+type DashboardView = 'dashboard' | 'products' | 'add' | 'orders' | 'profile' | 'store-categories' | 'warehouses' | 'sales' | 'reviews' | 'settings';
 type OrderStatusClass = 'pending' | 'shipped' | 'delivered';
 
 interface SellerOrder {
@@ -52,7 +53,7 @@ interface DashboardMetric {
 
 @Component({
   selector: 'app-seller-dashboard',
-  imports: [KcIcon, FormsModule, CurrencyPipe, StoreCategoriesManagerComponent],
+  imports: [KcIcon, RouterLink, FormsModule, CurrencyPipe, StoreCategoriesManagerComponent, WarehousesManagerComponent],
   styles: [`
     /* ==========================================================
        KhmerCraft seller console - design tokens.
@@ -146,6 +147,11 @@ interface DashboardMetric {
       gap: 10px; margin: auto 12px 0; padding: 16px 12px 4px; width: calc(100% - 24px);
     }
     .logout:hover { color: #ffc9c0; }
+    .side-link {
+      align-items: center; color: rgba(255, 255, 255, .75); display: flex; font-size: 13px;
+      font-weight: 650; gap: 10px; margin: 6px 12px 0; padding: 11px 12px; border-radius: 9px;
+    }
+    .side-link:hover { background: rgba(255, 255, 255, .07); color: #fff; }
     .portal-version { color: rgba(255, 255, 255, .3); font-size: 10.5px; padding: 12px 22px 0; }
 
     /* ============================ topbar ============================ */
@@ -421,6 +427,25 @@ interface DashboardMetric {
     .form-card { padding: 19px 20px 20px; }
     .form-card > h2 { margin-bottom: 15px; }
     .upload-row { display: flex; flex-wrap: wrap; gap: 12px; }
+    /* ---- product photos + options ---- */
+    .shot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-top: 10px; }
+    .shot-thumb { position: relative; margin: 0; border: 1px solid #e3e0d8; border-radius: 8px; overflow: hidden; background: #fff; aspect-ratio: 1; }
+    .shot-thumb.is-main { border-color: #146242; box-shadow: 0 0 0 2px rgba(20,98,66,.16); }
+    .shot-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .shot-thumb figcaption { position: absolute; left: 4px; bottom: 4px; padding: 2px 6px; border-radius: 999px; background: #146242; color: #fff; font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .shot-thumb .mk-main { position: absolute; left: 4px; bottom: 4px; padding: 2px 6px; border: 0; border-radius: 999px; background: rgba(22,22,22,.72); color: #fff; font-size: 9.5px; font-weight: 600; cursor: pointer; opacity: 0; transition: opacity 140ms ease; }
+    .shot-thumb:hover .mk-main { opacity: 1; }
+    .shot-thumb .rm { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(22,22,22,.66); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; }
+    .shot-thumb .rm:hover { background: #a12f2f; }
+    .opt { margin-left: 6px; color: #8d8577; font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+    .hint { margin: 0 0 12px; color: #6f6759; font-size: 12.5px; line-height: 1.5; }
+    .variant-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .variant-row img { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; border: 1px solid #e3e0d8; flex: 0 0 auto; }
+    .variant-row .dash-input { flex: 1; }
+    .rm-variant { width: 30px; height: 30px; flex: 0 0 auto; border: 1px solid #e3e0d8; border-radius: 8px; background: #fff; color: #8d8577; font-size: 16px; line-height: 1; cursor: pointer; }
+    .rm-variant:hover { color: #a12f2f; border-color: #a12f2f; }
+    .variant-add { margin-top: 4px; }
+
     .upload-box, .upload-drop, .add-tile {
       align-items: center; background: var(--raised); border: 1.5px dashed var(--line);
       border-radius: var(--r-md); color: var(--ink-500); cursor: pointer; display: flex;
@@ -818,6 +843,12 @@ interface DashboardMetric {
             </button>
           }
         </nav>
+        <!-- A route, not a dashboard view: billing is its own page so the
+             payment QR can be linked to and returned to directly. -->
+        <a class="side-link" routerLink="/seller/billing">
+          <kc-icon name="wallet" [size]="17" />
+          Plan &amp; billing
+        </a>
         <button type="button" class="logout" (click)="logout()">
           <kc-icon name="logout" [size]="17" />
           Logout
@@ -1040,6 +1071,15 @@ interface DashboardMetric {
                   <div class="two-cols" style="grid-template-columns:1fr 1fr 1fr">
                     <label>Price (USD) <span class="required">*</span><input class="dash-input" type="number" placeholder="$ 0.00" [ngModel]="newProduct().price" (ngModelChange)="newProduct.set({...newProduct(), price: $event})" name="price" /></label>
                     <label>Stock Quantity <span class="required">*</span><input class="dash-input" type="number" placeholder="1" [ngModel]="newProduct().stock" (ngModelChange)="newProduct.set({...newProduct(), stock: $event})" name="stock" /></label>
+                    @if (warehouses().length) {
+                      <label>Stock Location
+                        <select class="dash-input" [ngModel]="newProduct().warehouseId" (ngModelChange)="newProduct.set({...newProduct(), warehouseId: $event})" name="warehouseId">
+                          @for (w of warehouses(); track w.id) {
+                            <option [value]="w.id">{{ w.name }}@if (w.isDefault) { (default) }</option>
+                          }
+                        </select>
+                      </label>
+                    }
                     <label>Location
                       <select class="dash-input" [ngModel]="newProduct().location" (ngModelChange)="newProduct.set({...newProduct(), location: $event})" name="loc">
                         <option value="Phnom Penh">Phnom Penh</option>
@@ -1053,15 +1093,49 @@ interface DashboardMetric {
                 <article class="form-card">
                   <h2><kc-icon name="image" [size]="18" style="color:#146242" /> Product Images</h2>
                   <div class="upload-drop" (click)="fileInput.click()" style="cursor: pointer; position: relative;">
-                    <input type="file" #fileInput hidden accept="image/*" (change)="onFileSelected($event)">
+                    <input type="file" #fileInput hidden accept="image/*" multiple (change)="onFileSelected($event)">
                     @if (newProduct().image) {
                       <img [src]="newProduct().image" style="max-height: 120px; object-fit: contain; margin-bottom: 12px; border-radius: 4px;" />
                     }
                     <kc-icon name="upload-cloud" [size]="32" />
-                    <span>{{ newProduct().image ? 'Click to change image' : 'Click to upload or drag and drop' }}</span>
-                    <small>PNG, JPG or WEBP (Max 5MB each)</small>
+                    <span>{{ newProduct().image ? 'Click to add more photos' : 'Click to upload or drag and drop' }}</span>
+                    <small>PNG, JPG or WEBP. The first photo is the one buyers see in the shop.</small>
                   </div>
-                  <button class="add-tile" type="button">+</button>
+
+                  @if (gallery().length) {
+                    <div class="shot-grid">
+                      @for (shot of gallery(); track $index) {
+                        <figure class="shot-thumb" [class.is-main]="$index === 0">
+                          <img [src]="shot" alt="" />
+                          @if ($index === 0) { <figcaption>Main</figcaption> }
+                          @else { <button type="button" class="mk-main" (click)="makeMainImage($index)">Make main</button> }
+                          <button type="button" class="rm" (click)="removeImage($index)" aria-label="Remove photo">×</button>
+                        </figure>
+                      }
+                    </div>
+                  }
+                </article>
+
+                <article class="form-card">
+                  <h2><kc-icon name="tag" [size]="18" style="color:#146242" /> Options <small class="opt">optional</small></h2>
+                  <p class="hint">
+                    Colours, sizes or styles a buyer picks between. Each one needs its own photo —
+                    that is what changes on the product page when they choose it.
+                  </p>
+
+                  @for (v of variants(); track $index) {
+                    <div class="variant-row">
+                      <img [src]="v.image" alt="" />
+                      <input class="dash-input" placeholder="Black" [ngModel]="v.label"
+                             (ngModelChange)="setVariantLabel($index, $event)" [name]="'variantLabel' + $index" />
+                      <button type="button" class="rm-variant" (click)="removeVariant($index)" aria-label="Remove option">×</button>
+                    </div>
+                  }
+
+                  <div class="variant-add">
+                    <input type="file" #variantInput hidden accept="image/*" (change)="onVariantSelected($event)">
+                    <button type="button" class="add-tile" (click)="variantInput.click()">+ Add option</button>
+                  </div>
                 </article>
 
                 <article class="publish-card">
@@ -1379,6 +1453,14 @@ interface DashboardMetric {
                 </form>
               </article>
             </section>
+          </main>
+        } @else if (view() === 'warehouses') {
+          <main class="page">
+            @if (myStoreId(); as storeId) {
+              <app-warehouses-manager [storeId]="storeId" />
+            } @else {
+              <p class="muted">Select a store first.</p>
+            }
           </main>
         } @else if (view() === 'store-categories') {
           <main class="page">
@@ -1799,6 +1881,8 @@ export class SellerDashboardPage implements OnInit {
   }
 
   private loadDashboardData(storeId: string) {
+    this.loadWarehouses();
+
     // 1. Orders and Metrics
     this.sellerService.getStoreOrders(storeId).subscribe({
       next: (data) => {
@@ -1931,6 +2015,7 @@ export class SellerDashboardPage implements OnInit {
     { view: 'orders', label: 'Orders', icon: 'cart' },
     { view: 'profile', label: 'Store Profile', icon: 'store' },
     { view: 'store-categories', label: 'Store Categories', icon: 'grid' },
+    { view: 'warehouses', label: 'Stock Locations', icon: 'store' },
     { view: 'sales', label: 'Sales / Payout', icon: 'wallet' },
     { view: 'reviews', label: 'Reviews', icon: 'review' },
     { view: 'settings', label: 'Settings', icon: 'settings' },
@@ -1983,19 +2068,109 @@ export class SellerDashboardPage implements OnInit {
   protected readonly savingProfile = signal(false);
   protected readonly profileMessage = signal('');
 
+  /**
+   * The seller's stock locations, for the picker on the product form. Loaded
+   * once the store id is known; sellers who have not created any simply do not
+   * see the field, so nothing new is demanded of a one-shop seller.
+   */
+  protected readonly warehouses = signal<Warehouse[]>([]);
+
+  private loadWarehouses(): void {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    this.sellerService.listWarehouses(storeId).subscribe({
+      next: ({ warehouses }) => {
+        const open = warehouses.filter((w) => w.isActive);
+        this.warehouses.set(open);
+        // Pre-select the default so a seller adding their first product is not
+        // asked a question they have already answered.
+        const fallback = open.find((w) => w.isDefault) ?? open[0];
+        if (fallback && !this.newProduct().warehouseId) {
+          this.newProduct.set({ ...this.newProduct(), warehouseId: fallback.id });
+        }
+      },
+      error: () => this.warehouses.set([]),
+    });
+  }
+
   protected readonly newProduct = signal<any>({
-    name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: ''
+    name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: '', images: [], variants: [], warehouseId: ''
   });
 
-  onFileSelected(event: any) {
-    const file = event.target.files[0];
-    if (file) {
+  /**
+   * Every photo on the product, main first.
+   *
+   * The API keeps the main photo in `image` and the rest in `images`, so this
+   * flattens both into one list for editing and splits them again on save.
+   * Treating them as one ordered list is what lets "make main" be a reorder
+   * rather than a special case.
+   */
+  protected readonly gallery = computed<string[]>(() => {
+    const product = this.newProduct();
+    return [product.image, ...(product.images ?? [])].filter(Boolean);
+  });
+
+  protected readonly variants = computed<Array<{ label: string; image: string }>>(
+    () => this.newProduct().variants ?? [],
+  );
+
+  private setGallery(shots: string[]): void {
+    const [main, ...rest] = shots;
+    this.newProduct.set({ ...this.newProduct(), image: main ?? '', images: rest });
+  }
+
+  private readFile(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e: any) => {
-        this.newProduct.set({ ...this.newProduct(), image: e.target.result });
-      };
+      reader.onload = (e: any) => resolve(e.target.result as string);
+      reader.onerror = () => reject(new Error('Could not read that file'));
       reader.readAsDataURL(file);
-    }
+    });
+  }
+
+  async onFileSelected(event: any) {
+    const files: File[] = Array.from(event.target.files ?? []);
+    if (!files.length) return;
+    const added = await Promise.all(files.map((file) => this.readFile(file)));
+    this.setGallery([...this.gallery(), ...added]);
+    // Without this, picking the same file twice in a row fires no change event
+    // and the second attempt silently does nothing.
+    event.target.value = '';
+  }
+
+  protected makeMainImage(index: number): void {
+    const shots = [...this.gallery()];
+    const [picked] = shots.splice(index, 1);
+    this.setGallery([picked, ...shots]);
+  }
+
+  protected removeImage(index: number): void {
+    const shots = [...this.gallery()];
+    shots.splice(index, 1);
+    this.setGallery(shots);
+  }
+
+  async onVariantSelected(event: any) {
+    const file: File | undefined = event.target.files?.[0];
+    if (!file) return;
+    const image = await this.readFile(file);
+    this.newProduct.set({
+      ...this.newProduct(),
+      variants: [...this.variants(), { label: '', image }],
+    });
+    event.target.value = '';
+  }
+
+  protected setVariantLabel(index: number, label: string): void {
+    const next = this.variants().map((v, i) => (i === index ? { ...v, label } : v));
+    this.newProduct.set({ ...this.newProduct(), variants: next });
+  }
+
+  protected removeVariant(index: number): void {
+    this.newProduct.set({
+      ...this.newProduct(),
+      variants: this.variants().filter((_, i) => i !== index),
+    });
   }
 
   protected readonly reviews = signal<any[]>([]);
@@ -2055,6 +2230,15 @@ export class SellerDashboardPage implements OnInit {
     if (!data.image) {
       delete data.image;
     }
+
+    // An option with no label is a half-finished row the seller left behind —
+    // the API requires one, so sending it would fail the whole save rather
+    // than just dropping the row.
+    data.variants = (data.variants ?? []).filter(
+      (v: { label?: string; image?: string }) => v.label?.trim() && v.image,
+    );
+    if (!data.variants.length) delete data.variants;
+    if (!data.images?.length) delete data.images;
     
     // If it has an id, it is an edit
     if (data.id) {
@@ -2065,7 +2249,7 @@ export class SellerDashboardPage implements OnInit {
           alert('Product updated successfully!');
           if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
           this.view.set('products');
-          this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: '' });
+          this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: '', images: [], variants: [], warehouseId: '' });
         },
         error: (err) => {
           const errorMsg = err.error?.error?.details || err.error?.error?.message || err.message;
@@ -2083,7 +2267,7 @@ export class SellerDashboardPage implements OnInit {
           this.loadDashboardData(this.myStoreId()!);
         }
         this.view.set('products');
-        this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: '' });
+        this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: '', images: [], variants: [], warehouseId: '' });
       },
       error: (err) => {
         const errorMsg = err.error?.error?.details || err.error?.error?.message || err.message;
