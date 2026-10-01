@@ -31,7 +31,7 @@ interface LiveConfirm {
   imports: [BadgeComponent, ConfirmComponent, IconComponent, MenuComponent, StateComponent],
   template: `
   <div class="page-head">
-    <div><h1 class="page-title">Products</h1>
+    <div><span class="eyebrow">Catalogue · Moderation</span><h1 class="page-title">Products</h1>
       <p class="page-sub">Live catalogue moderation — writes go straight to the marketplace API</p></div>
   </div>
 

@@ -8,7 +8,7 @@ import { dstr } from '../ui/format';
   standalone: true, imports: [BadgeComponent, MenuComponent],
   template: `
   @if (d.ready()) {
-    <div class="page-head"><div><h1 class="page-title">Complaints</h1><p class="page-sub">Order complaints from buyers and sellers</p></div></div>
+    <div class="page-head"><div><span class="eyebrow">Trust · Resolution</span><h1 class="page-title">Complaints</h1><p class="page-sub">Investigate and resolve order complaints from buyers and sellers.</p></div></div>
     <div class="card"><table class="tbl">
       <thead><tr><th>Order</th><th>From</th><th>Subject</th><th>Date</th><th>Status</th><th class="right">Actions</th></tr></thead>
       <tbody>

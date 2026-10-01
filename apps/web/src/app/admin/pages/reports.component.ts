@@ -8,7 +8,7 @@ import { dstr } from '../ui/format';
   standalone: true, imports: [BadgeComponent, IconComponent],
   template: `
   @if (d.ready()) {
-    <div class="page-head"><div><h1 class="page-title">Reports</h1><p class="page-sub">Buyer, seller and product reports — review, resolve or dismiss</p></div></div>
+    <div class="page-head"><div><span class="eyebrow">Trust · Moderation</span><h1 class="page-title">Reports</h1><p class="page-sub">Buyer, seller and product reports — review, resolve or dismiss.</p></div></div>
     <div class="toolbar">
       <div class="tabs">
         @for (t of ['open', 'resolved', 'dismissed', 'all']; track t) {
@@ -64,5 +64,10 @@ export class ReportsComponent {
   note = signal('');
   dstr = dstr;
   rows = computed(() => this.d.reports().filter(r => this.tab() === 'all' || r.status === this.tab()));
-  addNote(id: string) { if (this.note().trim()) { this.d.addReportNote(id, this.note().trim()); this.note.set(''); } }
+  addNote(id: string) {
+    if (!this.note().trim()) return;
+    this.d.addReportNote(id, this.note().trim());
+    this.sel.set(this.d.reports().find(r => r.id === id) ?? null);
+    this.note.set('');
+  }
 }

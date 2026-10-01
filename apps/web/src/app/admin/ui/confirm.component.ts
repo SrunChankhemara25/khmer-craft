@@ -13,9 +13,9 @@ import { Component, input, output, signal } from '@angular/core';
   host: { '(document:keydown.escape)': 'cancel.emit()' },
   template: `
   <div class="modal-back" (click)="cancel.emit()">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <h3>{{title()}}</h3>
-      <p>{{message()}}</p>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message" (click)="$event.stopPropagation()">
+      <h3 id="confirm-title">{{title()}}</h3>
+      <p id="confirm-message">{{message()}}</p>
       @if (requireReason()) {
         <div class="form-row">
           <label>Reason <span class="req">*</span></label>

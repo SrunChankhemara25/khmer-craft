@@ -12,7 +12,7 @@ import { dstr, money } from '../ui/format';
   template: `
   @if (d.ready()) {
     <div class="page-head">
-      <div><h1 class="page-title">Payments</h1><p class="page-sub">Review payment events, exceptions, and refund decisions</p></div>
+      <div><span class="eyebrow">Finance · Payment events</span><h1 class="page-title">Payments</h1><p class="page-sub">Review payment events, exceptions, and refund decisions.</p></div>
       <span class="muted">Admin review only · no provider action is simulated</span>
     </div>
 

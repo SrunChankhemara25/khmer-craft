@@ -17,6 +17,7 @@ type StoreExt = ApiStore & {
   verifiedAt?: string | null;
   verificationExplanation?: string | null;
   description?: string | null;
+  accountStatus?: AccountStatus;
 };
 
 const STATUS_KEY = 'khmercraft.admin.store-status';
@@ -90,18 +91,18 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
       @else if (profileError()) { <kc-state mode="error" compact [message]="profileError()" (retry)="loadProfileProducts(s.id)"></kc-state> }
       @else if (!profileProducts().length) { <kc-state mode="empty" compact message="This store has not published any listings yet."></kc-state> }
       @else {
-        <table class="tbl">
+        <table class="tbl seller-listings">
           <thead><tr><th>Product</th><th>Category</th><th class="right">Price</th><th class="right">Stock</th><th class="right">Sold</th><th>Status</th><th>Listed</th><th class="right">View</th></tr></thead>
           <tbody>
             @for (p of profileProducts(); track p.id) {
               <tr>
-                <td><div class="cell-flex"><span class="thumb">{{initials(p.name)}}</span>
+                <td data-label="Product"><div class="cell-flex"><span class="thumb">{{initials(p.name)}}</span>
                   <div><div class="cell-main">{{p.name}}</div><div class="cell-sub">{{p.slug}}</div></div></div></td>
-                <td class="cell-sub">{{p.category}}</td>
-                <td class="num">{{money(p.price)}}</td><td class="num">{{p.stock}}</td><td class="num">{{p.sold}}</td>
-                <td><kc-badge [value]="p.status"></kc-badge></td>
-                <td class="cell-sub">{{dstr(p.createdAt)}}</td>
-                <td class="right"><div class="cell-actions">
+                <td data-label="Category" class="cell-sub">{{p.category}}</td>
+                <td data-label="Price" class="num">{{money(p.price)}}</td><td data-label="Stock" class="num">{{p.stock}}</td><td data-label="Sold" class="num">{{p.sold}}</td>
+                <td data-label="Status"><kc-badge [value]="p.status"></kc-badge></td>
+                <td data-label="Listed" class="cell-sub">{{dstr(p.createdAt)}}</td>
+                <td data-label="View" class="right"><div class="cell-actions">
                   <button class="icon-btn" aria-label="Inspect listing" data-tip="Inspect listing" (click)="selProduct.set(p)"><kc-icon name="eye" [size]="14"></kc-icon></button>
                 </div></td>
               </tr>
@@ -116,7 +117,7 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
 
   <!-- ============ LIST / REQUESTS ============ -->
   <div class="page-head">
-    <div><h1 class="page-title">Sellers</h1>
+    <div><span class="eyebrow">People · Merchant network</span><h1 class="page-title">Seller accounts</h1>
       <p class="page-sub">Seller accounts and their stores — inspect storefronts and manage account status from one workspace</p></div>
   </div>
 
@@ -129,6 +130,13 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
     <span class="grow"></span>
     <button class="btn btn-sm" (click)="loadStores()">Refresh</button>
   </div>
+
+  @if (usingDemo()) {
+    <div class="demo-banner" role="status"><kc-icon name="alert" [size]="15"></kc-icon>
+      <span><b>Demo seller data</b> — the marketplace API is offline. You can still inspect profiles, filter accounts, and test status workflows.</span>
+      <button class="link" (click)="loadStores()">Try live API</button>
+    </div>
+  }
 
   <div class="card management-table">
       @if (storesLoading()) { <kc-state mode="loading" message="Loading seller accounts…"></kc-state> }
@@ -196,6 +204,23 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
     .live-note{background:var(--green-050);color:var(--green);border-color:transparent}
     .notice-row{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:9px 14px;border-radius:10px;background:var(--amber-050);color:var(--amber);font-size:12px;font-weight:600}
     .notice-row .link{margin-left:auto}
+    .demo-banner{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:10px 13px;border:1px solid #ead5a9;border-radius:6px;background:var(--amber-050);color:#78500d;font-size:12px}
+    .demo-banner span{flex:1}.demo-banner .link{color:#78500d;font-weight:700}
+    @media(max-width:560px){.demo-banner{align-items:flex-start;flex-wrap:wrap}.demo-banner .link{margin-left:24px}}
+    @media(max-width:700px){
+      .seller-profile .management-table{overflow:visible!important}
+      .seller-profile .management-table .card-head{align-items:flex-start}
+      .seller-listings{display:block;min-width:0!important}
+      .seller-listings thead{display:none}
+      .seller-listings tbody,.seller-listings tr{display:block}
+      .seller-listings tr{padding:12px 14px;border-bottom:1px solid var(--line)}
+      .seller-listings tr:last-child{border-bottom:0}
+      .seller-listings td{display:grid;grid-template-columns:76px minmax(0,1fr);align-items:center;gap:10px;padding:7px 0!important;border:0!important;text-align:left!important;white-space:normal!important}
+      .seller-listings td::before{content:attr(data-label);color:var(--muted);font-size:9px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}
+      .seller-listings .cell-flex{min-width:0}.seller-listings .cell-flex>div{min-width:0}
+      .seller-listings .cell-main,.seller-listings .cell-sub{overflow-wrap:anywhere}
+      .seller-listings .cell-actions{justify-content:flex-start}
+    }
   `],
 })
 export class SellersComponent {
@@ -207,6 +232,7 @@ export class SellersComponent {
   stores = signal<StoreExt[]>([]);
   storesLoading = signal(true);
   storesError = signal('');
+  usingDemo = signal(false);
   totalPages = signal(1);
   acctFilter = signal<'all' | AccountStatus>('all');
   override = signal<Record<string, AccountStatus>>({});
@@ -221,7 +247,7 @@ export class SellersComponent {
 
   dstr = dstr; money = money; initials = initials;
   ext = (s: ApiStore): StoreExt => s as StoreExt;
-  acct = (s: ApiStore): AccountStatus => this.override()[s.id] ?? 'active';
+  acct = (s: ApiStore): AccountStatus => this.override()[s.id] ?? this.ext(s).accountStatus ?? 'active';
   constructor() {
     try {
       const raw = localStorage.getItem(STATUS_KEY);
@@ -243,20 +269,70 @@ export class SellersComponent {
     this.api.stores(this.page(), 10).subscribe({
       next: (res) => {
         this.stores.set(res.stores as StoreExt[]);
+        this.usingDemo.set(false);
         this.totalPages.set(Math.max(1, res.pagination.totalPages));
         this.storesLoading.set(false);
       },
-      error: () => { this.stores.set([]); this.storesError.set('Could not reach the marketplace API. Is the backend running?'); this.storesLoading.set(false); },
+      error: () => {
+        this.stores.set(this.demoStores());
+        this.usingDemo.set(true);
+        this.totalPages.set(1);
+        this.storesError.set('');
+        this.storesLoading.set(false);
+      },
     });
   }
 
   openProfile(s: StoreExt) { this.profile.set(s); this.loadProfileProducts(s.id); }
   closeProfile() { this.profile.set(null); this.selProduct.set(null); }
   loadProfileProducts(storeId: string) {
+    if (this.usingDemo()) {
+      const seller = this.d.sellers().find(s => s.id === storeId);
+      this.profileProducts.set(this.d.products().filter(p => p.sellerId === storeId).map(p => ({
+        id: p.id, name: p.name, slug: p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        seller: seller?.store ?? 'Demo seller', category: p.category, price: p.price, stock: p.stock, sold: p.sold,
+        image: null, status: p.status === 'hidden' || p.status === 'rejected' ? 'hidden' : p.status,
+        description: 'Demo catalogue record used while the marketplace API is unavailable.',
+        createdAt: seller?.appliedAt ?? new Date().toISOString(), updatedAt: seller?.appliedAt ?? new Date().toISOString(),
+      })));
+      this.profileError.set('');
+      this.profileLoading.set(false);
+      return;
+    }
     this.profileLoading.set(true); this.profileError.set('');
     this.api.products({ storeId, limit: 60 }).subscribe({
       next: (res) => { this.profileProducts.set(res.products.map(p => this.api.toLive(p))); this.profileLoading.set(false); },
       error: () => { this.profileProducts.set([]); this.profileError.set('Could not load this store’s listings.'); this.profileLoading.set(false); },
+    });
+  }
+
+  private demoStores(): StoreExt[] {
+    const locations = ['Phnom Penh', 'Siem Reap', 'Battambang', 'Kampong Thom', 'Phnom Penh', 'Kandal', 'Kampot'];
+    const themes: ApiStore['theme'][] = ['CLAY', 'GOLD', 'FOREST', 'CLAY', 'MIDNIGHT', 'FOREST', 'GOLD'];
+    return this.d.sellers().map((seller, index) => {
+      const products = this.d.products().filter(p => p.sellerId === seller.id);
+      const category = products[0]?.category ?? 'Handmade goods';
+      return {
+        id: seller.id,
+        slug: seller.store.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        name: seller.store,
+        location: locations[index] ?? 'Cambodia',
+        rating: index % 3 === 0 ? 4.8 : index % 3 === 1 ? 4.6 : 4.4,
+        reviewCount: products.reduce((sum, p) => sum + Math.max(1, Math.round(p.sold / 8)), 0),
+        categoryName: category,
+        description: `${seller.store} is a demo Cambodian seller profile shown while the live marketplace service is unavailable.`,
+        logoUrl: null, bannerUrl: null,
+        tagline: `Crafted in ${locations[index] ?? 'Cambodia'}`,
+        announcement: index === 0 ? 'New seasonal collection available.' : null,
+        theme: themes[index] ?? 'CLAY',
+        phoneNumber: `+855 9${index + 1} 555 ${String(120 + index).padStart(3, '0')}`,
+        showContact: true,
+        featuredProductIds: products.slice(0, 3).map(p => p.id),
+        isVerified: seller.verification === 'verified',
+        verifiedAt: seller.verification === 'verified' ? seller.appliedAt : null,
+        verificationExplanation: seller.verification === 'verified' ? 'Identity and craft business details verified in the demo workflow.' : null,
+        accountStatus: seller.status === 'suspended' ? 'suspended' : 'active',
+      };
     });
   }
 

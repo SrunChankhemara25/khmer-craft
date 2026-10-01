@@ -9,7 +9,7 @@ import { money } from '../ui/format';
   standalone: true,
   imports: [StatComponent, BadgeComponent, LineChartComponent, BarChartComponent],
   template: `
-  <div class="page-head"><div><h1 class="page-title">Analytics</h1><p class="page-sub">Operational metrics from the currently available admin dataset</p></div><span class="muted">Formula and source shown below</span></div>
+  <div class="page-head"><div><span class="eyebrow">Intelligence · Performance</span><h1 class="page-title">Analytics</h1><p class="page-sub">Operational metrics from the currently available admin dataset.</p></div><span class="muted">Formula and source shown below</span></div>
   <div class="card card-pad ops-note mb"><b>Data boundary</b><p class="muted">These metrics use records currently exposed to the admin frontend. Channel attribution, ad impressions, POS shifts, and subscription events remain unavailable until their APIs exist.</p></div>
   <div class="grid stats mb">
     <kc-stat label="Active sellers" icon="store" [value]="activeSellers()" hint="source: seller records"></kc-stat>

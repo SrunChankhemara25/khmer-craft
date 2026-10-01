@@ -13,27 +13,28 @@ import { IconComponent } from '../ui/icon.component';
     imports: [StatComponent, BadgeComponent, BarChartComponent, LineChartComponent, RouterLink, LiveStripComponent, IconComponent],
   template: `
   @if (d.ready()) {
-        <div class="page-head dashboard-head"><div><h1 class="page-title">Dashboard</h1><p class="page-sub">Marketplace health at a glance</p></div><span class="dashboard-status"><span class="status-dot"></span>All systems operational</span></div>
+    <div class="page-head dashboard-head"><div><span class="eyebrow">Operations command center</span><h1 class="page-title">Marketplace overview</h1><p class="page-sub">Live trading health, outstanding decisions, and recent movement across KhmerCraft.</p></div><span class="dashboard-status"><span class="status-dot"></span>Admin workspace ready</span></div>
     <kc-live-strip></kc-live-strip>
 
-    <div class="grid stats mb">
-      <kc-stat label="Total Buyers" icon="users" [value]="d.buyers().length" [hint]="'+' + newBuyers + ' this month'"></kc-stat>
-      <kc-stat label="Total Sellers" icon="store" [value]="d.sellers().length" [hint]="pendingSellers + ' pending approval'"></kc-stat>
-      <kc-stat label="Total Products" icon="box" [value]="d.products().length" [hint]="pendingProducts + ' awaiting review'"></kc-stat>
-      <kc-stat label="Total Orders" icon="cart" [value]="d.orders().length" [hint]="openOrders + ' open'"></kc-stat>
-    </div>
     <div class="dashboard-queue mb" aria-label="Admin work queue">
-      <div class="queue-intro"><span class="eyebrow">Needs attention</span><strong>Operational queue</strong><span class="muted">Prioritize the items waiting for an Admin decision.</span></div>
+      <div class="queue-intro"><span class="eyebrow">Today</span><strong>Decision queue</strong><span class="muted">Items waiting for an administrator.</span></div>
       <a class="queue-item" routerLink="/admin/sellers"><span class="queue-value">{{pendingSellers}}</span><span><b>Seller reviews</b><small>Pending approval</small></span><kc-icon name="back" [size]="14"></kc-icon></a>
       <a class="queue-item" routerLink="/admin/reports"><span class="queue-value">{{openReports}}</span><span><b>Reports</b><small>Open cases</small></span><kc-icon name="back" [size]="14"></kc-icon></a>
       <a class="queue-item" routerLink="/admin/complaints"><span class="queue-value">{{openComplaints}}</span><span><b>Complaints</b><small>Need review</small></span><kc-icon name="back" [size]="14"></kc-icon></a>
       <a class="queue-item" routerLink="/admin/payments"><span class="queue-value">{{pendingPayments}}</span><span><b>Payments</b><small>Awaiting action</small></span><kc-icon name="back" [size]="14"></kc-icon></a>
     </div>
 
-    <div class="grid half mb">
-      <div class="card"><div class="card-head"><h3 class="card-title">Revenue overview</h3><span class="muted">last 6 months</span></div>
+    <div class="grid stats mb">
+      <kc-stat label="Orders" icon="cart" [value]="d.orders().length" [hint]="openOrders + ' currently open'"></kc-stat>
+      <kc-stat label="Active catalogue" icon="box" [value]="d.products().length" [hint]="pendingProducts + ' awaiting review'"></kc-stat>
+      <kc-stat label="Seller network" icon="store" [value]="d.sellers().length" [hint]="pendingSellers + ' applications pending'"></kc-stat>
+      <kc-stat label="Buyer community" icon="users" [value]="d.buyers().length" [hint]="'+' + newBuyers + ' this month'"></kc-stat>
+    </div>
+
+    <div class="grid dashboard-trends mb">
+      <div class="card"><div class="card-head"><h3 class="card-title">Recorded payment movement</h3><span class="muted">Six-month trend</span></div>
         <kc-line [values]="revVals()" [labels]="revLabels()"></kc-line></div>
-      <div class="card"><div class="card-head"><h3 class="card-title">Orders overview</h3><span class="muted">last 6 months</span></div>
+      <div class="card"><div class="card-head"><h3 class="card-title">Order volume</h3><span class="muted">Six months</span></div>
         <kc-bars [data]="d.ordersSeries()"></kc-bars></div>
     </div>
 

@@ -7,7 +7,7 @@ import { money, dstr } from '../ui/format';
   standalone: true, imports: [BadgeComponent],
   template: `
   @if (d.ready()) {
-    <div class="page-head"><div><h1 class="page-title">Transactions</h1><p class="page-sub">Commissions, boost fees, payouts and refunds</p></div>
+    <div class="page-head"><div><span class="eyebrow">Finance · Ledger</span><h1 class="page-title">Transactions</h1><p class="page-sub">Commissions, boost fees, payouts and refunds.</p></div>
       <b>Net: {{money(net())}}</b></div>
     <div class="toolbar">
       <select class="input" [value]="type()" (change)="type.set($any($event.target).value)">

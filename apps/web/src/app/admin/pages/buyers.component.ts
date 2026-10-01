@@ -11,7 +11,7 @@ import { dstr, initials, money } from '../ui/format';
   standalone: true, imports: [BadgeComponent, ConfirmComponent, IconComponent, MenuComponent],
   template: `
   @if (d.ready()) {
-    <div class="page-head"><div><h1 class="page-title">Buyers</h1><p class="page-sub">Buyer signup needs no approval — accounts are live after email verification. Suspend or deactivate only for cause, with a recorded reason (demo dataset until an admin user API exists)</p></div>
+    <div class="page-head"><div><span class="eyebrow">People · Customers</span><h1 class="page-title">Buyer accounts</h1><p class="page-sub">Buyer signup needs no approval — accounts are live after email verification. Suspend or deactivate only for cause, with a recorded reason (demo dataset until an admin user API exists)</p></div>
       <span class="muted">{{rows().length}} buyers</span></div>
     <div class="toolbar">
       <input class="input input-search" placeholder="Search name or email" [value]="q()" (input)="q.set($any($event.target).value)"/>

@@ -14,7 +14,7 @@ const KEY = 'khmercraft.admin.websites';
   standalone: true,
   imports: [BadgeComponent, IconComponent, StateComponent, ConfirmComponent, MenuComponent],
   template: `
-  <div class="page-head"><div><h1 class="page-title">Storefront Websites</h1><p class="page-sub">Create and manage optional websites connected to existing stores</p></div><button class="btn btn-primary" (click)="beginCreate()">New website</button></div>
+  <div class="page-head"><div><span class="eyebrow">Channels · Web</span><h1 class="page-title">Storefront websites</h1><p class="page-sub">Create and manage optional websites connected to existing stores.</p></div><button class="btn btn-primary" (click)="beginCreate()">New website</button></div>
   <div class="card card-pad ops-note mb"><kc-icon name="globe" [size]="18"></kc-icon><div><b>One catalog, multiple channels</b><p class="muted">Websites use the store catalog, prices, variants, and inventory. These frontend records are saved locally until website APIs are available.</p></div></div>
   @if (editing()) {
     <div class="card card-pad mb"><div class="card-head" style="padding:0 0 14px;border:0"><h3 class="card-title">{{editing() === 'new' ? 'Create website connection' : 'Edit website connection'}}</h3><button class="icon-btn" aria-label="Close form" (click)="editing.set(null)"><kc-icon name="x" [size]="14"></kc-icon></button></div>
@@ -36,7 +36,7 @@ export class WebsitesComponent {
   constructor() { try { this.records.set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch {} this.api.stores(1, 50).subscribe({ next: r => this.stores.set(r.stores) }); }
   beginCreate() { this.formStore.set(''); this.formDomain.set(''); this.formTemplate.set('Khmer Craft'); this.editing.set('new'); }
   beginEdit(w: WebsiteRecord) { this.formStore.set(w.storeId); this.formDomain.set(w.domain); this.formTemplate.set(w.template); this.editing.set(w.id); }
-  save() { const current = this.editing(); const next = { id: current && current !== 'new' ? current : 'WEB-' + Date.now(), storeId: this.formStore(), domain: this.formDomain().trim(), template: this.formTemplate(), status: 'draft' as const }; this.records.update(list => current && current !== 'new' ? list.map(w => w.id === current ? { ...w, ...next } : w) : [...list, next]); this.persist(); this.editing.set(null); }
+  save() { const current = this.editing(); const existing = this.records().find(w => w.id === current); const next: WebsiteRecord = { id: current && current !== 'new' ? current : 'WEB-' + Date.now(), storeId: this.formStore(), domain: this.formDomain().trim(), template: this.formTemplate(), status: existing?.status ?? 'draft' }; this.records.update(list => current && current !== 'new' ? list.map(w => w.id === current ? { ...w, ...next } : w) : [...list, next]); this.persist(); this.editing.set(null); }
   toggleStatus(w: WebsiteRecord) { this.records.update(list => list.map(x => x.id === w.id ? { ...x, status: x.status === 'published' ? 'paused' : 'published' } : x)); this.persist(); }
   menuFor(w: WebsiteRecord): MenuItem[] { return [{ label: 'Edit website', icon: 'edit', action: 'edit' }, { label: 'Delete website', icon: 'trash', danger: true, action: 'delete' }]; }
   act(action: string, w: WebsiteRecord) { if (action === 'edit') this.beginEdit(w); if (action === 'delete') this.pendingDelete.set(w); }

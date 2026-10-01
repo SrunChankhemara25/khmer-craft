@@ -12,7 +12,7 @@ import { dstr } from '../ui/format';
 @Component({
   standalone: true, imports: [BadgeComponent, IconComponent],
   template: `
-  <div class="page-head"><div><h1 class="page-title">Notifications</h1>
+  <div class="page-head"><div><span class="eyebrow">Engagement · Outreach</span><h1 class="page-title">Notifications</h1>
     <p class="page-sub">Send announcements, warnings or resolutions to buyers and sellers — optionally closing the ticket they address</p></div>
     <button class="btn btn-primary" (click)="openModal()"><kc-icon name="send" [size]="14"></kc-icon> Create notification</button></div>
 

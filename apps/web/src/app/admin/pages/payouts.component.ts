@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { AdminService, Payout } from '../admin-data.service';
 import { BadgeComponent } from '../ui/badge.component';
 import { StatComponent } from '../ui/stat.component';
@@ -10,11 +10,11 @@ import { money, dstr } from '../ui/format';
   standalone: true, imports: [BadgeComponent, StatComponent, ConfirmComponent, IconComponent],
   template: `
   @if (d.ready()) {
-    <div class="page-head"><div><h1 class="page-title">Seller Payouts</h1><p class="page-sub">Review seller disbursements and record confirmed transfers</p></div></div>
+    <div class="page-head"><div><span class="eyebrow">Finance · Disbursements</span><h1 class="page-title">Seller payouts</h1><p class="page-sub">Review seller disbursements and record confirmed transfers.</p></div></div>
     <div class="grid stats mb">
-      <kc-stat label="Pending payouts" icon="pulse" [value]="pendingCount" [hint]="money(pendingSum) + ' awaiting'"></kc-stat>
-      <kc-stat label="Completed" icon="check" [value]="doneCount" [hint]="money(doneSum) + ' paid out'"></kc-stat>
-      <kc-stat label="Failed" icon="alert" [value]="failCount"></kc-stat>
+      <kc-stat label="Pending payouts" icon="pulse" [value]="pendingCount()" [hint]="money(pendingSum()) + ' awaiting'"></kc-stat>
+      <kc-stat label="Completed" icon="check" [value]="doneCount()" [hint]="money(doneSum()) + ' paid out'"></kc-stat>
+      <kc-stat label="Failed" icon="alert" [value]="failCount()"></kc-stat>
     </div>
     <div class="card"><table class="tbl">
       <thead><tr><th>Seller</th><th class="right">Amount</th><th>Requested</th><th>Status</th><th class="right">Actions</th></tr></thead>
@@ -63,9 +63,9 @@ export class PayoutsComponent {
   confirm = signal<Payout | null>(null);
   selected = signal<Payout | null>(null);
   money = money; dstr = dstr;
-  pendingCount = this.d.payouts().filter(p => p.status === 'pending').length;
-  pendingSum = this.d.payouts().filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0);
-  doneCount = this.d.payouts().filter(p => p.status === 'completed').length;
-  doneSum = this.d.payouts().filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
-  failCount = this.d.payouts().filter(p => p.status === 'failed').length;
+  pendingCount = computed(() => this.d.payouts().filter(p => p.status === 'pending').length);
+  pendingSum = computed(() => this.d.payouts().filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0));
+  doneCount = computed(() => this.d.payouts().filter(p => p.status === 'completed').length);
+  doneSum = computed(() => this.d.payouts().filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0));
+  failCount = computed(() => this.d.payouts().filter(p => p.status === 'failed').length);
 }

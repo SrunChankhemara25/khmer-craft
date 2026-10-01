@@ -7,7 +7,7 @@ import { IconComponent } from '../ui/icon.component';
   standalone: true, imports: [BadgeComponent, IconComponent],
   template: `
   @if (d.ready()) {
-    <div class="page-head"><div><h1 class="page-title">Categories</h1><p class="page-sub">Organise the marketplace catalogue</p></div></div>
+    <div class="page-head"><div><span class="eyebrow">Catalogue · Taxonomy</span><h1 class="page-title">Categories</h1><p class="page-sub">Organise the marketplace catalogue and control category visibility.</p></div></div>
     <div class="toolbar">
       <input class="input input-search" placeholder="New category name" [value]="name()" (input)="name.set($any($event.target).value)"/>
       <button class="btn btn-primary" [disabled]="!name().trim()" (click)="add()">Add category</button>
@@ -33,5 +33,10 @@ import { IconComponent } from '../ui/icon.component';
 export class CategoriesComponent {
   d = inject(AdminService);
   name = signal('');
-  add() { if (this.name().trim()) { this.d.addCategory(this.name().trim()); this.name.set(''); } }
+  add() {
+    const name = this.name().trim();
+    if (!name || this.d.categories().some(c => c.name.toLowerCase() === name.toLowerCase())) return;
+    this.d.addCategory(name);
+    this.name.set('');
+  }
 }

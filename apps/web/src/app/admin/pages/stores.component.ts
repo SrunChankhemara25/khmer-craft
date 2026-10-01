@@ -16,7 +16,7 @@ import { initials, money } from '../ui/format';
   imports: [BadgeComponent, IconComponent, StateComponent],
   template: `
   <div class="page-head">
-    <div><h1 class="page-title">Stores</h1>
+    <div><span class="eyebrow">Channels · Marketplace</span><h1 class="page-title">Stores</h1>
       <p class="page-sub">Live marketplace stores — inspect a store and its real catalogue</p></div>
     @if (total() > 0) { <span class="muted">{{total()}} stores on the marketplace</span> }
   </div>

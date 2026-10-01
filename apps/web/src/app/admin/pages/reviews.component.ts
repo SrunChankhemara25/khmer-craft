@@ -15,7 +15,7 @@ interface ConfirmRequest { title: string; msg: string; label: string; fn: (reaso
 @Component({
   standalone: true, imports: [BadgeComponent, ConfirmComponent, MenuComponent],
   template: `
-  <div class="page-head"><div><h1 class="page-title">Reviews</h1>
+  <div class="page-head"><div><span class="eyebrow">Trust · Content</span><h1 class="page-title">Product reviews</h1>
     <p class="page-sub">What buyers see on product pages — ban, unban or delete reviews, with a recorded reason</p></div>
     <span class="muted">{{rows().length}} matching · page {{page()}} of {{pages()}}</span></div>
 
@@ -88,6 +88,7 @@ export class ReviewsComponent {
   });
 setTab(t: string) {
   this.tab.set(t as 'visible' | 'hidden' | 'all');
+  this.page.set(1);
 }
   setSearch(v: string) { this.q.set(v); this.page.set(1); }
 

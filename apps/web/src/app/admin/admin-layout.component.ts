@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, ElementRef, HostListener, inject, signal, ViewChild } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AdminService } from './admin-data.service';
 import { IconComponent } from './ui/icon.component';
@@ -10,18 +10,19 @@ import { ConfirmComponent } from './ui/confirm.component';
     <div class="admin">
       @if (sidebarOpen()) { <button class="sidebar-back" aria-label="Close navigation" (click)="sidebarOpen.set(false)"></button> }
       <aside class="sidebar" [class.open]="sidebarOpen()" [class.collapsed]="sidebarCollapsed()">
-        <div class="brand"><span class="logo"><kc-icon name="tag" [size]="14"></kc-icon></span><span class="brand-txt">KhmerCraft</span><small>ADMIN</small></div>
+        <div class="brand">
+          <span class="logo"><span>KC</span></span>
+          <span class="brand-copy"><strong class="brand-txt">KhmerCraft</strong><small>Commerce console</small></span>
+          <button class="sidebar-toggle" [attr.aria-label]="sidebarCollapsed() ? 'Expand navigation' : 'Collapse navigation'"
+            [attr.data-tip]="sidebarCollapsed() ? 'Expand navigation' : 'Collapse navigation'" (click)="toggleSidebar()">
+            <kc-icon class="sidebar-wide-icon" [name]="sidebarCollapsed() ? 'sidebar-expand' : 'sidebar-close'" [size]="18"></kc-icon>
+            <kc-icon class="sidebar-mobile-icon" name="x" [size]="18"></kc-icon>
+          </button>
+        </div>
         @for (g of nav; track g.label) {
           <div class="nav-group">
             <div class="nav-label-row">
               <div class="nav-label">{{g.label}}</div>
-              @if (g.label === 'Overview') {
-                <button class="sidebar-toggle" [attr.aria-label]="sidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
-                  [attr.data-tip]="sidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'" (click)="toggleSidebar()">
-                  <kc-icon class="sidebar-wide-icon" [name]="sidebarCollapsed() ? 'menu' : 'sidebar-close'" [size]="18"></kc-icon>
-                  <kc-icon class="sidebar-mobile-icon" name="x" [size]="18"></kc-icon>
-                </button>
-              }
             </div>
             <nav class="nav">
               @for (i of g.items; track i.path) {
@@ -36,7 +37,7 @@ import { ConfirmComponent } from './ui/confirm.component';
         <div class="sidebar-foot">
           <div class="foot-user">
             <span class="avatar">AD</span>
-            <div style="flex:1;min-width:0"><div style="font-weight:600">Admin</div><div class="cell-sub">Administrator</div></div>
+            <div class="user-copy"><div class="user-name">Admin</div><div class="cell-sub">Administrator</div></div>
             <button class="icon-btn" aria-label="Sign out" data-tip="Sign out" (click)="logoutOpen.set(true)"><kc-icon name="logout" [size]="14"></kc-icon></button>
           </div>
         </div>
@@ -52,9 +53,13 @@ import { ConfirmComponent } from './ui/confirm.component';
             [attr.data-tip]="mobileSearchOpen() ? 'Close search' : 'Search Admin'" (click)="mobileSearchOpen.set(!mobileSearchOpen())">
             <kc-icon [name]="mobileSearchOpen() ? 'x' : 'search'" [size]="17"></kc-icon>
           </button>
+          <div class="top-context"><span>ADMINISTRATION</span><b>Operations</b></div>
           <div class="search-wrap" [class.mobile-search-active]="mobileSearchOpen()">
             <div class="search-box"><kc-icon name="search" [size]="14"></kc-icon>
-              <input placeholder="Search buyers, sellers, products, orders…" (input)="q.set($any($event.target).value)" (blur)="clearSoon()"/>
+              <input #globalSearch aria-label="Search admin records" aria-autocomplete="list"
+                [attr.aria-expanded]="results().length > 0" placeholder="Search buyers, sellers, products, orders…"
+                (input)="q.set($any($event.target).value)" (keydown.escape)="closeSearch()" (blur)="clearSoon()"/>
+              <kbd>⌘ K</kbd>
               @if (mobileSearchOpen()) {
                 <button class="search-cancel" type="button" aria-label="Close search" data-tip="Close search"
                   (click)="mobileSearchOpen.set(false); q.set('')">
@@ -63,18 +68,30 @@ import { ConfirmComponent } from './ui/confirm.component';
               }
             </div>
             @if (results().length) {
-              <div class="results">
+              <div class="results" role="listbox" aria-label="Search results">
                 @for (r of results(); track r.label) {
-                  <div class="result" (mousedown)="go(r)">
+                  <button type="button" class="result" role="option" (click)="go(r)">
                     <span class="thumb">{{r.label[0]}}</span>{{r.label}}<span class="kind">{{r.kind}}</span>
-                  </div>
+                  </button>
                 }
               </div>
             }
           </div>
           <span class="spacer"></span>
           <a class="icon-btn" aria-label="Notifications" routerLink="/admin/notifications"><kc-icon name="bell" [size]="15"></kc-icon>@if (data.notices().length) {<span class="dot"></span>}</a>
-          <div class="who"><span class="avatar">AD</span>Admin</div>
+          <div class="profile-wrap">
+            <button class="who" type="button" aria-label="Open admin menu" [attr.aria-expanded]="profileOpen()" (click)="profileOpen.set(!profileOpen())">
+              <span class="avatar">AD</span><span><b>Admin</b><small>Administrator</small></span>
+            </button>
+            @if (profileOpen()) {
+              <button class="profile-back" aria-label="Close admin menu" (click)="profileOpen.set(false)"></button>
+              <div class="profile-menu" role="menu">
+                <div class="profile-menu-head"><span class="avatar">AD</span><span><b>Admin</b><small>Platform administrator</small></span></div>
+                <a routerLink="/admin/settings" role="menuitem" (click)="profileOpen.set(false)"><kc-icon name="sliders" [size]="15"></kc-icon>Account settings</a>
+                <button role="menuitem" (click)="profileOpen.set(false); logoutOpen.set(true)"><kc-icon name="logout" [size]="15"></kc-icon>Sign out</button>
+              </div>
+            }
+          </div>
         </header>
         <div class="content"><router-outlet></router-outlet></div>
       </div>
@@ -86,14 +103,19 @@ import { ConfirmComponent } from './ui/confirm.component';
     </div>`,
 })
 export class AdminLayoutComponent {
+  @ViewChild('globalSearch') globalSearch?: ElementRef<HTMLInputElement>;
   data = inject(AdminService); router = inject(Router);
   q = signal('');
   sidebarOpen = signal(false);
   sidebarCollapsed = signal(false);
   mobileSearchOpen = signal(false);
+  profileOpen = signal(false);
   logoutOpen = signal(false);
   constructor() {
-    try { this.sidebarCollapsed.set(localStorage.getItem('khmercraft.admin.sidebar') === '1'); } catch { /* browser storage is optional */ }
+    try {
+      const saved = localStorage.getItem('khmercraft.admin.sidebar');
+      this.sidebarCollapsed.set(saved === '1' || window.matchMedia('(max-width: 1100px)').matches);
+    } catch { /* browser storage is optional */ }
   }
   toggleSidebar() {
     if (typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches) {
@@ -134,5 +156,13 @@ export class AdminLayoutComponent {
   });
   go(r: { label: string; path: string }) { this.router.navigate([r.path], { queryParams: { q: r.label } }); this.q.set(''); this.mobileSearchOpen.set(false); }
   clearSoon() { setTimeout(() => this.q.set(''), 150); }
+  closeSearch() { this.q.set(''); this.mobileSearchOpen.set(false); this.globalSearch?.nativeElement.blur(); }
+  @HostListener('document:keydown', ['$event'])
+  openSearchShortcut(event: KeyboardEvent) {
+    if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
+    event.preventDefault();
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches) this.mobileSearchOpen.set(true);
+    setTimeout(() => this.globalSearch?.nativeElement.focus());
+  }
   logout() { this.logoutOpen.set(false); this.data.log('Admin signed out', 'active'); this.router.navigate(['/']); }
 }
