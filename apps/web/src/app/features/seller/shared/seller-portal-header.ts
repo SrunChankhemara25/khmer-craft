@@ -13,7 +13,9 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   template: `
     <header class="seller-header">
       <div class="header-inner">
-        <a class="brand" routerLink="/">KhmerCraft</a>
+        <a class="brand" routerLink="/" aria-label="KhmerCraft marketplace home">
+          <span>KhmerCraft</span><small>Seller</small>
+        </a>
 
         <nav class="desktop-nav" aria-label="Seller navigation">
           <a routerLink="/become-a-seller" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: true }">Why Sell</a>
@@ -50,7 +52,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
     :host { display: block; position: sticky; top: 0; z-index: 60; }
     .seller-header { background: rgba(252,250,245,.94); border-bottom: 1px solid #e4dbce; backdrop-filter: blur(14px); }
     .header-inner { align-items: center; display: flex; justify-content: space-between; margin: 0 auto; max-width: 1210px; min-height: 72px; padding: 0 32px; }
-    .brand { color: #213b30; font-family: var(--font-heading); font-size: 21px; font-weight: 700; letter-spacing: -.025em; text-decoration: none; }
+    .brand { align-items: baseline; color: #213b30; display: inline-flex; font-family: var(--font-heading); font-size: 21px; font-weight: 700; gap: 7px; letter-spacing: -.025em; text-decoration: none; }
+    .brand small { color: #9b3827; font-family: var(--font-body); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
     .desktop-nav, .desktop-actions { align-items: center; display: flex; }
     .desktop-nav { gap: 34px; }
     .desktop-actions { gap: 22px; }

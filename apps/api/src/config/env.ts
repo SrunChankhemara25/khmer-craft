@@ -9,13 +9,7 @@ export const env = {
   get smtpUser() { return process.env.SMTP_USER; },
   get smtpPassword() { return process.env.SMTP_PASSWORD; },
   get mailFrom() { return process.env.MAIL_FROM; },
-  /**
-   * Whether a real transactional-email provider is actually wired up. Used
-   * to decide, at registration time, between requiring email verification
-   * (once SMTP_* is set — see .env.example) and auto-verifying accounts
-   * (when it isn't, so registration is never a dead end nothing can ever
-   * deliver a code for). See auth.service.ts#register.
-   */
+  /** Whether verification and password-reset email can be delivered. */
   get isEmailConfigured() {
     return Boolean(
       this.smtpHost && this.smtpUser && this.smtpPassword && this.mailFrom,
@@ -50,6 +44,30 @@ export const env = {
   },
   get webUrl() {
     return process.env.WEB_URL ?? 'http://localhost:4200';
+  },
+  get googleClientId() {
+    return process.env.GOOGLE_CLIENT_ID;
+  },
+  get googleClientSecret() {
+    return process.env.GOOGLE_CLIENT_SECRET;
+  },
+  get googleRedirectUri() {
+    return process.env.GOOGLE_OAUTH_REDIRECT_URI ?? `${this.apiPublicUrl}/auth/google/callback`;
+  },
+  get isGoogleOAuthConfigured() {
+    return Boolean(this.googleClientId && this.googleClientSecret);
+  },
+  get telegramClientId() {
+    return process.env.TELEGRAM_CLIENT_ID;
+  },
+  get telegramClientSecret() {
+    return process.env.TELEGRAM_CLIENT_SECRET;
+  },
+  get telegramRedirectUri() {
+    return process.env.TELEGRAM_OAUTH_REDIRECT_URI ?? `${this.apiPublicUrl}/auth/telegram/callback`;
+  },
+  get isTelegramOAuthConfigured() {
+    return Boolean(this.telegramClientId && this.telegramClientSecret);
   },
   get allowedOrigins() {
     return (process.env.CORS_ALLOWED_ORIGINS ?? this.webUrl)

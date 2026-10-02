@@ -33,7 +33,7 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
   {
     value: 'ABA_PAYWAY',
     label: 'ABA PayWay',
-    hint: 'Card, KHQR, or ABA account — pay now on ABA’s secure page.',
+    hint: 'Scan an ABA KHQR code with your banking app — pay before delivery.',
     icon: 'credit-card',
   },
 ];
@@ -155,7 +155,8 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
               @if (method() === 'ABA_PAYWAY') {
                 <p class="sandbox-note">
                   <ui-icon name="info" [size]="13" />
-                  You'll be sent to ABA's secure page to pay, then brought back here.
+                  Next you'll get an ABA KHQR code to scan. Your order is
+                  confirmed as paid only once ABA confirms the transaction.
                 </p>
               }
             </section>
@@ -511,10 +512,12 @@ export class CheckoutComponent {
       this.cart.markEmptied();
 
       if (this.method() === 'ABA_PAYWAY') {
-        // The order already exists (unpaid); this hands the buyer off to
-        // ABA's own page to actually pay. There's nothing to navigate to
-        // afterward here — redirectToPayway() leaves this page entirely.
-        await this.redirectToPayway(created.orderId);
+        // The order exists but is unpaid; the payment page opens the ABA
+        // transaction and shows the KHQR to pay it with.
+        await this.router.navigate([
+          '/checkout/pay',
+          created.orderNumber,
+        ]);
         return;
       }
 
@@ -529,35 +532,5 @@ export class CheckoutComponent {
     } finally {
       this.submitting.set(false);
     }
-  }
-
-  /**
-   * PayWay's checkout has to be a real full-page form POST, not a fetch/XHR
-   * redirect — it's a hosted page the buyer enters card/KHQR details on, and
-   * that only works as a top-level navigation the browser itself performs.
-   * This builds a hidden form matching the fields the server signed, and
-   * submits it, leaving this Angular app entirely for ABA's page.
-   */
-  private async redirectToPayway(orderId: string): Promise<void> {
-    const session = await firstValueFrom(this.api.createPaywayCheckout(orderId));
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = session.checkoutUrl;
-    // PayWay's docs require this explicitly — the browser's default encoding
-    // (application/x-www-form-urlencoded) is not what their endpoint expects.
-    form.enctype = 'multipart/form-data';
-    form.style.display = 'none';
-
-    for (const [name, value] of Object.entries(session.fields)) {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = name;
-      input.value = value;
-      form.appendChild(input);
-    }
-
-    document.body.appendChild(form);
-    form.submit();
   }
 }

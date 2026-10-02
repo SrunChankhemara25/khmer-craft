@@ -53,11 +53,12 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
 
     <header class="navbar" [class.scrolled]="scrolled()" [class.nav-hidden]="hidden()">
       <div class="navbar-inner container">
-        <a routerLink="/" class="logo">
+        <a [routerLink]="sellerArea() ? '/become-a-seller' : '/'" class="logo" [attr.aria-label]="sellerArea() ? 'KhmerCraft Seller home' : 'KhmerCraft home'">
           <span class="logo-mark"
             ><ui-icon name="leaf" [size]="16" color="#fff"
           /></span>
           KhmerCraft
+          @if (sellerArea()) { <small class="seller-logo-label">Seller</small> }
         </a>
 
         <div class="search-group">
@@ -335,6 +336,7 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
           box-shadow var(--dur-base) var(--ease-standard),
           transform 550ms ease;
       }
+      .seller-logo-label { color: var(--color-accent); font-family: var(--font-body); font-size: 9px; font-weight: 800; letter-spacing: .09em; margin-left: -4px; text-transform: uppercase; }
       .navbar.scrolled {
         background: rgba(255, 253, 248, 0.84);
         border-bottom-color: rgba(111, 91, 67, .14);

@@ -1867,7 +1867,7 @@ interface DashboardMetric {
   template: `
     <div class="portal">
       <aside class="sidebar">
-        <h1 class="logo">KhmerCraft</h1>
+        <h1 class="logo">KhmerCraft <span>Seller</span></h1>
         <p class="portal-label">Seller Portal</p>
         <nav class="nav">
           @for (item of navItems; track item.view) {

@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { API_URL } from './api.config';
 import {
   ApiCart,
@@ -10,7 +10,13 @@ import {
   ApiMyProductList,
   ApiOrder,
   ApiOrderList,
+  ApiPaymentStatus,
   ApiPaywayCheckoutSession,
+  ApiPlanCheckoutSession,
+  ApiPlanPaymentStatus,
+  ApiSubscription,
+  ApiSubscriptionPayments,
+  PaidPlan,
   ApiProduct,
   ApiProductDetail,
   ApiProductList,
@@ -56,7 +62,17 @@ export class CommerceApiService {
         params = params.set(key, String(value));
       }
     }
-    return this.http.get<ApiProductList>(`${API_URL}/products`, { params });
+    return this.http.get<ApiProductList>(`${API_URL}/products`, { params }).pipe(
+      // Product photos load independently from the list JSON. This keeps the
+      // marketplace responsive even when sellers uploaded large phone photos.
+      map((response) => ({
+        ...response,
+        products: response.products.map((product) => ({
+          ...product,
+          image: `${API_URL}/products/${encodeURIComponent(product.id)}/image`,
+        })),
+      })),
+    );
   }
 
   /** Accepts a Mongo id or a slug — the server resolves both. */
@@ -148,11 +164,61 @@ export class CommerceApiService {
   }
 
   // -------------------------------------------------------------- payments
-  /** Fields to auto-submit, as a form POST, to `checkoutUrl` — see payments.service.ts. */
+  /** Opens an ABA transaction and returns the KHQR the buyer pays. */
   createPaywayCheckout(orderId: string): Observable<ApiPaywayCheckoutSession> {
     return this.http.post<ApiPaywayCheckoutSession>(
       `${API_URL}/payments/aba-payway/checkout`,
       { orderId },
+    );
+  }
+
+  /**
+   * Whether the order is paid. Not a cached read — the server asks ABA about
+   * the transaction and settles the order on the way through, so this is the
+   * authority on whether money actually moved, not the browser returning
+   * from the ABA app.
+   */
+  paywayStatus(orderId: string): Observable<ApiPaymentStatus> {
+    return this.http.get<ApiPaymentStatus>(
+      `${API_URL}/payments/aba-payway/status/${encodeURIComponent(orderId)}`,
+    );
+  }
+
+  // --------------------------------------------------- seller plan billing
+  /** A store's current plan, its expiry, and the published prices. */
+  subscription(storeId: string): Observable<ApiSubscription> {
+    return this.http.get<ApiSubscription>(
+      `${API_URL}/subscriptions/${encodeURIComponent(storeId)}`,
+    );
+  }
+
+  /**
+   * Opens an ABA transaction for a plan and returns the KHQR that buys it.
+   * The plan is not granted here — only a confirmed payment does that.
+   */
+  createPlanCheckout(
+    storeId: string,
+    plan: PaidPlan,
+  ): Observable<ApiPlanCheckoutSession> {
+    return this.http.post<ApiPlanCheckoutSession>(
+      `${API_URL}/subscriptions/checkout`,
+      { storeId, plan },
+    );
+  }
+
+  /**
+   * Whether a plan payment cleared. Not a cached read — the server asks ABA
+   * and activates the plan on the way through.
+   */
+  planPaymentStatus(paymentId: string): Observable<ApiPlanPaymentStatus> {
+    return this.http.get<ApiPlanPaymentStatus>(
+      `${API_URL}/subscriptions/payments/${encodeURIComponent(paymentId)}/status`,
+    );
+  }
+
+  subscriptionPayments(storeId: string): Observable<ApiSubscriptionPayments> {
+    return this.http.get<ApiSubscriptionPayments>(
+      `${API_URL}/subscriptions/${encodeURIComponent(storeId)}/payments`,
     );
   }
 

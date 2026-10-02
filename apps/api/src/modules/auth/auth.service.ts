@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import EmailVerificationCode from '../../../models/EmailVerificationCode';
 import PasswordResetToken from '../../../models/PasswordResetToken';
@@ -41,11 +42,100 @@ const MAX_VERIFICATION_ATTEMPTS = 5;
 const generateVerificationCode = () =>
   crypto.randomInt(100_000, 1_000_000).toString();
 
-/**
- * Calls through the (mockable) `assertEmailConfigured` rather than reading
- * env vars directly, so a test that mocks it to simulate "configured" or
- * "unconfigured" changes what this reports too — not just the real env.
- */
+const GOOGLE_STATE_TTL_MS = 10 * 60 * 1000;
+
+type GoogleState = { returnUrl: string; expiresAt: number };
+type TelegramState = GoogleState & { codeVerifier: string };
+type TelegramJwk = { kid?: string; kty?: string; n?: string; e?: string };
+
+let telegramJwks: { keys: TelegramJwk[]; expiresAt: number } | null = null;
+
+const safeReturnUrl = (value: string | undefined) =>
+  value?.startsWith('/') && !value.startsWith('//') ? value : '/';
+
+const signGoogleState = (payload: GoogleState) => {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', env.jwtSecret)
+    .update(encoded)
+    .digest('base64url');
+  return `${encoded}.${signature}`;
+};
+
+const readGoogleState = (state: string): GoogleState => {
+  const [encoded, signature, extra] = state.split('.');
+  if (!encoded || !signature || extra) {
+    throw new AppError(400, 'Google sign-in could not be verified', 'GOOGLE_OAUTH_INVALID');
+  }
+  const expected = crypto
+    .createHmac('sha256', env.jwtSecret)
+    .update(encoded)
+    .digest('base64url');
+  const receivedBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (
+    receivedBuffer.length !== expectedBuffer.length ||
+    !crypto.timingSafeEqual(receivedBuffer, expectedBuffer)
+  ) {
+    throw new AppError(400, 'Google sign-in could not be verified', 'GOOGLE_OAUTH_INVALID');
+  }
+  try {
+    const value = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as GoogleState;
+    if (!Number.isFinite(value.expiresAt) || value.expiresAt < Date.now()) {
+      throw new Error('Expired state');
+    }
+    return { returnUrl: safeReturnUrl(value.returnUrl), expiresAt: value.expiresAt };
+  } catch {
+    throw new AppError(400, 'Google sign-in could not be verified', 'GOOGLE_OAUTH_INVALID');
+  }
+};
+
+const assertGoogleConfigured = () => {
+  if (!env.isGoogleOAuthConfigured) {
+    throw new AppError(503, 'Google sign-in is temporarily unavailable.', 'GOOGLE_OAUTH_NOT_CONFIGURED');
+  }
+};
+
+const assertTelegramConfigured = () => {
+  if (!env.isTelegramOAuthConfigured) {
+    throw new AppError(503, 'Telegram sign-in is temporarily unavailable.', 'TELEGRAM_OAUTH_NOT_CONFIGURED');
+  }
+};
+
+const signTelegramState = (payload: TelegramState) => signGoogleState(payload);
+
+const readTelegramState = (state: string): TelegramState => {
+  const [encoded] = state.split('.');
+  const verified = readGoogleState(state);
+  try {
+    const value = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as TelegramState;
+    if (!/^[A-Za-z0-9_-]{43,128}$/.test(value.codeVerifier)) throw new Error('Invalid verifier');
+    return { ...verified, codeVerifier: value.codeVerifier };
+  } catch {
+    throw new AppError(400, 'Telegram sign-in could not be verified', 'TELEGRAM_OAUTH_INVALID');
+  }
+};
+
+const getTelegramSigningKey = async (kid: string) => {
+  if (!telegramJwks || telegramJwks.expiresAt < Date.now()) {
+    let response: Response;
+    try {
+      response = await fetch('https://oauth.telegram.org/.well-known/jwks.json');
+    } catch {
+      throw new AppError(503, 'Telegram sign-in is temporarily unavailable.', 'TELEGRAM_OAUTH_UNAVAILABLE');
+    }
+    const body = (await response.json().catch(() => null)) as { keys?: TelegramJwk[] } | null;
+    if (!response.ok || !body?.keys?.length) {
+      throw new AppError(503, 'Telegram sign-in is temporarily unavailable.', 'TELEGRAM_OAUTH_UNAVAILABLE');
+    }
+    telegramJwks = { keys: body.keys, expiresAt: Date.now() + 60 * 60 * 1000 };
+  }
+  const key = telegramJwks.keys.find((candidate) => candidate.kid === kid && candidate.kty === 'RSA');
+  if (!key) throw new AppError(401, 'Telegram sign-in could not be verified', 'TELEGRAM_OAUTH_FAILED');
+  return crypto.createPublicKey({ key, format: 'jwk' });
+};
+
+/** Existing accounts created before OTP was enabled remain able to sign in. */
 const isEmailAvailable = (): boolean => {
   try {
     assertEmailConfigured();
@@ -108,15 +198,183 @@ export class AuthService {
     };
   }
 
-  /**
-   * Create an unverified account; only code confirmation starts a session —
-   * but only when a real email provider is actually configured (SMTP_* in
-   * .env.local; see isEmailAvailable below). Without one, nothing could ever
-   * deliver the code, which would make every registration a permanent dead
-   * end (see the same reasoning historically applied to `registerSeller`
-   * below). In that case the account is created verified and signed in
-   * immediately instead, same as before this feature existed.
-   */
+  googleAuthorizationUrl(returnUrl?: string) {
+    assertGoogleConfigured();
+    const state = signGoogleState({
+      returnUrl: safeReturnUrl(returnUrl),
+      expiresAt: Date.now() + GOOGLE_STATE_TTL_MS,
+    });
+    const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    url.search = new URLSearchParams({
+      client_id: env.googleClientId!,
+      redirect_uri: env.googleRedirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      state,
+      prompt: 'select_account',
+    }).toString();
+    return url.toString();
+  }
+
+  async completeGoogleSignIn(input: { code: string; state: string }) {
+    assertGoogleConfigured();
+    if (!input.code) {
+      throw new AppError(400, 'Google sign-in was cancelled or failed', 'GOOGLE_OAUTH_FAILED');
+    }
+    const state = readGoogleState(input.state);
+
+    let tokenResponse: Response;
+    try {
+      tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code: input.code,
+          client_id: env.googleClientId!,
+          client_secret: env.googleClientSecret!,
+          redirect_uri: env.googleRedirectUri,
+          grant_type: 'authorization_code',
+        }),
+      });
+    } catch {
+      throw new AppError(503, 'Google sign-in is temporarily unavailable.', 'GOOGLE_OAUTH_UNAVAILABLE');
+    }
+    const token = (await tokenResponse.json().catch(() => null)) as { access_token?: string } | null;
+    if (!tokenResponse.ok || !token?.access_token) {
+      throw new AppError(401, 'Google sign-in could not be verified', 'GOOGLE_OAUTH_FAILED');
+    }
+
+    let profileResponse: Response;
+    try {
+      profileResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+        headers: { Authorization: `Bearer ${token.access_token}` },
+      });
+    } catch {
+      throw new AppError(503, 'Google sign-in is temporarily unavailable.', 'GOOGLE_OAUTH_UNAVAILABLE');
+    }
+    const profile = (await profileResponse.json().catch(() => null)) as {
+      email?: string;
+      email_verified?: boolean;
+      name?: string;
+    } | null;
+    if (!profileResponse.ok || !profile?.email || profile.email_verified !== true) {
+      throw new AppError(401, 'Google did not provide a verified email address', 'GOOGLE_OAUTH_FAILED');
+    }
+
+    const email = normalizeEmail(profile.email);
+    let user = await User.findOne({ email });
+    if (user) {
+      if (user.status !== 'ACTIVE') {
+        throw new AppError(403, 'This account is not active', 'ACCOUNT_INACTIVE');
+      }
+      if (!user.email_verified) {
+        user.email_verified = true;
+        await user.save();
+      }
+    } else {
+      user = await User.create({
+        name: profile.name?.trim().slice(0, 100) || 'Google user',
+        email,
+        // Password login remains unavailable until the user chooses one with
+        // the standard reset-password flow; this value cannot be guessed.
+        password_hash: await hashPassword(crypto.randomBytes(48).toString('base64url')),
+        role: 'BUYER',
+        status: 'ACTIVE',
+        email_verified: true,
+      });
+    }
+
+    return { returnUrl: state.returnUrl, user, ...(await this.createSession(user)) };
+  }
+
+  telegramAuthorizationUrl(returnUrl?: string) {
+    assertTelegramConfigured();
+    const codeVerifier = crypto.randomBytes(48).toString('base64url');
+    const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
+    const state = signTelegramState({
+      returnUrl: safeReturnUrl(returnUrl),
+      codeVerifier,
+      expiresAt: Date.now() + GOOGLE_STATE_TTL_MS,
+    });
+    const url = new URL('https://oauth.telegram.org/auth');
+    url.search = new URLSearchParams({
+      client_id: env.telegramClientId!,
+      redirect_uri: env.telegramRedirectUri,
+      response_type: 'code',
+      scope: 'openid profile phone',
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+    }).toString();
+    return url.toString();
+  }
+
+  async completeTelegramSignIn(input: { code: string; state: string }) {
+    assertTelegramConfigured();
+    if (!input.code) throw new AppError(400, 'Telegram sign-in was cancelled or failed', 'TELEGRAM_OAUTH_FAILED');
+    const state = readTelegramState(input.state);
+    let tokenResponse: Response;
+    try {
+      tokenResponse = await fetch('https://oauth.telegram.org/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Basic ${Buffer.from(`${env.telegramClientId!}:${env.telegramClientSecret!}`).toString('base64')}`,
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: input.code,
+          redirect_uri: env.telegramRedirectUri,
+          client_id: env.telegramClientId!,
+          code_verifier: state.codeVerifier,
+        }),
+      });
+    } catch {
+      throw new AppError(503, 'Telegram sign-in is temporarily unavailable.', 'TELEGRAM_OAUTH_UNAVAILABLE');
+    }
+    const token = (await tokenResponse.json().catch(() => null)) as { id_token?: string } | null;
+    if (!tokenResponse.ok || !token?.id_token) {
+      throw new AppError(401, 'Telegram sign-in could not be verified', 'TELEGRAM_OAUTH_FAILED');
+    }
+
+    const decoded = jwt.decode(token.id_token, { complete: true });
+    if (!decoded || typeof decoded === 'string' || decoded.header.alg !== 'RS256' || !decoded.header.kid) {
+      throw new AppError(401, 'Telegram sign-in could not be verified', 'TELEGRAM_OAUTH_FAILED');
+    }
+    let claims: JwtPayload & { sub?: string; name?: string; phone_number?: string; phone_number_verified?: boolean };
+    try {
+      claims = jwt.verify(token.id_token, await getTelegramSigningKey(decoded.header.kid), {
+        algorithms: ['RS256'],
+        issuer: 'https://oauth.telegram.org',
+        audience: env.telegramClientId!,
+      }) as JwtPayload & { sub?: string; name?: string; phone_number?: string; phone_number_verified?: boolean };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(401, 'Telegram sign-in could not be verified', 'TELEGRAM_OAUTH_FAILED');
+    }
+    if (!claims.sub) throw new AppError(401, 'Telegram sign-in could not be verified', 'TELEGRAM_OAUTH_FAILED');
+
+    let user = await User.findOne({ telegram_id: claims.sub });
+    if (user) {
+      if (user.status !== 'ACTIVE') throw new AppError(403, 'This account is not active', 'ACCOUNT_INACTIVE');
+    } else {
+      user = await User.create({
+        name: claims.name?.trim().slice(0, 100) || 'Telegram user',
+        // Telegram does not provide email. This private placeholder satisfies
+        // the existing email-backed account model without exposing it publicly.
+        email: `telegram-${claims.sub}@telegram.local`,
+        password_hash: await hashPassword(crypto.randomBytes(48).toString('base64url')),
+        ...(claims.phone_number_verified && claims.phone_number ? { phone: claims.phone_number } : {}),
+        telegram_id: claims.sub,
+        role: 'BUYER',
+        status: 'ACTIVE',
+        email_verified: false,
+      });
+    }
+    return { returnUrl: state.returnUrl, user, ...(await this.createSession(user)) };
+  }
+
+  /** Create an unverified account; only code confirmation starts a session. */
   async register(input: RegisterInput) {
     const email = normalizeEmail(input.email);
     if (await User.exists({ email })) {
@@ -127,22 +385,9 @@ export class AuthService {
       );
     }
 
-    if (!isEmailAvailable()) {
-      const user = await User.create({
-        name: input.name,
-        email,
-        password_hash: await hashPassword(input.password),
-        phone: input.phone,
-        role: 'BUYER',
-        status: 'ACTIVE',
-        email_verified: true,
-      });
-      return {
-        requiresVerification: false as const,
-        user,
-        ...(await this.createSession(user)),
-      };
-    }
+    // Do this before creating a user. A registration must never appear to
+    // succeed while its required verification email cannot be delivered.
+    assertEmailConfigured();
 
     const user = await User.create({
       name: input.name,

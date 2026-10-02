@@ -113,6 +113,16 @@
     </button>
   </form>
 
+  <div class="oauth-divider">or sign up with</div>
+  <div class="social-buttons">
+    <button class="social-button" type="button" (click)="continueWithGoogle()">
+      <ui-icon name="google" [size]="20" /> Continue with Google
+    </button>
+    <button class="social-button telegram-button" type="button" (click)="continueWithTelegram()">
+      <ui-icon name="telegram" [size]="20" /> Continue with Telegram
+    </button>
+  </div>
+
   <p class="auth-switch">
     Already have an account? <a routerLink="/login">Sign in</a>
   </p>

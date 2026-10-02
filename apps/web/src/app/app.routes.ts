@@ -8,6 +8,7 @@ import { sellerGuard } from './core/auth/seller.guard';
  * components eagerly, which put the whole site in the initial bundle.
  */
 export const routes: Routes = [
+  { path: '__storefront-design-test', loadComponent: () => import('./features/seller/onboarding/storefront-preview.fixture').then(m => m.StorefrontPreviewFixture) },
   // ---------------------------------------------------------------- storefront
   {
     path: '',
@@ -100,7 +101,8 @@ export const routes: Routes = [
       import('./pages/order-success.component').then(
         (m) => m.OrderSuccessComponent,
       ),
-    title: 'Order confirmed | KhmerCraft',
+    // Not "confirmed": an ABA order reaches this page unpaid too.
+    title: 'Your order | KhmerCraft',
   },
 
   // ----------------------------------------------------------------- marketing
@@ -191,6 +193,29 @@ export const routes: Routes = [
         (m) => m.SellerDashboardPage,
       ),
     title: 'Seller dashboard | KhmerCraft',
+  },
+  {
+    // Plan & billing: what the store is on, when it lapses, and the KHQR to
+    // renew it with.
+    path: 'seller/billing',
+    canActivate: [sellerGuard],
+    loadComponent: () =>
+      import('./pages/seller-billing.component').then(
+        (m) => m.SellerBillingComponent,
+      ),
+    title: 'Plan & billing | KhmerCraft',
+  },
+  {
+    // Guarded by buyerGuard, not sellerGuard: a seller who has only ever been
+    // on Starter may still be a BUYER when they come to pay for their first
+    // paid plan, and a sellerGuard would bounce them off their own checkout.
+    path: 'seller/plan/pay',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./pages/plan-payment.component').then(
+        (m) => m.PlanPaymentComponent,
+      ),
+    title: 'Activate your plan | KhmerCraft',
   },
   {
     path: 'seller/orders',

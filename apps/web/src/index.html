@@ -8,8 +8,12 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- --font-body names Inter, but nothing ever loaded it, so every screen
+       was silently falling back to the OS system font. -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" rel="stylesheet">
   <!-- Bold display face for promo poster headlines only — everywhere else keeps --font-heading/--font-body. -->
   <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&amp;family=Noto+Sans+Khmer:wght@400;500;600;700&amp;family=Noto+Serif+Khmer:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 </head>
 <body>
   <app-root></app-root>

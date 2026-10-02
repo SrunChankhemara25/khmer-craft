@@ -1,3 +1,4 @@
+import { storeBrandColor, storeFontFamily } from '../core/catalog/store-appearance';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -54,7 +55,7 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
         <button class="btn btn-primary" type="button" (click)="catalog.loadStores()">Try again</button>
       </section>
     } @else if (store(); as s) {
-      <main class="store-theme" [class.theme-clay]="s.theme === 'CLAY'" [class.theme-gold]="s.theme === 'GOLD'" [class.theme-midnight]="s.theme === 'MIDNIGHT'">
+      <main class="store-theme" [attr.data-style]="s.appearance?.style" [style.--store-accent]="s.appearance ? appearanceColor(s.appearance) : null" [style.--font-body]="s.appearance ? appearanceFont(s.appearance.font) : null" [style.--font-heading]="s.appearance ? appearanceFont(s.appearance.font) : null" [style.font-family]="s.appearance ? appearanceFont(s.appearance.font) : null" [class.theme-clay]="s.theme === 'CLAY'" [class.theme-gold]="s.theme === 'GOLD'" [class.theme-midnight]="s.theme === 'MIDNIGHT'">
         <!-- A seller browsing their own storefront saw exactly what a shopper
              saw, with no way back to the dashboard and no sign of which of the
              two they were looking at. -->
@@ -220,6 +221,11 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
   styles: [`
     .store-intro { padding: 10px 0 12px; background: #f7f2e9; }
     .store-theme { --store-accent: #275643; --store-soft: #e8f0eb; }
+    .store-theme[data-style='warm'] { background: #fff9ee; }
+    .store-theme[data-style='warm'] .store-banner { border-radius: 30px; }
+    .store-theme[data-style='warm'] .store-logo { border-radius: 50%; }
+    .store-theme[data-style='bold'] .store-banner { border-radius: 2px; border-bottom: 6px solid var(--store-accent); }
+    .store-theme[data-style='bold'] .store-logo { border-radius: 3px; }
     .store-theme.theme-clay { --store-accent: #963827; --store-soft: #f6e9e4; }
     .store-theme.theme-gold { --store-accent: #9a691b; --store-soft: #f7efdc; }
     .store-theme.theme-midnight { --store-accent: #263750; --store-soft: #e8edf4; }
@@ -346,6 +352,8 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
   `],
 })
 export class StoreDetailComponent {
+  protected readonly appearanceColor = storeBrandColor;
+  protected readonly appearanceFont = storeFontFamily;
   private readonly route = inject(ActivatedRoute);
   protected readonly catalog = inject(CatalogService);
   private readonly auth = inject(AuthService);

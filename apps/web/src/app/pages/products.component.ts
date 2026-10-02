@@ -40,10 +40,15 @@ const SORTS: { value: ProductSort; label: string }[] = [
             <h1>{{ heading() }}</h1>
           </div>
           <span class="products-total">
-            {{ results().length }}
-            {{ results().length === 1 ? 'product' : 'products' }}
-            @if (search()) {
-              <span>for “{{ search() }}”</span>
+            @if (catalog.loaded()) {
+              {{ results().length }}
+              {{ results().length === 1 ? 'product' : 'products' }}
+              @if (search()) {
+                <span>for “{{ search() }}”</span>
+              }
+            } @else {
+              <ui-icon class="total-spinner" name="loader" [size]="13" />
+              Loading catalogue
             }
           </span>
         </div>
@@ -124,12 +129,15 @@ const SORTS: { value: ProductSort; label: string }[] = [
       </div>
     </section>
 
-    <section class="container grid-section">
+    <section class="container grid-section" [attr.aria-busy]="!catalog.loaded()">
       @if (!catalog.loaded()) {
-        <div class="catalog-state" aria-live="polite">
-          <ui-icon class="spin" name="loader" [size]="28" />
-          <h2>Loading products</h2>
-          <p>We’re checking the latest products and availability.</p>
+        <div class="catalog-state catalog-loading" aria-live="polite">
+          <span class="loading-mark"><ui-icon class="spin" name="loader" [size]="22" /></span>
+          <div>
+            <span class="state-eyebrow">KhmerCraft marketplace</span>
+            <h2>Loading products</h2>
+            <p>Finding the latest pieces from local sellers.</p>
+          </div>
         </div>
       } @else if (catalog.productError()) {
         <div class="catalog-state error-state" role="alert">
@@ -148,13 +156,11 @@ const SORTS: { value: ProductSort; label: string }[] = [
         </div>
       } @else {
         <div class="no-results">
-          <div class="empty-image img-placeholder">
-            <ui-icon name="search" [size]="34" />
-          </div>
-          <h2>No products match that search</h2>
+          <span class="empty-mark"><ui-icon name="search" [size]="22" /></span>
+          <h2>No matching products</h2>
           <p>
-            Try a different keyword, or clear the filters to see everything we
-            have.
+            Try another search or clear the filters to browse the full
+            marketplace.
           </p>
           <button class="btn btn-primary" (click)="clearAll()">
             Clear filters
@@ -207,6 +213,9 @@ const SORTS: { value: ProductSort; label: string }[] = [
         letter-spacing: -.02em;
       }
       .products-total {
+        align-items: center;
+        display: inline-flex;
+        gap: 6px;
         padding: 7px 12px;
         border: 1px solid var(--color-border);
         border-radius: var(--radius-full);
@@ -215,6 +224,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
         font-size: 11.5px;
         white-space: nowrap;
       }
+      .total-spinner { animation: spin 900ms linear infinite; color: var(--color-accent); }
       .filters-bar {
         padding: 18px 32px 0;
       }
@@ -246,12 +256,31 @@ const SORTS: { value: ProductSort; label: string }[] = [
       .scroll-fade {
         position: relative;
       }
+      .scroll-fade::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 4px;
+        width: 32px;
+        background: linear-gradient(to right, rgba(255, 253, 248, 0), var(--color-bg, #faf4eb));
+        pointer-events: none;
+      }
       .chips {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        overflow-x: auto;
         gap: 8px;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      .chips::-webkit-scrollbar {
+        display: none;
       }
       .chip {
+        flex: 0 0 auto;
+        white-space: nowrap;
         padding: 7px 14px;
         border: 1px solid var(--color-border-strong);
         border-radius: var(--radius-full);
@@ -259,6 +288,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
         font-size: 12.5px;
         font-weight: 550;
         color: var(--color-text-secondary);
+        cursor: pointer;
       }
       .chip:hover {
         border-color: var(--color-muted);
@@ -302,6 +332,8 @@ const SORTS: { value: ProductSort; label: string }[] = [
         flex-direction: column;
         align-items: center;
         text-align: center;
+        min-height: 300px;
+        justify-content: center;
         padding: 50px 32px 70px;
         gap: 12px;
       }
@@ -315,18 +347,31 @@ const SORTS: { value: ProductSort; label: string }[] = [
         padding: 42px 24px;
         text-align: center;
       }
+      .catalog-loading { gap: 16px; }
+      .loading-mark, .empty-mark {
+        align-items: center;
+        background: var(--color-accent-soft);
+        border-radius: 50%;
+        color: var(--color-accent);
+        display: inline-flex;
+        height: 48px;
+        justify-content: center;
+        width: 48px;
+      }
+      .state-eyebrow {
+        color: var(--color-accent);
+        display: block;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .1em;
+        margin-bottom: 7px;
+        text-transform: uppercase;
+      }
       .catalog-state h2 { font-size: 19px; }
       .catalog-state p { color: var(--color-muted); font-size: 13.5px; margin-bottom: 5px; }
       .state-icon { color: #9b6517; }
       .spin { animation: spin 900ms linear infinite; color: var(--color-accent); }
       @keyframes spin { to { transform: rotate(360deg); } }
-      .empty-image {
-        width: 140px;
-        height: 140px;
-        border-radius: 50%;
-        color: var(--color-muted-2);
-        margin-bottom: 8px;
-      }
       .no-results h2 {
         font-size: 19px;
       }

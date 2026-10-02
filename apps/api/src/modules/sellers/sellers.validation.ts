@@ -9,11 +9,19 @@ const imageValue = z
     'Use an image URL or an uploaded image',
   );
 
+const appearanceSchema = z.object({
+  style: z.enum(['clean', 'warm', 'bold']),
+  font: z.enum(['sans', 'serif', 'rounded']),
+  brandColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+  shade: z.number().int().min(-60).max(60),
+}).strict();
+
 /** Every field optional — a seller fixing one thing shouldn't have to resend the whole profile. */
 export const updateStoreProfileSchema = z
   .object({
     storeName: z.string().trim().min(2).max(120).optional(),
     storeDescription: z.string().trim().max(2000).optional(),
+    appearance: appearanceSchema.optional(),
     storeTagline: z.string().trim().max(160).optional(),
     announcement: z.string().trim().max(120).optional(),
     theme: z.enum(['FOREST', 'CLAY', 'GOLD', 'MIDNIGHT']).optional(),
@@ -40,9 +48,12 @@ export const createStoreSchema = z
   .object({
     storeName: z.string().trim().min(2).max(120),
     storeDescription: z.string().trim().max(2000).optional(),
+    appearance: appearanceSchema.optional(),
     location: z.string().trim().max(80).optional(),
     phoneNumber: z.string().trim().max(30).optional(),
     category: z.string().trim().max(80).optional(),
+    logoUrl: imageValue.optional(),
+    bannerUrl: imageValue.optional(),
     subscriptionPlan: z.enum(['STARTER', 'STANDARD', 'PREMIUM']).optional(),
     paymentMethod: z.enum(['ABA', 'STRIPE', 'FREE']).optional(),
   })

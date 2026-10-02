@@ -7,7 +7,7 @@ import { RouterLink } from '@angular/router';
   template: `
     <footer class="seller-footer">
       <div class="wrap footer-inner">
-        <a class="footer-brand" routerLink="/">KhmerCraft</a>
+        <a class="footer-brand" routerLink="/" aria-label="KhmerCraft marketplace home">KhmerCraft <span>Seller</span></a>
         <nav aria-label="Seller footer">
           <a routerLink="/">Marketplace</a>
           <a routerLink="/about">About</a>
@@ -24,6 +24,7 @@ import { RouterLink } from '@angular/router';
     .seller-footer{background:#17281f;color:#e9e3d8}
     .footer-inner{min-height:105px;display:flex;align-items:center;gap:45px;flex-wrap:wrap;padding:20px 0}
     .footer-brand{color:#fff;font-family:var(--font-heading);font-size:21px;font-weight:700;text-decoration:none}
+    .footer-brand span{color:#e2c794;font-family:var(--font-body);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
     .footer-inner nav{display:flex;gap:25px;font-size:12px;flex-wrap:wrap}
     .footer-inner nav a{color:#e9e3d8;text-decoration:none}
     .footer-inner nav a:hover{color:#e2c794}

@@ -56,6 +56,7 @@ export const toPublicStore = (seller: IStore) => ({
   tagline: seller.storeTagline ?? null,
   announcement: seller.announcement ?? null,
   theme: seller.theme ?? 'FOREST',
+  appearance: seller.appearance ?? null,
   phoneNumber: seller.showContact ? seller.phoneNumber ?? null : null,
   showContact: seller.showContact ?? false,
   featuredProductIds: (seller.featuredProductIds ?? []).map(String),
@@ -78,6 +79,7 @@ const toOwnerStore = (seller: IStore) => ({
   storeTagline: seller.storeTagline ?? null,
   announcement: seller.announcement ?? null,
   theme: seller.theme ?? 'FOREST',
+  appearance: seller.appearance ?? null,
   showContact: seller.showContact ?? false,
   featuredProductIds: (seller.featuredProductIds ?? []).map(String),
   location: seller.location ?? null,
@@ -85,6 +87,7 @@ const toOwnerStore = (seller: IStore) => ({
   logoUrl: seller.storeAvatarUrl ?? null,
   bannerUrl: seller.storeCoverImages?.[0] ?? null,
   subscriptionPlan: seller.subscriptionPlan,
+  planExpiresAt: seller.planExpiresAt ? seller.planExpiresAt.toISOString() : null,
   onboardingStatus: seller.onboardingStatus,
   verificationStatus: seller.verificationStatus,
   verifiedAt: seller.verifiedAt ?? null,
@@ -181,10 +184,18 @@ export const createStore = async (userId: string, input: CreateStoreInput) => {
     storeName: input.storeName,
     slug: await uniqueStoreSlug(input.storeName),
     storeDescription: input.storeDescription,
+    appearance: input.appearance,
+    storeAvatarUrl: input.logoUrl ? await compressImage(input.logoUrl, 320) : undefined,
+    storeCoverImages: input.bannerUrl ? [(await compressImage(input.bannerUrl, 1280)) ?? input.bannerUrl] : [],
     location: input.location,
     phoneNumber: input.phoneNumber,
     category: input.category,
-    subscriptionPlan: input.subscriptionPlan ?? 'STARTER',
+    // Always STARTER, whatever plan onboarding asked for. A paid plan is
+    // granted by `subscriptions.service.ts` once ABA confirms the money
+    // arrived — taking the seller's word for it here is how a $12 plan ends
+    // up costing nothing. The requested plan is echoed back as
+    // `pendingPlan` so the web app can send them straight to its QR.
+    subscriptionPlan: 'STARTER',
     paymentMethod: input.paymentMethod,
     onboardingStatus: 'COMPLETED',
     verificationStatus: approvedApplication ? 'VERIFIED' : 'UNVERIFIED',
@@ -204,7 +215,14 @@ export const createStore = async (userId: string, input: CreateStoreInput) => {
     }
   }
 
-  return { store: toOwnerStore(seller), roleChanged };
+  // What they asked for but have not paid for yet, so the web app can send
+  // them straight to its QR. Null for STARTER, which costs nothing.
+  const pendingPlan =
+    input.subscriptionPlan && input.subscriptionPlan !== 'STARTER'
+      ? input.subscriptionPlan
+      : null;
+
+  return { store: toOwnerStore(seller), roleChanged, pendingPlan };
 };
 
 /**
@@ -238,6 +256,7 @@ export const updateStoreProfile = async (
   if (input.storeTagline !== undefined) seller.storeTagline = input.storeTagline;
   if (input.announcement !== undefined) seller.announcement = input.announcement;
   if (input.theme !== undefined) seller.theme = input.theme;
+  if (input.appearance !== undefined) seller.appearance = input.appearance;
   if (input.showContact !== undefined) seller.showContact = input.showContact;
   if (input.location !== undefined) seller.location = input.location;
   if (input.phoneNumber !== undefined) seller.phoneNumber = input.phoneNumber;

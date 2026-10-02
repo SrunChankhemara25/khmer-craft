@@ -24,10 +24,10 @@ import { Product } from '../core/catalog/catalog.models';
   template: `
     <app-navbar />
 
-    @if (!catalog.loaded()) {
+    @if (!catalog.loaded() || (!product() && loadingDetail())) {
       <section class="container missing" aria-live="polite">
         <ui-icon class="spin" name="loader" [size]="30" />
-        <h1>Loading product</h1>
+        <h1>Loading product...</h1>
       </section>
     } @else if (catalog.productError()) {
       <section class="container missing" role="alert">
@@ -76,6 +76,17 @@ import { Product } from '../core/catalog/catalog.models';
             <span class="badge badge-soft">{{ p.categoryName }}</span>
             <h1>{{ p.name }}</h1>
 
+            <a class="store-link" [routerLink]="['/stores', p.storeId]">
+              @if (store()?.logoUrl) {
+                <img class="store-logo" [src]="store()!.logoUrl" [alt]="p.sellerName + ' logo'" />
+              } @else {
+                <div class="store-avatar img-placeholder">
+                  <ui-icon name="store" [size]="14" />
+                </div>
+              }
+              <span class="store-name">{{ p.sellerName }}</span>
+            </a>
+
             @if (p.variants?.length) {
               <div class="variant-picker">
                 <span class="variant-label">
@@ -108,15 +119,6 @@ import { Product } from '../core/catalog/catalog.models';
             } @else {
               <div class="rating-row no-reviews">No customer reviews yet</div>
             }
-
-            <a class="store-row card" [routerLink]="['/stores', p.storeId]">
-              <div class="store-avatar img-placeholder"></div>
-              <div>
-                <small>Store</small>
-                <strong>{{ p.sellerName }}</strong>
-              </div>
-              <span class="visit">Visit <ui-icon name="arrow-right" [size]="13" /></span>
-            </a>
 
             <div class="price-block">
               <span class="price">\${{ p.price.toFixed(2) }}</span>
@@ -304,38 +306,44 @@ import { Product } from '../core/catalog/catalog.models';
         font-size: 30px;
         line-height: 1.15;
       }
-      .store-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 14px;
-        color: var(--color-text);
-      }
-      .store-row:hover {
-        border-color: var(--color-border-strong);
-      }
-      .store-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        flex-shrink: 0;
-      }
-      .store-row small {
-        display: block;
-        color: var(--color-muted);
-        font-size: 11.5px;
-      }
-      .store-row strong {
-        font-size: 14px;
-      }
-      .visit {
-        margin-left: auto;
+      .store-link {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
+        gap: 8px;
+        text-decoration: none;
+        color: var(--color-text);
+        width: fit-content;
+        margin-top: -2px;
+        margin-bottom: 2px;
+        transition: color var(--dur-base) var(--ease-standard);
+      }
+      .store-link:hover {
         color: var(--color-accent);
-        font-size: 13px;
+      }
+      .store-logo {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+      .store-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-muted);
+      }
+      .store-name {
+        font-size: 14px;
         font-weight: 600;
+        color: inherit;
+      }
+      .store-link:hover .store-name {
+        text-decoration: underline;
       }
       .price-block {
         display: flex;
@@ -557,6 +565,11 @@ export class ProductDetailComponent {
   private readonly detail = signal<Product | undefined>(undefined);
   private lastDetailId = '';
   protected readonly product = computed(() => this.detail() ?? this.catalog.productById(this.id()));
+  protected readonly store = computed(() => {
+    const p = this.product();
+    if (!p?.storeId) return undefined;
+    return this.catalog.stores.find((s) => s.id === p.storeId);
+  });
 
   /** A pinned photo belongs to one product; drop it when the route changes. */
   private readonly resetGalleryOnNavigate = effect(() => {
@@ -584,6 +597,8 @@ export class ProductDetailComponent {
     );
   });
 
+  protected readonly loadingDetail = signal(true);
+
   constructor() {
     // The cached list has no gallery and no variants — list responses strip
     // them for weight — so fetch the full record for this one product.
@@ -592,8 +607,12 @@ export class ProductDetailComponent {
       if (!id || id === this.lastDetailId) return;
       this.lastDetailId = id;
       this.detail.set(undefined);
+      this.loadingDetail.set(true);
       void this.catalog.productDetail(id).then((full) => {
         if (this.lastDetailId === id && full) this.detail.set(full);
+        this.loadingDetail.set(false);
+      }).catch(() => {
+        this.loadingDetail.set(false);
       });
     });
 

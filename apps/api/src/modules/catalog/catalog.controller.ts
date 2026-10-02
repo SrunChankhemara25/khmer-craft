@@ -4,6 +4,7 @@ import { param } from '../../utils/request-params';
 import {
   archiveProduct,
   createProduct,
+  findProduct,
   getProductDetail,
   listProducts,
   listSellerProducts,
@@ -31,6 +32,25 @@ export const list = async (request: Request, response: Response) => {
 
 export const detail = async (request: Request, response: Response) => {
   response.json(await getProductDetail(param(request, 'id')));
+};
+
+/** Serve one card image separately so a slow photo never blocks product data. */
+export const image = async (request: Request, response: Response) => {
+  // Do not call getProductDetail here: it also loads related products and
+  // their embedded images, which defeats the point of this lightweight route.
+  const product = await findProduct(param(request, 'id'));
+  const value = product.thumbnail ?? product.image ?? product.images?.[0];
+  if (!value) throw new AppError(404, 'Product image not found', 'PRODUCT_IMAGE_NOT_FOUND');
+
+  response.set('Cache-Control', 'public, max-age=86400');
+  if (/^https?:\/\//i.test(value)) {
+    response.redirect(value);
+    return;
+  }
+
+  const match = value.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
+  if (!match) throw new AppError(404, 'Product image not found', 'PRODUCT_IMAGE_NOT_FOUND');
+  response.type(match[1]).send(Buffer.from(match[2], 'base64'));
 };
 
 /** A seller's own listings — drafts and archived included. */

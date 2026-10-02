@@ -1,13 +1,11 @@
 /**
  * Answer one question: can this machine actually deliver email right now?
  *
- * Registration and password reset both degrade *silently* when SMTP is not
- * configured — accounts are auto-verified and reset links go to the server
- * log — which is correct behaviour but indistinguishable, from the outside,
- * from "the code never arrived". This script makes the difference explicit
- * and surfaces the provider's real rejection text (wrong app password,
- * blocked sign-in, bad host) instead of the deliberately vague 503 the API
- * returns to end users.
+ * Registration requires SMTP because an account cannot be confirmed without
+ * a delivered code. This script makes configuration failures explicit and
+ * surfaces the provider's real rejection text (wrong app password, blocked
+ * sign-in, bad host) instead of the deliberately vague 503 the API returns
+ * to end users.
  *
  *   npm run check:email                 # verify the connection only
  *   npm run check:email you@example.com # ...and send a real test message
@@ -54,7 +52,7 @@ async function main() {
   if (missing.length) {
     console.error(`Email is DISABLED: ${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} empty.`);
     console.error('While it is disabled, no verification code and no password-reset email can be sent.');
-    console.error('New accounts are created already-verified instead, so registration still works.');
+    console.error('Sign-up will show an email-configuration error until this is fixed.');
     if (missing.includes('SMTP_PASSWORD') && process.env.SMTP_HOST?.includes('gmail')) {
       console.error('\nFor Gmail this must be a 16-character App Password, not the account password:');
       console.error('  https://myaccount.google.com/apppasswords  (requires 2-Step Verification)');

@@ -59,7 +59,7 @@ export const getMyStores = async (request: Request, response: Response) => {
  * request fails `authenticate`'s role check.
  */
 export const create = async (request: Request, response: Response) => {
-  const { store, roleChanged } = await createStore(
+  const { store, roleChanged, pendingPlan } = await createStore(
     request.auth!.userId,
     request.body as CreateStoreInput,
   );
@@ -70,7 +70,10 @@ export const create = async (request: Request, response: Response) => {
     response.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
   }
 
-  response.status(201).json(store);
+  // `pendingPlan` rides alongside the store's own fields rather than nesting
+  // it, so every existing caller that reads the store straight off the body
+  // keeps working. Null unless a paid plan was chosen and still owes payment.
+  response.status(201).json({ ...store, pendingPlan });
 };
 
 export const getProfile = async (request: Request, response: Response) => {

@@ -91,6 +91,12 @@ const ROLE_CONTENT: Record<
     .password-toggle:hover { background: var(--color-bg-alt); color: var(--color-text); }
     .password-toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
     .forgot-link { font-size: 12px; font-weight: 650 !important; justify-self: end; margin-top: 2px; }
+    .oauth-divider { display: flex; align-items: center; gap: 10px; color: var(--color-muted); font-size: 12px; margin: 18px 0; text-align: center; }
+    .oauth-divider::before, .oauth-divider::after { background: var(--color-border); content: ''; flex: 1; height: 1px; }
+    .social-buttons { display: grid; gap: 10px; }
+    .social-button { align-items: center; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); cursor: pointer; display: flex; font: inherit; font-weight: 700; gap: 9px; justify-content: center; padding: 12px 16px; width: 100%; }
+    .social-button:hover { background: var(--color-bg-alt); border-color: var(--color-muted); }
+    .telegram-button ui-icon { color: #229ED9; }
     .auth-form:not(.submitted) label:has(input.ng-invalid) input { border-color: var(--color-border) !important; box-shadow: none !important; }
     `,
   ],
@@ -190,6 +196,18 @@ export class Login {
           this.error.set(apiErrorMessage(error, content.fallbackError));
         },
       });
+  }
+
+  protected continueWithGoogle() {
+    this.auth.continueWithGoogle(
+      this.route.snapshot.queryParamMap.get('returnUrl') ?? undefined,
+    );
+  }
+
+  protected continueWithTelegram() {
+    this.auth.continueWithTelegram(
+      this.route.snapshot.queryParamMap.get('returnUrl') ?? undefined,
+    );
   }
   private successMessage(name: string): string {
     return `Welcome back, ${name}.`;

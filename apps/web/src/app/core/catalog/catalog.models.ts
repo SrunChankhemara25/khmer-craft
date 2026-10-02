@@ -1,3 +1,4 @@
+import { StoreAppearance } from './store-appearance';
 /**
  * Catalog domain types.
  *
@@ -79,6 +80,7 @@ export interface Store {
   description: string;
   tagline?: string;
   announcement?: string;
+  appearance?: StoreAppearance | null;
   theme?: 'FOREST' | 'CLAY' | 'GOLD' | 'MIDNIGHT';
   phoneNumber?: string;
   showContact?: boolean;

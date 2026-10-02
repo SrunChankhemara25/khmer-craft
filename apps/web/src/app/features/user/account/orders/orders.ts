@@ -100,6 +100,23 @@ import { OrderStatusBadgeComponent } from '../../../../components/shared/orders/
                 </div>
 
                 <div class="actions">
+                  <!-- The way back to an unpaid ABA order. Without it a buyer
+                       who chose "pay later", or whose QR expired, has no route
+                       to paying at all. -->
+                  @if (
+                    order.paymentMethod === 'ABA_PAYWAY' &&
+                    order.paymentStatus !== 'PAID' &&
+                    order.orderStatus !== 'CANCELLED'
+                  ) {
+                    <a
+                      class="btn btn-primary btn-sm"
+                      [routerLink]="['/checkout/pay', order.orderNumber]"
+                    >
+                      <ui-icon name="credit-card" [size]="14" color="#fff" />
+                      Pay with ABA
+                    </a>
+                  }
+
                   <!-- Only offered while PENDING: after the seller accepts,
                        the server refuses a buyer cancellation. -->
                   @if (order.orderStatus === 'PENDING') {

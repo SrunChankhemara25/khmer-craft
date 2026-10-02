@@ -65,8 +65,13 @@ const SORTS: { value: ProductSort; label: string }[] = [
           </div>
           <p>{{ cat.tagline }}</p>
           <span class="category-total">
-            {{ totalInCategory() }}
-            {{ totalInCategory() === 1 ? 'product' : 'products' }}
+            @if (catalog.loaded()) {
+              {{ totalInCategory() }}
+              {{ totalInCategory() === 1 ? 'product' : 'products' }}
+            } @else {
+              <ui-icon class="total-spinner" name="loader" [size]="13" />
+              Loading products
+            }
           </span>
         </div>
       </header>
@@ -87,9 +92,11 @@ const SORTS: { value: ProductSort; label: string }[] = [
               <span>{{ activeCount() }}</span>
             }
           </button>
-          <span class="showing">
-            Showing {{ results().length }} of {{ totalInCategory() }}
-          </span>
+          @if (catalog.loaded()) {
+            <span class="showing">Showing {{ results().length }} of {{ totalInCategory() }}</span>
+          } @else {
+            <span class="showing loading-label"><ui-icon name="loader" [size]="13" /> Loading products</span>
+          }
           @if (activeSub()) {
             <button class="clear" (click)="setSub(null)">
               <ui-icon name="x" [size]="12" /> {{ activeSubName() }}
@@ -286,12 +293,15 @@ const SORTS: { value: ProductSort; label: string }[] = [
           </div>
         </aside>
 
-        <div class="results">
+        <div class="results" [attr.aria-busy]="!catalog.loaded()">
           @if (!catalog.loaded()) {
-            <div class="catalog-state" aria-live="polite">
-              <ui-icon class="spin" name="loader" [size]="28" />
-              <h2>Loading {{ cat.name }}</h2>
-              <p>We’re checking current products and availability.</p>
+            <div class="catalog-state catalog-loading" aria-live="polite">
+              <span class="loading-mark"><ui-icon class="spin" name="loader" [size]="22" /></span>
+              <div>
+                <span class="state-eyebrow">{{ cat.name }}</span>
+                <h2>Loading products</h2>
+                <p>Finding the latest pieces in this category.</p>
+              </div>
             </div>
           } @else if (catalog.productError()) {
             <div class="catalog-state" role="alert">
@@ -310,9 +320,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
             </div>
           } @else {
             <div class="empty">
-              <div class="empty-image img-placeholder">
-                <ui-icon name="package" [size]="32" />
-              </div>
+              <span class="empty-mark"><ui-icon name="package" [size]="22" /></span>
               <h2>Nothing here yet</h2>
               <p>
                 @if (activeSub()) {
@@ -379,6 +387,26 @@ const SORTS: { value: ProductSort; label: string }[] = [
         text-align: center;
       }
       .catalog-state > ui-icon { color: #9b6517; }
+      .catalog-loading { gap: 16px; }
+      .loading-mark, .empty-mark {
+        align-items: center;
+        background: var(--color-accent-soft);
+        border-radius: 50%;
+        color: var(--color-accent);
+        display: inline-flex;
+        height: 48px;
+        justify-content: center;
+        width: 48px;
+      }
+      .state-eyebrow {
+        color: var(--color-accent);
+        display: block;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .1em;
+        margin-bottom: 7px;
+        text-transform: uppercase;
+      }
       .catalog-state h2 { font-size: 19px; }
       .catalog-state p { color: var(--color-muted); font-size: 13px; }
       .catalog-state .spin { animation: spin 900ms linear infinite; color: var(--color-accent); }
@@ -412,6 +440,9 @@ const SORTS: { value: ProductSort; label: string }[] = [
         line-height: 1.55;
       }
       .category-total {
+        align-items: center;
+        display: inline-flex;
+        gap: 6px;
         padding: 7px 12px;
         border: 1px solid var(--color-border);
         border-radius: var(--radius-full);
@@ -420,6 +451,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
         font-size: 11.5px;
         white-space: nowrap;
       }
+      .total-spinner, .loading-label ui-icon { animation: spin 900ms linear infinite; color: var(--color-accent); }
 
       /* ---- toolbar ---- */
       .toolbar {
@@ -478,6 +510,7 @@ const SORTS: { value: ProductSort; label: string }[] = [
         color: var(--color-muted);
         font-size: 13px;
       }
+      .loading-label { align-items: center; display: inline-flex; gap: 6px; }
       .clear {
         display: inline-flex;
         align-items: center;
@@ -690,14 +723,10 @@ const SORTS: { value: ProductSort; label: string }[] = [
         flex-direction: column;
         align-items: center;
         text-align: center;
+        min-height: 330px;
+        justify-content: center;
         padding: 50px 24px 70px;
         gap: 12px;
-      }
-      .empty-image {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        color: var(--color-muted-2);
       }
       .empty h2 {
         font-size: 18px;

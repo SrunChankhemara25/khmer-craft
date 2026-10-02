@@ -1,3 +1,4 @@
+import { StoreAppearance } from '../catalog/store-appearance';
 /**
  * Wire types for the commerce API.
  *
@@ -47,6 +48,7 @@ export interface ApiStore {
   bannerUrl: string | null;
   tagline: string | null;
   announcement: string | null;
+  appearance?: StoreAppearance | null;
   theme: 'FOREST' | 'CLAY' | 'GOLD' | 'MIDNIGHT';
   phoneNumber: string | null;
   showContact: boolean;
@@ -190,10 +192,100 @@ export interface ApiOrder {
   updatedAt: string;
 }
 
-/** What the web app POSTs, as an auto-submitted form, to hand the buyer off to PayWay. */
-export interface ApiPaywayCheckoutSession {
-  checkoutUrl: string;
-  fields: Record<string, string>;
+/**
+ * A live ABA PayWay transaction, whatever it pays for.
+ *
+ * There is no redirect to a hosted ABA page: the merchant account is KHQR, so
+ * PayWay answers the server with a QR and KhmerCraft shows it itself.
+ */
+export interface ApiPaywayQr {
+  tranId: string;
+  amount: number;
+  currency: string;
+  /** `data:image/png;base64,…`, ready for an <img src>. */
+  qrImage: string;
+  /** The EMVCo payload behind the QR, for copy-to-clipboard. */
+  qrString: string;
+  /** `abamobilebank://…` — opens the ABA app on this payment. */
+  deeplink?: string;
+  appStore?: string;
+  playStore?: string;
+  expiresAt: string;
+}
+
+/** Paying for an order. */
+export interface ApiPaywayCheckoutSession extends ApiPaywayQr {
+  orderNumber: string;
+}
+
+/** The answer to "has this order actually been paid?", checked with ABA. */
+export interface ApiPaymentStatus {
+  orderNumber: string;
+  paymentStatus: PaymentStatus;
+  orderStatus: OrderStatus;
+  paid: boolean;
+}
+
+// ------------------------------------------------------------ seller plans
+export type PaidPlan = 'STANDARD' | 'PREMIUM';
+export type SellerPlan = 'STARTER' | PaidPlan;
+export type SubscriptionPaymentStatus =
+  | 'PENDING'
+  | 'PAID'
+  | 'FAILED'
+  | 'REFUNDED';
+
+/**
+ * A store's plan standing.
+ *
+ * `plan` is what was bought and `effectivePlan` is what the store is actually
+ * entitled to today — they differ the moment a paid plan lapses, and feature
+ * gates must read `effectivePlan`.
+ */
+export interface ApiSubscription {
+  storeId: string;
+  storeName: string;
+  plan: SellerPlan;
+  effectivePlan: SellerPlan;
+  expiresAt: string | null;
+  active: boolean;
+  prices: Record<PaidPlan, number>;
+  periodDays: number;
+}
+
+/** Paying for a seller plan. */
+export interface ApiPlanCheckoutSession extends ApiPaywayQr {
+  paymentId: string;
+  storeId: string;
+  plan: PaidPlan;
+  planLabel: string;
+  periodDays: number;
+}
+
+export interface ApiPlanPaymentStatus {
+  paymentId: string;
+  plan: PaidPlan;
+  status: SubscriptionPaymentStatus;
+  paid: boolean;
+  expiresAt: string | null;
+  subscription: ApiSubscription;
+}
+
+export interface ApiSubscriptionPayment {
+  id: string;
+  plan: PaidPlan;
+  planLabel: string;
+  amount: number;
+  currency: string;
+  status: SubscriptionPaymentStatus;
+  paidAt: string | null;
+  periodEnd: string | null;
+  createdAt: string;
+}
+
+export interface ApiSubscriptionPayments {
+  subscription: ApiSubscription;
+  payments: ApiSubscriptionPayment[];
 }
 
 /** A seller's view adds their own share of a possibly multi-seller order. */

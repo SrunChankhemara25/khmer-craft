@@ -11,6 +11,7 @@ export interface IUser extends Document {
   email: string;
   password_hash: string;
   phone?: string;
+  telegram_id?: string;
   role: UserRole;
   status: UserStatus;
   email_verified: boolean;
@@ -40,6 +41,9 @@ const UserSchema = new Schema<IUser>(
     },
     password_hash: { type: String, required: true, select: false },
     phone: { type: String, trim: true, maxlength: 30 },
+    // A Telegram OAuth subject is stable for the linked bot. Sparse keeps
+    // existing email/password accounts unaffected.
+    telegram_id: { type: String, unique: true, sparse: true, index: true },
     role: { type: String, enum: USER_ROLES, default: 'BUYER', required: true },
     status: { type: String, enum: USER_STATUSES, default: 'ACTIVE', required: true },
     email_verified: { type: Boolean, default: false, required: true },

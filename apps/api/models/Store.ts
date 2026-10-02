@@ -15,6 +15,12 @@ export interface IStore extends Document {
   /** Unique, human-readable, public identifier — never a raw Mongo id in a URL. */
   slug: string;
   storeDescription?: string;
+  appearance?: {
+    style: 'clean' | 'warm' | 'bold';
+    font: 'sans' | 'serif' | 'rounded';
+    brandColor: string;
+    shade: number;
+  };
   storeTagline?: string;
   announcement?: string;
   theme: 'FOREST' | 'CLAY' | 'GOLD' | 'MIDNIGHT';
@@ -23,6 +29,15 @@ export interface IStore extends Document {
   storeAvatarUrl?: string;
   storeCoverImages?: string[];
   subscriptionPlan: 'STARTER' | 'STANDARD' | 'PREMIUM';
+  /**
+   * When the current paid plan lapses. Absent on STARTER, which never expires.
+   *
+   * A plan is not downgraded by a scheduled job — nothing here runs on a
+   * timer. `effectivePlan()` in subscriptions.service.ts treats an expired
+   * date as STARTER at read time, so a lapse takes effect the moment it
+   * happens rather than whenever a cron next fires.
+   */
+  planExpiresAt?: Date | null;
   paymentMethod?: 'ABA' | 'STRIPE' | 'FREE';
   onboardingStatus: 'PENDING' | 'COMPLETED';
   location?: string;
@@ -47,6 +62,15 @@ const StoreSchema: Schema = new Schema(
     storeName: { type: String, required: true },
     slug: { type: String, required: true, unique: true, trim: true, index: true },
     storeDescription: { type: String },
+    appearance: {
+      type: new Schema({
+        style: { type: String, enum: ['clean', 'warm', 'bold'], required: true },
+        font: { type: String, enum: ['sans', 'serif', 'rounded'], required: true },
+        brandColor: { type: String, match: /^#[0-9a-f]{6}$/i, required: true },
+        shade: { type: Number, min: -60, max: 60, required: true },
+      }, { _id: false }),
+      default: undefined,
+    },
     storeTagline: { type: String, trim: true, maxlength: 160 },
     announcement: { type: String, trim: true, maxlength: 120 },
     theme: {
@@ -64,6 +88,7 @@ const StoreSchema: Schema = new Schema(
       required: true,
       default: 'STARTER',
     },
+    planExpiresAt: { type: Date, default: null },
     paymentMethod: {
       type: String,
       enum: ['ABA', 'STRIPE', 'FREE'],

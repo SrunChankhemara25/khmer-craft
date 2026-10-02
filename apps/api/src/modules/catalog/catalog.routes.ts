@@ -5,6 +5,7 @@ import { validate } from '../../middleware/validate';
 import {
   create,
   detail,
+  image,
   list,
   listMine,
   remove,
@@ -29,6 +30,7 @@ router.get(
   listMine,
 );
 
+router.get('/:id/image', image);
 router.get('/:id', detail);
 router.get('/:id/reviews', listForProduct);
 

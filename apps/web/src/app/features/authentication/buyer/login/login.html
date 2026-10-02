@@ -17,7 +17,15 @@
     <div class="notice error" role="alert">{{ error() }}</div>
   }
 
-  <!-- Single unified login page: tabs removed -->
+  <div class="social-buttons">
+    <button class="social-button" type="button" (click)="continueWithGoogle()">
+      <ui-icon name="google" [size]="20" /> Continue with Google
+    </button>
+    <button class="social-button telegram-button" type="button" (click)="continueWithTelegram()">
+      <ui-icon name="telegram" [size]="20" /> Continue with Telegram
+    </button>
+  </div>
+  <div class="oauth-divider">or continue with email</div>
 
   <form class="auth-form" [class.submitted]="submitted()" [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <label>

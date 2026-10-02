@@ -22,9 +22,11 @@ import catalogRoutes from './modules/catalog/catalog.routes';
 import taxonomyRoutes from './modules/catalog/taxonomy.routes';
 import orderRoutes from './modules/orders/orders.routes';
 import paymentRoutes from './modules/payments/payments.routes';
+import subscriptionRoutes from './modules/subscriptions/subscriptions.routes';
 import reviewRoutes from './modules/reviews/reviews.routes';
 import sellerRoutes from './modules/sellers/sellers.routes';
 import storeCategoryRoutes from './modules/store-categories/store-categories.routes';
+import warehouseRoutes from './modules/warehouses/warehouses.routes';
 
 export const createApp = () => {
   const app = express();
@@ -110,9 +112,11 @@ export const createApp = () => {
   app.use('/api/cart', cartRoutes);
   app.use('/api/orders', orderRoutes);
   app.use('/api/payments', paymentRoutes);
+  app.use('/api/subscriptions', subscriptionRoutes);
   app.use('/api/reviews', reviewRoutes);
   app.use('/api/sellers', sellerRoutes);
   app.use('/api/store-categories', storeCategoryRoutes);
+  app.use('/api/warehouses', warehouseRoutes);
 
   // Interactive API docs. Disabled in production so the schema is not public.
   if (isDocsEnabled) {

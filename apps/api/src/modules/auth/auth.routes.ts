@@ -6,6 +6,8 @@ import {
   changePassword,
   currentUser,
   forgotPassword,
+  googleCallback,
+  googleSignIn,
   login,
   logout,
   refresh,
@@ -14,6 +16,8 @@ import {
   resendCode,
   resetPassword,
   verifyEmail,
+  telegramCallback,
+  telegramSignIn,
 } from './auth.controller';
 import {
   changePasswordSchema,
@@ -45,6 +49,10 @@ router.post(
   validate(registerSellerSchema),
   registerSeller,
 );
+router.get('/google', googleSignIn);
+router.get('/google/callback', googleCallback);
+router.get('/telegram', telegramSignIn);
+router.get('/telegram/callback', telegramCallback);
 router.post(
   '/verify-email',
   loginRateLimit,

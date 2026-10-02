@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CatalogService } from '../core/catalog/catalog.service';
 import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
 import { FooterComponent } from '../components/shared/layout/footer/footer.component';
@@ -86,55 +86,47 @@ interface CategoryShelf {
     </div>
   </section>
 
-  <section class="container section" aria-label="Seller offers">
-    @if (dealCategories().length) {
-      <div class="section-head">
-        <h2>Best deals</h2>
-        <a routerLink="/products" [queryParams]="{ sale: '1' }" class="see-all">Shop all deals <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
-      </div>
-      <div class="deals-strip">
-        @for (deal of dealCategories(); track deal.category.slug) {
-          <a
-            class="deal-poster"
-            [attr.data-category]="deal.category.slug"
-            [routerLink]="['/products']"
-            [queryParams]="deal.hasDeal ? { category: deal.category.slug, sale: '1' } : { category: deal.category.slug }"
-          >
-            <div class="deal-poster-inner" [class.has-poster]="dealPoster(deal.category.slug)">
-              @if (dealPoster(deal.category.slug); as poster) {
-                <img class="deal-photo" [src]="poster" alt="" aria-hidden="true" loading="lazy" />
-              }
-              <div class="deal-top">
-                <span class="deal-icon"><ui-icon [name]="deal.category.icon" [size]="15"></ui-icon></span>
-                @if (deal.hasDeal) {
-                  <span class="deal-badge">On sale</span>
-                }
+  @if (!sellerPreview()) {
+    <section class="container section" aria-label="Seller offers">
+      @if (dealCategories().length) {
+        <div class="section-head">
+          <h2>Best deals</h2>
+          <a routerLink="/products" [queryParams]="{ sale: '1' }" class="see-all">Shop all deals <ui-icon name="arrow-right" [size]="14"></ui-icon></a>
+        </div>
+        <div class="deals-strip">
+          @for (deal of dealCategories(); track deal.category.slug) {
+            <a class="deal-poster" [attr.data-category]="deal.category.slug" [routerLink]="['/products']" [queryParams]="deal.hasDeal ? { category: deal.category.slug, sale: '1' } : { category: deal.category.slug }">
+              <div class="deal-poster-inner" [class.has-poster]="dealPoster(deal.category.slug)">
+                @if (dealPoster(deal.category.slug); as poster) { <img class="deal-photo" [src]="poster" alt="" aria-hidden="true" loading="lazy" /> }
+                <div class="deal-top">
+                  <span class="deal-icon"><ui-icon [name]="deal.category.icon" [size]="15"></ui-icon></span>
+                  @if (deal.hasDeal) { <span class="deal-badge">On sale</span> }
+                </div>
+                @if (!dealPoster(deal.category.slug)) { <span class="deal-name">{{ deal.category.name }}</span> }
+                <span class="deal-count">{{ deal.storeCount }} store{{ deal.storeCount === 1 ? '' : 's' }} · {{ deal.productCount }} product{{ deal.productCount === 1 ? '' : 's' }}</span>
+                <span class="deal-arrow"><ui-icon name="arrow-right" [size]="14"></ui-icon></span>
               </div>
-              @if (!dealPoster(deal.category.slug)) {
-                <span class="deal-name">{{ deal.category.name }}</span>
-              }
-              <span class="deal-count">
-                {{ deal.storeCount }} store{{ deal.storeCount === 1 ? '' : 's' }} ·
-                {{ deal.productCount }} product{{ deal.productCount === 1 ? '' : 's' }}
-              </span>
-              <span class="deal-arrow"><ui-icon name="arrow-right" [size]="14"></ui-icon></span>
-            </div>
-          </a>
-        }
-      </div>
-    } @else {
-      <div class="offers-strip">
-        <ui-icon name="tag" [size]="20" />
-        <div><strong>Explore seller offers</strong><p>Discover special offers from local sellers.</p></div>
-        <a class="see-all" routerLink="/products" [queryParams]="{ sale: '1' }">Shop deals <ui-icon name="arrow-right" [size]="14" /></a>
-      </div>
-    }
-  </section>
+            </a>
+          }
+        </div>
+      } @else {
+        <div class="offers-strip">
+          <ui-icon name="tag" [size]="20" />
+          <div><strong>Explore seller offers</strong><p>Discover special offers from local sellers.</p></div>
+          <a class="see-all" routerLink="/products" [queryParams]="{ sale: '1' }">Shop deals <ui-icon name="arrow-right" [size]="14" /></a>
+        </div>
+      }
+    </section>
+  }
 
   <section class="container section discover">
     <header class="discover-head">
       <h2>The whole marketplace</h2>
-      <p>{{ catalog.allProducts().length }} products from {{ discoverStoreCount() }} Cambodian sellers</p>
+      @if (catalog.loaded()) {
+        <p>{{ catalog.allProducts().length }} products from {{ discoverStoreCount() }} Cambodian sellers</p>
+      } @else {
+        <p class="discover-status"><ui-icon name="loader" [size]="13" /> Loading marketplace</p>
+      }
     </header>
 
     <div class="discover-filters" role="group" aria-label="Filter by department">
@@ -173,7 +165,16 @@ interface CategoryShelf {
       </div>
     }
 
-    @if (discoverProducts().length) {
+    @if (!catalog.loaded()) {
+      <div class="discover-state" aria-live="polite">
+        <span class="discover-loader"><ui-icon name="loader" [size]="21" /></span>
+        <div>
+          <span>KhmerCraft marketplace</span>
+          <strong>Loading products</strong>
+          <p>Finding the latest pieces from local sellers.</p>
+        </div>
+      </div>
+    } @else if (discoverProducts().length) {
       <div class="discover-grid" #discoverGrid>
         @for (product of discoverProducts(); track product.id) {
           <app-product-card [product]="product" />
@@ -190,7 +191,10 @@ interface CategoryShelf {
         </a>
       </div>
     } @else {
-      <p class="discover-empty">Nothing in this department yet.</p>
+      <div class="discover-empty">
+        <span><ui-icon name="package" [size]="20" /></span>
+        <div><strong>No products here yet</strong><p>Choose another category to keep exploring.</p></div>
+      </div>
     }
   </section>
 
@@ -491,7 +495,40 @@ interface CategoryShelf {
       transition: opacity 150ms ease;
     }
     .discover-more .more-btn:hover { opacity: .88; }
-    .discover-empty { color: var(--color-text-muted, #9b8f80); margin-top: 28px; }
+    .discover-status { align-items: center; display: inline-flex; gap: 6px; }
+    .discover-status ui-icon, .discover-loader ui-icon { animation: spin 900ms linear infinite; color: var(--color-accent, #8e3021); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .discover-state {
+      align-items: center;
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      min-height: 280px;
+      text-align: left;
+    }
+    .discover-loader, .discover-empty > span {
+      align-items: center;
+      background: var(--color-accent-soft, #f5e8e4);
+      border-radius: 50%;
+      color: var(--color-accent, #8e3021);
+      display: inline-flex;
+      flex: 0 0 auto;
+      height: 46px;
+      justify-content: center;
+      width: 46px;
+    }
+    .discover-state span:not(.discover-loader) {
+      color: var(--color-accent, #8e3021);
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+    .discover-state strong, .discover-empty strong { display: block; font-size: 17px; }
+    .discover-state p, .discover-empty p { color: var(--color-text-muted, #9b8f80); font-size: 13px; margin: 4px 0 0; }
+    .discover-empty { align-items: center; color: var(--color-text-muted, #9b8f80); display: flex; gap: 13px; justify-content: center; margin-top: 28px; min-height: 180px; text-align: left; }
 
     @media (max-width: 640px) {
       .discover-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
@@ -741,11 +778,11 @@ interface CategoryShelf {
        split tiles (tinted copy panel + photo) stacked beside it. */
     .collections-head { align-items: flex-start; }
     .collections-subtitle { color: var(--color-text-muted); font-size: 13px; margin: 4px 0 0; }
-    .collections-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 16px; height: 560px; }
+    .collections-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 14px; height: 380px; }
     .collection-tile { border-radius: var(--radius-lg); display: block; overflow: hidden; position: relative; text-decoration: none; }
     .tile-image, .split-image img { height: 100%; object-fit: cover; transition: transform .5s var(--ease-out); width: 100%; }
     .collection-tile:hover .tile-image, .collection-tile:hover .split-image img { transform: scale(1.06); }
-    .tile-badge { align-items: center; border-radius: var(--radius-full); display: inline-flex; font-size: 11px; font-weight: 700; gap: 6px; letter-spacing: .04em; padding: 7px 12px; text-transform: uppercase; width: max-content; }
+    .tile-badge { align-items: center; border-radius: var(--radius-full); display: inline-flex; font-size: 10px; font-weight: 700; gap: 5px; letter-spacing: .04em; padding: 5px 10px; text-transform: uppercase; width: max-content; }
     .tile-badge.forest { background: var(--color-forest); color: #fff; }
     .tile-badge.peach { background: var(--color-accent); color: #fff; }
     .tile-badge.sage { background: var(--color-forest); color: #fff; }
@@ -757,23 +794,23 @@ interface CategoryShelf {
     .hero-tile { grid-column: 1; grid-row: 1 / 3; }
     .hero-tile .tile-image { position: absolute; inset: 0; }
     .tile-scrim { background: linear-gradient(0deg, rgba(20, 16, 10, .78) 0%, rgba(20, 16, 10, .15) 55%, rgba(20, 16, 10, 0) 80%); inset: 0; position: absolute; }
-    .tile-content { bottom: 0; color: #fff; left: 0; padding: clamp(20px, 3vw, 34px); position: absolute; right: 0; }
-    .tile-content h3 { font-size: clamp(24px, 2.6vw, 34px); line-height: 1.12; margin: 14px 0 8px; }
-    .tile-content p { color: rgba(255, 255, 255, .82); font-size: 13.5px; line-height: 1.5; margin: 0 0 18px; max-width: 360px; }
-    .tile-cta.on-image { background: var(--color-bg); border-radius: var(--radius-sm); color: var(--color-text); font-size: 13px; font-weight: 700; padding: 11px 18px; }
+    .tile-content { bottom: 0; color: #fff; left: 0; padding: clamp(16px, 2.2vw, 24px); position: absolute; right: 0; }
+    .tile-content h3 { color: #fff; font-size: clamp(20px, 2.2vw, 26px); line-height: 1.15; margin: 8px 0 6px; }
+    .tile-content p { color: rgba(255, 255, 255, .88); font-size: 12.5px; line-height: 1.45; margin: 0 0 14px; max-width: 330px; }
+    .tile-cta.on-image { background: var(--color-bg); border-radius: var(--radius-sm); color: var(--color-text); font-size: 12.5px; font-weight: 700; padding: 8px 16px; }
     .hero-tile:hover .tile-cta.on-image ui-icon { transform: translateX(3px); }
 
     /* Split tiles: tinted copy panel on the left, photo bleeding in on the right. */
     .split-tile { align-items: stretch; display: flex; }
     .split-tile.peach { background: #f7ece0; }
     .split-tile.sage { background: #edf1e7; }
-    .split-copy { display: flex; flex: 1 1 55%; flex-direction: column; gap: 10px; justify-content: center; padding: clamp(18px, 2.6vw, 28px); position: relative; z-index: 1; }
-    .split-copy h3 { color: var(--color-text); font-size: clamp(19px, 2vw, 24px); line-height: 1.15; margin: 2px 0 0; }
-    .split-copy p { color: var(--color-text-secondary); font-size: 12.5px; line-height: 1.5; margin: 0 0 4px; max-width: 220px; }
+    .split-copy { display: flex; flex: 1 1 56%; flex-direction: column; gap: 6px; justify-content: center; padding: clamp(14px, 1.8vw, 20px); position: relative; z-index: 1; }
+    .split-copy h3 { color: var(--color-text); font-size: clamp(16px, 1.6vw, 19px); line-height: 1.15; margin: 0; }
+    .split-copy p { color: var(--color-text-secondary); font-size: 12px; line-height: 1.4; margin: 0 0 4px; max-width: 230px; }
     .tile-cta.peach { background: var(--color-accent); color: #fff; }
     .tile-cta.sage { background: var(--color-forest); color: #fff; }
-    .tile-cta.peach, .tile-cta.sage { border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 700; padding: 10px 16px; width: max-content; }
-    .split-image { flex: 1 1 45%; overflow: hidden; position: relative; }
+    .tile-cta.peach, .tile-cta.sage { border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; padding: 7px 14px; width: max-content; }
+    .split-image { flex: 1 1 44%; overflow: hidden; position: relative; }
     .split-image::before { background: inherit; content: ''; inset: 0; position: absolute; z-index: 1; }
     .split-tile.peach .split-image::before { background: linear-gradient(90deg, #f7ece0 0%, rgba(247, 236, 224, 0) 45%); }
     .split-tile.sage .split-image::before { background: linear-gradient(90deg, #edf1e7 0%, rgba(237, 241, 231, 0) 45%); }
@@ -803,11 +840,11 @@ interface CategoryShelf {
       .confidence-grid { grid-template-columns: 1fr 1fr; gap: 16px 0; }
       .confidence-item:nth-child(2) { border-right: 0; }
       .confidence-item:nth-child(3) { padding-left: 0; }
-      .collections-grid { gap: 12px; grid-template-columns: 1fr 1fr; height: 420px; }
-      .tile-content { padding: 18px; }
-      .tile-content h3 { margin: 10px 0 6px; }
+      .collections-grid { gap: 10px; grid-template-columns: 1fr 1fr; height: 330px; }
+      .tile-content { padding: 14px; }
+      .tile-content h3 { font-size: 18px; margin: 6px 0 4px; }
       .tile-content p { display: none; }
-      .split-copy { gap: 8px; padding: 16px; }
+      .split-copy { gap: 5px; padding: 12px; }
       .split-copy p { display: none; }
     }
     @media (max-width: 560px) {
@@ -845,7 +882,11 @@ interface CategoryShelf {
   `]
 })
 export class HomeComponent {
+  private readonly route = inject(ActivatedRoute);
   protected readonly catalog = inject(CatalogService);
+  protected readonly sellerPreview = computed(
+    () => this.route.snapshot.queryParamMap.get('sellerPreview') === '1',
+  );
 
   constructor() {
     // Categories arrive asynchronously, so the rail's scroll width is not known

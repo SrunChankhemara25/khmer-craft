@@ -1,9 +1,30 @@
+import { StoreAppearance } from '../catalog/store-appearance';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { API_URL } from './api.config';
 
 export type SellerPlan = 'STARTER' | 'STANDARD' | 'PREMIUM';
+
+export type WarehouseType = 'SHOP' | 'STORAGE' | 'HOME' | 'PICKUP_POINT';
+
+export interface Warehouse {
+  id: string;
+  name: string;
+  type: WarehouseType;
+  province: string;
+  district: string;
+  commune: string;
+  addressLine: string;
+  notes: string;
+  contactName: string;
+  phoneNumber: string;
+  openingHours: string;
+  isDefault: boolean;
+  isActive: boolean;
+}
+
+export type WarehousePayload = Partial<Omit<Warehouse, 'id' | 'isActive'>> & { name?: string };
 
 export interface SellerApplication {
   id: string;
@@ -20,6 +41,7 @@ export interface SellerStore {
   slug: string;
   storeName: string;
   storeDescription?: string;
+  appearance?: StoreAppearance;
   storeTagline?: string;
   announcement?: string;
   theme?: StoreTheme;
@@ -37,6 +59,7 @@ export type StoreTheme = 'FOREST' | 'CLAY' | 'GOLD' | 'MIDNIGHT';
 export interface UpdateStorefrontPayload {
   storeName?: string;
   storeDescription?: string;
+  appearance?: StoreAppearance;
   storeTagline?: string;
   announcement?: string;
   theme?: StoreTheme;
@@ -49,8 +72,11 @@ export interface UpdateStorefrontPayload {
 }
 
 export interface CreateStorePayload {
+  logoUrl?: string;
+  bannerUrl?: string;
   storeName: string;
   storeDescription?: string;
+  appearance?: StoreAppearance;
   category?: string;
   location?: string;
   phoneNumber?: string;
@@ -120,6 +146,31 @@ export class SellerService {
    */
   listSellerApplications() {
     return this.http.get<SellerApplication[]>(`${API_URL}/sellers/apply`);
+  }
+
+  // --- stock locations -----------------------------------------------------
+  // Owner-only on the server; there is no public view of where a seller keeps
+  // stock, so none of these are reachable without the seller's own session.
+
+  listWarehouses(storeId: string) {
+    return this.http.get<{ warehouses: Warehouse[] }>(`${API_URL}/warehouses/my-stores/${storeId}`);
+  }
+
+  createWarehouse(storeId: string, data: WarehousePayload) {
+    return this.http.post<Warehouse>(`${API_URL}/warehouses/my-stores/${storeId}`, data);
+  }
+
+  updateWarehouse(storeId: string, warehouseId: string, data: WarehousePayload) {
+    return this.http.patch<Warehouse>(
+      `${API_URL}/warehouses/my-stores/${storeId}/${warehouseId}`,
+      data,
+    );
+  }
+
+  deleteWarehouse(storeId: string, warehouseId: string) {
+    return this.http.delete<{ deleted: true }>(
+      `${API_URL}/warehouses/my-stores/${storeId}/${warehouseId}`,
+    );
   }
 
   getMyStores() {

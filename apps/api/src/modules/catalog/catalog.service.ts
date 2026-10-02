@@ -53,7 +53,12 @@ export type ProductResponse = ReturnType<typeof toProductResponse>;
  */
 export const toProductListItem = (product: IProduct) => ({
   ...toProductResponse(product),
-  image: product.thumbnail ?? product.image ?? product.images?.[0] ?? null,
+  // List endpoints must stay small enough to render before image downloads.
+  // The browser fetches card images individually from /:id/image; embedding
+  // 60 base64 photos here made the whole marketplace wait tens of seconds.
+  image: null,
+  // Variant images belong on the detail page; list cards do not render them.
+  variants: [],
 });
 
 const SORT_ORDERS: Record<ProductSort, Record<string, 1 | -1>> = {
@@ -175,7 +180,7 @@ export const listProducts = async (query: ListProductsQuery) => {
   // ~200ms query into a 10+ second one purely on that transfer. The list
   // response only ever uses `thumbnail` (see toProductListItem).
   const [documents, total] = await Promise.all([
-    Product.find(filter).select('-image -images').sort(sort).skip(skip).limit(query.limit),
+    Product.find(filter).select('-image -images -thumbnail').sort(sort).skip(skip).limit(query.limit),
     Product.countDocuments(filter),
   ]);
 

@@ -81,6 +81,12 @@ const passwordsMatch = (group: AbstractControl): ValidationErrors | null => {
 
     /* Informational, not an error — global .auth-form small is red by default. */
     .hint { color: var(--color-muted, #8a8178) !important; }
+    .oauth-divider { display: flex; align-items: center; gap: 10px; color: var(--color-muted); font-size: 12px; margin: 18px 0; text-align: center; }
+    .oauth-divider::before, .oauth-divider::after { background: var(--color-border); content: ''; flex: 1; height: 1px; }
+    .social-buttons { display: grid; gap: 10px; }
+    .social-button { align-items: center; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); cursor: pointer; display: flex; font: inherit; font-weight: 700; gap: 9px; justify-content: center; padding: 12px 16px; width: 100%; }
+    .social-button:hover { background: var(--color-bg-alt); border-color: var(--color-muted); }
+    .telegram-button ui-icon { color: #229ED9; }
     `,
   ],
 })
@@ -173,5 +179,17 @@ export class Register {
         },
         error: (error) => this.error.set(apiErrorMessage(error)),
       });
+  }
+
+  protected continueWithGoogle() {
+    this.auth.continueWithGoogle(
+      this.route.snapshot.queryParamMap.get('returnUrl') ?? undefined,
+    );
+  }
+
+  protected continueWithTelegram() {
+    this.auth.continueWithTelegram(
+      this.route.snapshot.queryParamMap.get('returnUrl') ?? undefined,
+    );
   }
 }

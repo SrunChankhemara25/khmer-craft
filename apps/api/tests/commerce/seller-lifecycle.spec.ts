@@ -228,3 +228,33 @@ describe('seller application review', () => {
     expect(again.body.error.code).toBe('ILLEGAL_TRANSITION');
   });
 });
+
+
+describe('storefront appearance', () => {
+  it('creates a store without a description and preserves its design and images in public responses', async () => {
+    const owner = await signIn('BUYER', 'design@khmercraft.test');
+    const appearance = { style: 'warm', font: 'serif', brandColor: '#a74732', shade: 20 };
+    const created = await request(app).post('/api/sellers/my-stores').set('Cookie', owner.cookie).send({
+      storeName: 'Sophea Studio', appearance,
+      logoUrl: 'https://example.com/logo.jpg', bannerUrl: 'https://example.com/cover.jpg',
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.appearance).toEqual(appearance);
+    const publicStore = await request(app).get(`/api/sellers/stores/${created.body.slug}`);
+    expect(publicStore.status).toBe(200);
+    expect(publicStore.body.appearance).toEqual(appearance);
+    expect(publicStore.body.logoUrl).toBe('https://example.com/logo.jpg');
+    expect(publicStore.body.bannerUrl).toBe('https://example.com/cover.jpg');
+    const saved = await Store.findById(created.body.id);
+    expect(saved?.appearance?.shade).toBe(20);
+  });
+
+  it('rejects invalid design values before creating a store', async () => {
+    const owner = await signIn('BUYER', 'invalid-design@khmercraft.test');
+    const response = await request(app).post('/api/sellers/my-stores').set('Cookie', owner.cookie).send({
+      storeName: 'Invalid Design', appearance: { style: 'unknown', font: 'sans', brandColor: 'red', shade: 100 },
+    });
+    expect(response.status).toBe(422);
+    expect(await Store.countDocuments()).toBe(0);
+  });
+});

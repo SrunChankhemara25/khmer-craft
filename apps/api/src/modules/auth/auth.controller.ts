@@ -19,16 +19,6 @@ const setSessionCookies = (
 
 export const register = async (request: Request, response: Response) => {
   const result = await authService.register(request.body);
-
-  if (!result.requiresVerification) {
-    setSessionCookies(response, result.accessToken, result.refreshToken);
-    response.status(201).json({
-      message: 'Account created successfully',
-      user: result.user,
-    });
-    return;
-  }
-
   response.status(201).json({
     message: 'Check your email for your verification code',
     email: result.email,
@@ -47,6 +37,46 @@ export const registerSeller = async (request: Request, response: Response) => {
       storeName: result.store.storeName,
     },
   });
+};
+
+export const googleSignIn = async (request: Request, response: Response) => {
+  const authorizationUrl = authService.googleAuthorizationUrl(
+    typeof request.query.returnUrl === 'string' ? request.query.returnUrl : undefined,
+  );
+  response.redirect(302, authorizationUrl);
+};
+
+export const googleCallback = async (request: Request, response: Response) => {
+  try {
+    const result = await authService.completeGoogleSignIn({
+      code: typeof request.query.code === 'string' ? request.query.code : '',
+      state: typeof request.query.state === 'string' ? request.query.state : '',
+    });
+    setSessionCookies(response, result.accessToken, result.refreshToken);
+    response.redirect(302, `${env.webUrl}${result.returnUrl}`);
+  } catch {
+    response.redirect(302, `${env.webUrl}/login?oauthError=google`);
+  }
+};
+
+export const telegramSignIn = async (request: Request, response: Response) => {
+  const authorizationUrl = authService.telegramAuthorizationUrl(
+    typeof request.query.returnUrl === 'string' ? request.query.returnUrl : undefined,
+  );
+  response.redirect(302, authorizationUrl);
+};
+
+export const telegramCallback = async (request: Request, response: Response) => {
+  try {
+    const result = await authService.completeTelegramSignIn({
+      code: typeof request.query.code === 'string' ? request.query.code : '',
+      state: typeof request.query.state === 'string' ? request.query.state : '',
+    });
+    setSessionCookies(response, result.accessToken, result.refreshToken);
+    response.redirect(302, `${env.webUrl}${result.returnUrl}`);
+  } catch {
+    response.redirect(302, `${env.webUrl}/login?oauthError=telegram`);
+  }
 };
 
 export const verifyEmail = async (request: Request, response: Response) => {

@@ -50,20 +50,15 @@ try {
   process.exit(1);
 }
 
-/**
- * Email degrades quietly by design (see auth.service.ts#register): with no
- * provider configured, accounts are auto-verified rather than waiting on a
- * code nothing can deliver. Quietly is the problem — from the outside it is
- * indistinguishable from "the code never arrived", so say it once at boot.
- */
+/** Warn at boot so operators fix delivery before users attempt sign-up. */
 if (!env.isEmailConfigured) {
   const missing = (['SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD', 'MAIL_FROM'] as const).filter(
     (key) => !process.env[key],
   );
   console.warn(
     `[email] DISABLED — ${missing.join(', ')} not set in .env.local. ` +
-      'No verification codes or password-reset emails will be sent; new accounts ' +
-      'are created already-verified instead. Diagnose with: npm run check:email',
+      'No verification codes or password-reset emails can be sent. Sign-up will return ' +
+      'an email-configuration error until this is fixed. Diagnose with: npm run check:email',
   );
 }
 

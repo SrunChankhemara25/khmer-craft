@@ -46,16 +46,12 @@ describe('email verification delivery and session boundary', () => {
     expect(await User.countDocuments()).toBe(0);
     expect(await EmailVerificationCode.countDocuments()).toBe(0);
   });
-  it('registers and signs in immediately, unverified, when mail is unconfigured', async () => {
-    // Gating registration on a code nothing can ever deliver would be a
-    // permanent dead end, not a security control — see
-    // auth.service.ts#register and #isEmailAvailable.
+  it('does not create an account when email delivery is unconfigured', async () => {
     vi.mocked(assertEmailConfigured).mockImplementationOnce(() => { throw new AppError(503, 'Unavailable', 'EMAIL_NOT_CONFIGURED'); });
     const response = await request(app).post('/auth/register').send(payload);
-    expect(response.status).toBe(201);
-    expect(response.headers['set-cookie']).toBeDefined();
-    const stored = await User.findOne({ email: payload.email });
-    expect(stored!.email_verified).toBe(true);
+    expect(response.status).toBe(503);
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(await User.countDocuments()).toBe(0);
   });
   it('preserves the previous code when resend delivery fails', async () => {
     await request(app).post('/auth/register').send(payload);

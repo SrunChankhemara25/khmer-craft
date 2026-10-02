@@ -45,6 +45,22 @@ export class AuthService {
     });
   }
 
+  continueWithGoogle(returnUrl?: string) {
+    const params = new URLSearchParams();
+    if (returnUrl?.startsWith('/') && !returnUrl.startsWith('//')) {
+      params.set('returnUrl', returnUrl);
+    }
+    globalThis.location.assign(`${API_URL}/google${params.size ? `?${params}` : ''}`);
+  }
+
+  continueWithTelegram(returnUrl?: string) {
+    const params = new URLSearchParams();
+    if (returnUrl?.startsWith('/') && !returnUrl.startsWith('//')) {
+      params.set('returnUrl', returnUrl);
+    }
+    globalThis.location.assign(`${API_URL}/telegram${params.size ? `?${params}` : ''}`);
+  }
+
   /**
    * `expectedRole` narrows sign-in to one role and is only for the dedicated
    * portals (/seller/login, /admin/login). The server rejects a mismatch with

@@ -1,39 +1,36 @@
 <div class="onboarding-shell">
   <header class="topbar">
-    <a class="brand" routerLink="/" aria-label="KhmerCraft home">
-      <span class="brand-mark"><kc-icon name="leaf" [size]="17" /></span><span>KhmerCraft</span>
+    <a class="brand" routerLink="/" aria-label="KhmerCraft marketplace home">
+      <span class="brand-mark"><kc-icon name="leaf" [size]="17" /></span><span>KhmerCraft <small>Seller</small></span>
     </a>
     <div class="topbar-actions">
       @if (user()) { <span class="account-chip"><kc-icon name="user" [size]="15" /> {{ user()!.name }}</span> }
-      <a class="exit-link" routerLink="/">Save & exit</a>
+      <a class="exit-link" routerLink="/become-a-seller">Save & exit</a>
     </div>
   </header>
 
   @if (step() !== 5) {
     <div class="progress-line" aria-hidden="true"><span [style.width.%]="progressPercent()"></span></div>
-    <div class="workspace">
+    <div class="workspace" [class.design-workspace]="step() === 2">
       <aside class="journey-panel">
         <div>
           <p class="eyebrow">Seller setup</p>
-          <h1>{{ isAdditionalStore() ? 'Create another store' : 'Open your KhmerCraft store' }}</h1>
-          <p class="journey-copy">One account can buy products and manage multiple independent stores. Your buyer account stays exactly where it is.</p>
+          <h1>{{ isAdditionalStore() ? 'Create another store' : 'Create your store' }}</h1>
+          <p class="journey-copy">A few simple steps to bring your business online. You can always change these later.</p>
         </div>
-        <nav class="steps" aria-label="Store setup progress">
+        <nav class="steps" aria-label="Store setup progress" [style.--i]="step() - 1">
+          <span class="steps-indicator" aria-hidden="true"></span>
           @for (item of progress; track item.step) {
-            <button type="button" [class.current]="step() === item.step" [class.complete]="step() > item.step" [disabled]="item.step >= step()" (click)="goTo(item.step)">
+            <button type="button" [attr.aria-current]="step() === item.step ? 'step' : null" [class.current]="step() === item.step" [class.complete]="step() > item.step" [disabled]="item.step >= step()" (click)="goTo(item.step)">
               <span class="step-number">@if (step() > item.step) { <kc-icon name="check" [size]="13" /> } @else { {{ item.step }} }</span>
               <span><strong>{{ item.label }}</strong><small>Step {{ item.step }} of 4</small></span>
             </button>
           }
         </nav>
-        <div class="account-note"><kc-icon name="shield" [size]="18" /><p><strong>Your account stays unified.</strong><span>Use the same login for shopping, orders, and every store you own.</span></p></div>
+        <div class="account-note"><kc-icon name="lightbulb" [size]="18" /><p><strong>You're almost there!</strong><span>Make your store look amazing today. You can always change these later.</span></p></div>
       </aside>
 
       <main class="form-panel">
-        @if (draftRestored()) {
-          <div class="draft-banner"><span><kc-icon name="clock" [size]="16" /><strong>Your saved draft is back.</strong> Continue where you stopped.</span><button type="button" (click)="discardDraft()">Start over</button></div>
-        }
-
         @if (step() === 1) {
           <section class="step-content compact">
             <div class="section-heading"><p class="step-kicker">Step 1 of 4</p><h2>Let’s start with the essentials.</h2><p>These details identify this store. You can change them later from the seller dashboard.</p></div>
@@ -43,7 +40,35 @@
                 @if (fieldError('storeName')) { <small class="error">{{ fieldError('storeName') }}</small> }
               </label>
               <label class="field" [class.invalid]="fieldError('category')">
-                <span>Main category <b>*</b></span><select [(ngModel)]="form.category" (ngModelChange)="saveDraft()" name="category"><option value="" disabled>Select a category</option>@for (category of categories; track category) { <option [value]="category">{{ category }}</option> }</select>
+                <span>Main category <b>*</b></span>
+                <div class="combobox">
+                  <input
+                    type="text"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="category-listbox"
+                    [attr.aria-expanded]="categoryMenuOpen()"
+                    [ngModel]="categoryQuery()"
+                    (ngModelChange)="onCategoryInput($event)"
+                    (focus)="categoryMenuOpen.set(true)"
+                    (blur)="onCategoryBlur()"
+                    (keydown)="onCategoryKeydown($event)"
+                    name="category"
+                    placeholder="Type or choose a category"
+                    autocomplete="off"
+                  />
+                  @if (categoryMenuOpen()) {
+                    <ul class="combobox-menu" id="category-listbox" role="listbox">
+                      @for (category of filteredCategories(); track category) {
+                        <li role="option" [attr.aria-selected]="form.category === category">
+                          <button type="button" [class.active]="form.category === category" (click)="selectCategory(category)">{{ category }}</button>
+                        </li>
+                      } @empty {
+                        <li class="combobox-empty">No matching category</li>
+                      }
+                    </ul>
+                  }
+                </div>
                 @if (fieldError('category')) { <small class="error">{{ fieldError('category') }}</small> }
               </label>
               <label class="field" [class.invalid]="fieldError('location')">
@@ -55,21 +80,121 @@
                 <small>Only shown to KhmerCraft support unless you choose to publish it later.</small>@if (fieldError('phoneNumber')) { <small class="error">{{ fieldError('phoneNumber') }}</small> }
               </label>
             </div>
-            <div class="tip-card"><kc-icon name="lightbulb" [size]="19" /><p><strong>Choose a memorable, specific name.</strong><span>Avoid names such as “Store 1”—buyers trust names that explain the business.</span></p></div>
+            @if (nameTip(); as tip) {
+              <div class="ai-tip" [class]="tip.tone">
+                <span class="ai-light" aria-hidden="true"></span>
+                <p><strong>Smart suggestion</strong><span>{{ tip.message }}</span></p>
+              </div>
+            }
           </section>
         }
 
         @if (step() === 2) {
           <section class="step-content storefront-step">
-            <div class="section-heading"><p class="step-kicker">Step 2 of 4</p><h2>Help buyers understand your store.</h2><p>A short, clear story is more useful than marketing language. Tell people what you sell and why they should trust it.</p></div>
-            <div class="story-layout">
-              <label class="field" [class.invalid]="fieldError('storeDescription')">
-                <span>Store description <b>*</b></span><textarea [(ngModel)]="form.storeDescription" (ngModelChange)="saveDraft()" name="storeDescription" maxlength="2000" placeholder="Describe your products, where they come from, and what makes your store different."></textarea>
-                <div class="field-meta"><span>Write at least 20 characters.</span><span>{{ form.storeDescription.length }}/2000</span></div>@if (fieldError('storeDescription')) { <small class="error">{{ fieldError('storeDescription') }}</small> }
-              </label>
-              <aside class="store-preview" aria-label="Store preview"><div class="preview-cover"><span>Store cover</span></div><div class="preview-body"><div class="preview-logo">{{ storeInitials() }}</div><span class="preview-category">{{ form.category || 'Your category' }}</span><h3>{{ form.storeName || 'Your store name' }}</h3><p>{{ form.storeDescription || 'Your store description will appear here for buyers.' }}</p><div class="preview-location"><kc-icon name="store" [size]="13" /> {{ form.location || 'Cambodia' }}</div></div></aside>
+            <div class="storefront-layout">
+              <div class="storefront-controls">
+                <div class="section-heading"><p class="step-kicker">Step 2 of 4</p><h2>Make it yours.</h2><p>Choose a style and color, and see your store come to life.</p></div>
+                <div class="design-field">
+                  <div class="control-head"><p class="control-num">1. Choose a store style</p><p class="control-desc">Each style gives a different look and feel. You can preview it on the right.</p></div>
+                  <div class="style-options">
+                    @for (style of styles; track style.id) {
+                      <button type="button" class="style-option" [class.selected]="appearance().style === style.id" [attr.aria-pressed]="appearance().style === style.id" (click)="setAppearance({ style: style.id })">
+                        <span class="style-thumbnail" [attr.data-style]="style.id" aria-hidden="true">
+                          @if (appearance().style === style.id) { <i class="style-check"><kc-icon name="check" [size]="13" /></i> }
+                        </span>
+                        <strong>{{ style.name }}</strong>
+                        <small>{{ style.detail }}</small>
+                      </button>
+                    }
+                  </div>
+                </div>
+                <div class="design-field">
+                  <div class="control-head"><p class="control-num">2. Choose a brand color</p><p class="control-desc">This color will be used for buttons and highlights.</p></div>
+                  <div class="color-options">
+                    @for (color of colors; track color.value) {
+                      <button type="button" class="color-swatch" [style.background]="color.value" [class.selected]="appearance().brandColor === color.value" [attr.aria-label]="color.name" [attr.title]="color.name" [attr.aria-pressed]="appearance().brandColor === color.value" (click)="setAppearance({ brandColor: color.value })">
+                        @if (appearance().brandColor === color.value) { <kc-icon name="check" [size]="17" /> }
+                      </button>
+                    }
+                  </div>
+                </div>
+                <hr class="control-divider" />
+                <label class="field about-control">
+                  <div class="control-head"><p class="control-num">3. About your store <small>(optional)</small></p><p class="control-desc">Add a short description to tell buyers what makes your store special.</p></div>
+                  <textarea [(ngModel)]="form.storeDescription" (ngModelChange)="saveDraft()" name="storeDescription" maxlength="200" placeholder="e.g. Handmade crafts, modern fashion, or authentic Khmer products..."></textarea>
+                  <div class="field-meta right"><span>{{ form.storeDescription.length }}/200</span></div>
+                </label>
+                @if (fieldError('storeDescription')) { <p class="error" role="alert">{{ fieldError('storeDescription') }}</p> }
+                @if (imageError()) { <p class="error" role="alert">{{ imageError() }}</p> }
+                @if (draftError()) { <p class="error" role="status">{{ draftError() }}</p> }
+              </div>
+              <div class="live-preview-panel">
+                <input #coverInput type="file" hidden accept="image/jpeg,image/png,image/webp" (change)="changeImage($event, 'cover')" />
+                <input #logoInput type="file" hidden accept="image/jpeg,image/png,image/webp" (change)="changeImage($event, 'logo')" />
+                <div class="preview-stage">
+                  <div class="preview-stage-copy"><span class="live-dot"></span><span>Live storefront</span><small>iPhone preview</small></div>
+                  <div class="device-frame">
+                    <span class="device-island" aria-hidden="true"></span>
+                    <article class="live-storefront" [attr.data-style]="appearance().style" [style.--brand]="brandColor()" [style.font-family]="previewFont()" aria-label="Live storefront preview">
+                  <div class="storefront-navbar"><span class="storefront-brand"><i class="storefront-brand-mark"><kc-icon name="leaf" [size]="14" /></i>KhmerCraft</span><span class="storefront-navbar-icons"><kc-icon name="search" [size]="16" /><kc-icon name="cart" [size]="16" /><span class="storefront-menu" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+                  <button type="button" class="storefront-cover image-edit" (click)="coverInput.click()" aria-label="Change cover">
+                    @if (cover()) { <img [src]="cover()" alt="Your store cover" /> }
+                    @else { <span class="cover-art" aria-hidden="true"><i></i><b></b></span> }
+                    <span class="image-edit-label"><kc-icon name="image" [size]="14" /> Change cover</span>
+                  </button>
+                  <div class="storefront-identity">
+                    <button type="button" class="storefront-logo image-edit" (click)="logoInput.click()" aria-label="Change logo">
+                      @if (logo()) { <img [src]="logo()" alt="Your store logo" /> }
+                      @else { <span>{{ storeInitials() }}</span> }
+                      <i class="logo-edit-badge"><kc-icon name="edit" [size]="10" /></i>
+                      <span class="image-edit-label">Change logo</span>
+                    </button>
+                    <div class="storefront-identity-row">
+                      <div>
+                        <h3>{{ form.storeName || 'Your store name' }}</h3>
+                        <p class="storefront-meta"><kc-icon name="store" [size]="11" /> {{ form.category || 'Your category' }}<span aria-hidden="true"> · </span>{{ form.location || 'Cambodia' }}</p>
+                        @if (form.storeDescription.trim()) { <p class="storefront-bio">{{ form.storeDescription }}</p> }
+                      </div>
+                      <button type="button" class="follow-btn">Follow</button>
+                    </div>
+                  </div>
+                  <nav class="storefront-nav" aria-label="Preview navigation">
+                    <button type="button" [class.active]="previewTab() === 'home'" [attr.aria-current]="previewTab() === 'home' ? 'page' : null" (click)="previewTab.set('home')">Home</button>
+                    <button type="button" [class.active]="previewTab() === 'about'" [attr.aria-current]="previewTab() === 'about' ? 'page' : null" (click)="previewTab.set('about')">About</button>
+                    <button type="button" [class.active]="previewTab() === 'contact'" [attr.aria-current]="previewTab() === 'contact' ? 'page' : null" (click)="previewTab.set('contact')">Contact</button>
+                  </nav>
+                  @if (previewTab() === 'home') {
+                    <div class="preview-product">
+                      <span class="preview-product-image"><img [src]="previewProduct().image" [alt]="previewProduct().name" /></span>
+                      <div class="preview-product-body">
+                        <p class="preview-product-eyebrow">Preview product</p>
+                        <h4>{{ previewProduct().name }}</h4>
+                        <p class="preview-product-price">{{ '$' + previewProduct().price }}</p>
+                        <p class="preview-product-desc">{{ previewProduct().description }}</p>
+                      </div>
+                      <span class="preview-product-cart" aria-hidden="true"><kc-icon name="cart" [size]="15" /></span>
+                    </div>
+                    <div class="preview-note"><kc-icon name="info" [size]="14" /><p>This is a sample product based on your category. Your products will appear here after you add them.</p></div>
+                  }
+                  @if (previewTab() === 'about') {
+                    <div class="preview-about">
+                      <h4>About {{ form.storeName || 'this store' }}</h4>
+                      <p>{{ form.storeDescription || 'Every store has a story. Add yours in step 2 to help buyers get to know you.' }}</p>
+                    </div>
+                  }
+                  @if (previewTab() === 'contact') {
+                    <div class="preview-contact">
+                      <p><kc-icon name="store" [size]="14" /> {{ form.location || 'Cambodia' }}</p>
+                      <p><kc-icon name="info" [size]="14" /> {{ form.phoneNumber ? '+855 ' + form.phoneNumber : 'Contact number not added yet' }}</p>
+                    </div>
+                  }
+                    </article>
+                  </div>
+                  <div class="preview-stage-glow" aria-hidden="true"></div>
+                </div>
+                @if (imageLoading()) { <p class="preview-help" role="status">Preparing your image…</p> }
+              </div>
             </div>
-            <div class="upload-note"><kc-icon name="image" [size]="18" /><p><strong>Add your logo and cover after setup.</strong><span>The dashboard includes image controls, so you can create the store now without searching for perfect photos.</span></p></div>
           </section>
         }
 
@@ -105,7 +230,7 @@
           </section>
         }
 
-        <footer class="form-actions">@if (step() > 1) { <button type="button" class="back-button" (click)="back()">← Back</button> } @else { <span></span> } @if (step() < 4) { <button type="button" class="primary" (click)="next()">Continue <span>→</span></button> }</footer>
+        <footer class="form-actions">@if (step() > 1) { <button type="button" class="back-button" (click)="back()">← Back</button> } @else { <span></span> } @if (step() < 4) { <div class="footer-continue"><button type="button" class="primary" (click)="next()">Continue <span>→</span></button>@if (step() === 2) { <small class="draft-caption">We'll save this as a draft.</small> }</div> }</footer>
       </main>
     </div>
   } @else {
