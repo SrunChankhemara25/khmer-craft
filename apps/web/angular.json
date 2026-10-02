@@ -26,7 +26,7 @@
             ],
             "styles": [
               "src/styles.css",
-              "src/app/admin/admin-theme.css"
+              "src/app/admin/admin-theme.scss"
             ]
           },
           "configurations": {

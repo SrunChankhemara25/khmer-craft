@@ -30,6 +30,18 @@ const I: Record<string, string> = {
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
   ban: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
   refresh: '<path d="M3 12a9 9 0 1 0 2.8-6.5L3 8"/><path d="M3 3v5h5"/>',
+  sidebar: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+  back: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  send: '<path d="m3 11 18-8-8 18-2.5-7.5L3 11Z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  terminal: '<path d="m4 17 6-5-6-5"/><path d="M12 19h8"/>',
+  megaphone: '<path d="m3 11 18-5v12L3 14v-3Z"/><path d="M11 15.5V20a2 2 0 0 1-2 2H8l-2-7"/>',
+  chart: '<path d="M4 19V5"/><path d="M4 19h17"/><path d="m7 15 4-5 3 3 5-7"/>',
+  'chevrons-left': '<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>',
+  'chevrons-right': '<path d="m13 17 5-5-5-5"/><path d="m6 17 5-5-5-5"/>',
+  'sidebar-collapse': '<path d="M20 6H10"/><path d="M16 12H10"/><path d="M13 18H10"/>',
+  'sidebar-expand': '<path d="M4 6h10"/><path d="M8 12h6"/><path d="M11 18h3"/>',
 };
 
 @Component({

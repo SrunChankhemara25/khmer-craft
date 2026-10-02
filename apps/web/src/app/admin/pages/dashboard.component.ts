@@ -5,13 +5,15 @@ import { StatComponent } from '../ui/stat.component';
 import { BadgeComponent } from '../ui/badge.component';
 import { BarChartComponent, LineChartComponent } from '../ui/charts.component';
 import { dstr, initials, money } from '../ui/format';
+import { LiveStripComponent } from '../ui/live-strip.component';
 
 @Component({
   standalone: true,
-  imports: [StatComponent, BadgeComponent, BarChartComponent, LineChartComponent, RouterLink],
+    imports: [StatComponent, BadgeComponent, BarChartComponent, LineChartComponent, RouterLink, LiveStripComponent],
   template: `
   @if (d.ready()) {
-    <div class="page-head"><div><h1 class="page-title">Dashboard</h1><p class="page-sub">Marketplace health at a glance</p></div></div>
+        <div class="page-head"><div><h1 class="page-title">Dashboard</h1><p class="page-sub">Marketplace health at a glance</p></div></div>
+    <kc-live-strip></kc-live-strip>
 
     <div class="grid stats mb">
       <kc-stat label="Total Buyers" icon="users" [value]="d.buyers().length" [hint]="'+' + newBuyers + ' this month'"></kc-stat>
@@ -35,7 +37,7 @@ import { dstr, initials, money } from '../ui/format';
 
     <div class="grid duo mb">
       <div class="card">
-        <div class="card-head"><h3 class="card-title">Recent orders</h3><a class="link" routerLink="/admin/orders">View all</a></div>
+        <div class="card-head"><h3 class="card-title">Recent orders</h3><a class="link" routerLink="/admin/payments">Review payments</a></div>
         <table class="tbl"><thead><tr><th>Order</th><th>Buyer</th><th class="right">Total</th><th>Payment</th><th>Status</th></tr></thead>
           <tbody>
             @for (o of d.orders().slice(0, 6); track o.id) {

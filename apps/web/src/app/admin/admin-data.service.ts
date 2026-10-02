@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, effect, signal } from '@angular/core';
 import { ago } from './ui/format';
 
 export interface Buyer   { id: string; name: string; email: string; registeredAt: string; status: 'active' | 'suspended' | 'deactivated' }
@@ -12,13 +12,42 @@ export interface Tx      { id: string; type: 'Commission' | 'Boost fee' | 'Payou
 export interface Payout  { id: string; seller: string; amount: number; requestedAt: string; status: 'pending' | 'completed' | 'failed' }
 export interface Report  { id: string; kind: 'Product' | 'Seller' | 'Buyer'; target: string; reporter: string; reason: string; status: 'open' | 'resolved' | 'dismissed'; date: string; notes: { text: string; date: string }[] }
 export interface Complaint { id: string; order: string; from: string; subject: string; status: 'open' | 'investigating' | 'resolved'; date: string }
-export interface Log     { id: string; actor: string; action: string; kind: string; date: string }
-export interface Notice  { id: string; title: string; body: string; audience: string; date: string }
+export interface Log     { id: string; actor: string; action: string; kind: string; date: string; target?: string; reason?: string }
+export interface Notice  { id: string; title: string; body: string; audience: string; date: string; kind?: 'announcement' | 'warning' | 'resolution'; related?: string }
+
+const AUDIT_KEY = 'khmercraft.admin.audit';
+const NOTICE_KEY = 'khmercraft.admin.notices';
+
+const restore = <T,>(key: string, fallback: T[]): T[] => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed) && parsed.length) return parsed as T[]; }
+  } catch { /* corrupt storage falls back to seeds */ }
+  return fallback;
+};
+
+const SEED_LOGS: Log[] = [
+  { id: 'L-01', actor: 'System',        action: 'Payment failed for ORD-5008 (Bank Transfer)',  kind: 'failed',    date: ago(11) },
+  { id: 'L-02', actor: 'Admin (Seypa)', action: 'Suspended buyer Maly Vong',                    kind: 'suspended', date: ago(9),  target: 'B-104', reason: 'Repeated chargeback disputes.' },
+  { id: 'L-03', actor: 'System',        action: 'Seller registered: Tonle Craft Co.',           kind: 'pending',   date: ago(3) },
+  { id: 'L-04', actor: 'System',        action: 'Seller registered: Kampot Palm Goods',         kind: 'pending',   date: ago(1) },
+  { id: 'L-05', actor: 'System',        action: 'Buyer registered: Bopha Sok',                  kind: 'active',    date: ago(9) },
+  { id: 'L-06', actor: 'Admin (Seypa)', action: 'Resolved report RP-4 (Ceramic Vase)',          kind: 'resolved',  date: ago(28), target: 'RP-4', reason: 'Seller re-packaged; buyer compensated.' },
+  { id: 'L-07', actor: 'System',        action: 'Payout PO-5 to Phnom Penh Silverworks failed', kind: 'failed',    date: ago(8) },
+  { id: 'L-08', actor: 'Admin (Seypa)', action: 'Completed payout PO-2 ($96)',                  kind: 'completed', date: ago(28), target: 'PO-2' },
+  { id: 'L-09', actor: 'System',        action: 'Order ORD-5010 placed ($12)',                  kind: 'pending',   date: ago(2) },
+  { id: 'L-10', actor: 'Admin (Seypa)', action: 'Hid listing Brass Temple Bell',                kind: 'hidden',    date: ago(15), target: 'P-1011', reason: 'Missing hallmark details on a silver item.' },
+];
+
+const SEED_NOTICES: Notice[] = [
+  { id: 'N-1', title: 'Scheduled maintenance — Aug 2', body: 'Platform will be read-only 01:00–03:00 UTC.', audience: 'Everyone', date: ago(4) },
+  { id: 'N-2', title: 'New boost pricing',             body: '7-day listing boost remains $25 flat.',        audience: 'Sellers',  date: ago(20) },
+  { id: 'N-3', title: 'Welcome coupon for new buyers', body: 'First-order COD buyers get a thank-you card.', audience: 'Buyers',   date: ago(33) },
+];
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   ready = signal(false);
-  constructor() { setTimeout(() => this.ready.set(true), 450); } // simulates initial fetch; swap for real API later
 
   buyers = signal<Buyer[]>([
     { id: 'B-101', name: 'Srey Neang',  email: 'srey.neang@gmail.com',  registeredAt: ago(160), status: 'active' },
@@ -88,6 +117,8 @@ export class AdminService {
     { id: 'PAY-09', order: 'ORD-5009', buyer: 'Dara Chan',   method: 'Cash on Delivery', amount: 40,  status: 'pending',   date: ago(4) },
     { id: 'PAY-10', order: 'ORD-5010', buyer: 'Bopha Sok',   method: 'Cash on Delivery', amount: 12,  status: 'pending',   date: ago(1) },
   ]);
+  /** Local admin workflow state until a server-side refunds endpoint exists. */
+  refundRequests = signal<Record<string, { requestedAt: string; amount: number; reason: string }>>({});
   txs = signal<Tx[]>([
     { id: 'T-01', type: 'Boost fee',  description: 'Boost — Hand-Woven Krama Scarf (Angkor Crafts)', amount: 25,  dir: 'in',  status: 'completed', date: ago(150) },
     { id: 'T-02', type: 'Commission', description: '10% commission — ORD-5001', amount: 2.4, dir: 'in', status: 'completed', date: ago(154) },
@@ -126,30 +157,27 @@ export class AdminService {
     { id: 'CP-3', order: 'ORD-5008', from: 'Rithy Panh', subject: 'Payment shows failed but cash paid.',  status: 'open',          date: ago(2) },
     { id: 'CP-4', order: 'ORD-5005', from: 'Maly Vong',  subject: 'Basket colour different from photo.',  status: 'resolved',      date: ago(60) },
   ]);
-  logs = signal<Log[]>([
-    { id: 'L-01', actor: 'System',        action: 'Payment failed for ORD-5008 (Bank Transfer)',  kind: 'failed',    date: ago(11) },
-    { id: 'L-02', actor: 'Admin (Seypa)', action: 'Suspended buyer Maly Vong',                    kind: 'suspended', date: ago(9) },
-    { id: 'L-03', actor: 'System',        action: 'Seller registered: Tonle Craft Co.',           kind: 'pending',   date: ago(3) },
-    { id: 'L-04', actor: 'System',        action: 'Seller registered: Kampot Palm Goods',         kind: 'pending',   date: ago(1) },
-    { id: 'L-05', actor: 'System',        action: 'Buyer registered: Bopha Sok',                  kind: 'active',    date: ago(9) },
-    { id: 'L-06', actor: 'Admin (Seypa)', action: 'Resolved report RP-4 (Ceramic Vase)',          kind: 'resolved',  date: ago(28) },
-    { id: 'L-07', actor: 'System',        action: 'Payout PO-5 to Phnom Penh Silverworks failed', kind: 'failed',    date: ago(8) },
-    { id: 'L-08', actor: 'Admin (Seypa)', action: 'Completed payout PO-2 ($96)',                  kind: 'completed', date: ago(28) },
-    { id: 'L-09', actor: 'System',        action: 'Order ORD-5010 placed ($12)',                  kind: 'pending',   date: ago(2) },
-    { id: 'L-10', actor: 'Admin (Seypa)', action: 'Hid listing Brass Temple Bell',                kind: 'hidden',    date: ago(15) },
-  ]);
-  notices = signal<Notice[]>([
-    { id: 'N-1', title: 'Scheduled maintenance — Aug 2', body: 'Platform will be read-only 01:00–03:00 UTC.', audience: 'Everyone', date: ago(4) },
-    { id: 'N-2', title: 'New boost pricing',             body: '7-day listing boost remains $25 flat.',        audience: 'Sellers',  date: ago(20) },
-    { id: 'N-3', title: 'Welcome coupon for new buyers', body: 'First-order COD buyers get a thank-you card.', audience: 'Buyers',   date: ago(33) },
-  ]);
+  /** Audit trail — persisted on this device until the admin API exists. */
+  logs = signal<Log[]>(restore<Log>(AUDIT_KEY, SEED_LOGS));
+  notices = signal<Notice[]>(restore<Notice>(NOTICE_KEY, SEED_NOTICES));
 
   toastMsg = signal<string | null>(null);
   private tRef: any;
-  toast(m: string) { this.toastMsg.set(m); clearTimeout(this.tRef); this.tRef = setTimeout(() => this.toastMsg.set(null), 2600); }
   private li = 100;
-  log(action: string, kind = 'active') {
-    this.logs.update(l => [{ id: 'L-' + this.li++, actor: 'Admin (Seypa)', action, kind, date: new Date().toISOString() }, ...l]);
+
+  constructor() {
+    setTimeout(() => this.ready.set(true), 450); // simulates initial fetch; swap for real API later
+    effect(() => { try { localStorage.setItem(AUDIT_KEY, JSON.stringify(this.logs().slice(0, 200))); } catch {} });
+    effect(() => { try { localStorage.setItem(NOTICE_KEY, JSON.stringify(this.notices().slice(0, 50))); } catch {} });
+  }
+
+  toast(m: string) { this.toastMsg.set(m); clearTimeout(this.tRef); this.tRef = setTimeout(() => this.toastMsg.set(null), 2600); }
+
+  log(action: string, kind = 'active', extra?: { target?: string; reason?: string }) {
+    this.logs.update(l => [{
+      id: 'L-' + this.li++, actor: 'Admin (Seypa)', action, kind,
+      date: new Date().toISOString(), target: extra?.target, reason: extra?.reason,
+    }, ...l]);
   }
 
   storeName = (id: string) => this.sellers().find(s => s.id === id)?.store ?? '—';
@@ -183,27 +211,46 @@ export class AdminService {
     label: m.label, value: this.orders().filter(o => o.placedAt.slice(0, 7) === m.key).length,
   })));
 
-  setBuyerStatus(id: string, status: Buyer['status']) {
+  setBuyerStatus(id: string, status: Buyer['status'], reason?: string) {
     this.buyers.update(l => l.map(b => b.id === id ? { ...b, status } : b));
-    this.log(`${status === 'suspended' ? 'Suspended' : status === 'active' ? 'Activated' : 'Deactivated'} buyer ${id}`, status);
+    this.log(`${status === 'suspended' ? 'Suspended' : status === 'active' ? 'Activated' : 'Deactivated'} buyer ${id}`, status, { target: id, reason });
     this.toast(`Buyer ${status}`);
   }
-  approveSeller(id: string) { this.sellers.update(l => l.map(s => s.id === id ? { ...s, status: 'active' } : s)); this.log(`Approved seller ${id}`, 'approved'); this.toast('Seller approved'); }
-  rejectSeller(id: string)  { this.sellers.update(l => l.map(s => s.id === id ? { ...s, status: 'pending', verification: 'rejected' } : s)); this.log(`Rejected seller application ${id}`, 'rejected'); this.toast('Application rejected'); }
-  verifySeller(id: string)  { this.sellers.update(l => l.map(s => s.id === id ? { ...s, verification: 'verified' } : s)); this.log(`Verified seller ${id}`, 'verified'); this.toast('Seller verified'); }
-  setSellerStatus(id: string, status: Seller['status']) { this.sellers.update(l => l.map(s => s.id === id ? { ...s, status } : s)); this.log(`${status === 'suspended' ? 'Suspended' : 'Reactivated'} seller ${id}`, status); this.toast(`Seller ${status}`); }
-  setProductStatus(id: string, status: Product['status']) { this.products.update(l => l.map(p => p.id === id ? { ...p, status } : p)); this.log(`Set product ${id} → ${status}`, status); this.toast(`Product ${status}`); }
-  deleteProduct(id: string) { this.products.update(l => l.filter(p => p.id !== id)); this.log(`Deleted product ${id}`, 'rejected'); this.toast('Product deleted'); }
-  updateProduct(id: string, patch: Partial<Product>) { this.products.update(l => l.map(p => p.id === id ? { ...p, ...patch } : p)); this.log(`Edited product ${id}`, 'active'); this.toast('Product saved'); }
+  approveSeller(id: string) { this.sellers.update(l => l.map(s => s.id === id ? { ...s, status: 'active' } : s)); this.log(`Approved seller ${id}`, 'approved', { target: id }); this.toast('Seller approved'); }
+  rejectSeller(id: string, reason?: string)  { this.sellers.update(l => l.map(s => s.id === id ? { ...s, status: 'pending', verification: 'rejected' } : s)); this.log(`Rejected seller application ${id}`, 'rejected', { target: id, reason }); this.toast('Application rejected'); }
+  verifySeller(id: string)  { this.sellers.update(l => l.map(s => s.id === id ? { ...s, verification: 'verified' } : s)); this.log(`Verified seller ${id}`, 'verified', { target: id }); this.toast('Seller verified'); }
+  setSellerStatus(id: string, status: Seller['status'], reason?: string) { this.sellers.update(l => l.map(s => s.id === id ? { ...s, status } : s)); this.log(`${status === 'suspended' ? 'Suspended' : 'Reactivated'} seller ${id}`, status, { target: id, reason }); this.toast(`Seller ${status}`); }
+  setProductStatus(id: string, status: Product['status'], reason?: string) { this.products.update(l => l.map(p => p.id === id ? { ...p, status } : p)); this.log(`Set product ${id} → ${status}`, status, { target: id, reason }); this.toast(`Product ${status}`); }
+  deleteProduct(id: string, reason?: string) { this.products.update(l => l.filter(p => p.id !== id)); this.log(`Deleted product ${id}`, 'rejected', { target: id, reason }); this.toast('Product deleted'); }
+  updateProduct(id: string, patch: Partial<Product>) { this.products.update(l => l.map(p => p.id === id ? { ...p, ...patch } : p)); this.log(`Edited product ${id}`, 'active', { target: id }); this.toast('Product saved'); }
   addCategory(name: string) { this.categories.update(l => [...l, { id: 'C-' + (l.length + 1), name, status: 'active' }]); this.log(`Created category ${name}`, 'active'); this.toast('Category added'); }
   toggleCategory(id: string) { this.categories.update(l => l.map(c => c.id === id ? { ...c, status: c.status === 'active' ? 'hidden' : 'active' } : c)); this.toast('Category updated'); }
-  setOrderStatus(id: string, status: Order['status']) { this.orders.update(l => l.map(o => o.id === id ? { ...o, status } : o)); this.log(`Order ${id} → ${status}`, status); this.toast(`Order ${status}`); }
+  setOrderStatus(id: string, status: Order['status'], reason?: string) { this.orders.update(l => l.map(o => o.id === id ? { ...o, status } : o)); this.log(`Order ${id} → ${status}`, status, { target: id, reason }); this.toast(`Order ${status}`); }
   setReviewStatus(id: string, status: Review['status']) { this.reviews.update(l => l.map(r => r.id === id ? { ...r, status } : r)); this.toast(`Review ${status}`); }
-  deleteReview(id: string) { this.reviews.update(l => l.filter(r => r.id !== id)); this.log(`Deleted review ${id}`, 'rejected'); this.toast('Review deleted'); }
-  refundPayment(id: string) { this.payments.update(l => l.map(p => p.id === id ? { ...p, status: 'refunded' } : p)); this.log(`Refunded payment ${id}`, 'refunded'); this.toast('Payment refunded'); }
-  completePayout(id: string) { this.payouts.update(l => l.map(p => p.id === id ? { ...p, status: 'completed' } : p)); this.log(`Completed payout ${id}`, 'completed'); this.toast('Payout completed'); }
-  setReportStatus(id: string, status: Report['status']) { this.reports.update(l => l.map(r => r.id === id ? { ...r, status } : r)); this.log(`${status === 'resolved' ? 'Resolved' : 'Dismissed'} report ${id}`, status); this.toast(`Report ${status}`); }
+  deleteReview(id: string) { this.reviews.update(l => l.filter(r => r.id !== id)); this.log(`Deleted review ${id}`, 'rejected', { target: id }); this.toast('Review deleted'); }
+  requestRefund(id: string, amount: number, reason: string) {
+    this.refundRequests.update(l => ({ ...l, [id]: { requestedAt: new Date().toISOString(), amount, reason } }));
+    this.log(`Requested ${amount} refund for payment ${id}`, 'pending', { target: id, reason });
+    this.toast('Refund request recorded');
+  }
+  cancelRefundRequest(id: string) {
+    this.refundRequests.update(l => { const next = { ...l }; delete next[id]; return next; });
+    this.log(`Cancelled refund request for payment ${id}`, 'gray', { target: id });
+    this.toast('Refund request cancelled');
+  }
+  refundPayment(id: string, amount: number, reason?: string) {
+    this.payments.update(l => l.map(p => p.id === id ? { ...p, status: 'refunded' } : p));
+    this.refundRequests.update(l => { const next = { ...l }; delete next[id]; return next; });
+    this.log(`Recorded confirmed ${amount} refund for payment ${id}`, 'refunded', { target: id, reason });
+    this.toast('Refund confirmation recorded');
+  }
+  completePayout(id: string, reason?: string) {
+    this.payouts.update(l => l.map(p => p.id === id ? { ...p, status: 'completed' } : p));
+    this.log(`Recorded completed payout ${id}`, 'completed', { target: id, reason });
+    this.toast('Payout completion recorded');
+  }
+  setReportStatus(id: string, status: Report['status']) { this.reports.update(l => l.map(r => r.id === id ? { ...r, status } : r)); this.log(`${status === 'resolved' ? 'Resolved' : 'Dismissed'} report ${id}`, status, { target: id }); this.toast(`Report ${status}`); }
   addReportNote(id: string, text: string) { this.reports.update(l => l.map(r => r.id === id ? { ...r, notes: [...r.notes, { text, date: new Date().toISOString() }] } : r)); this.toast('Note added'); }
-  setComplaintStatus(id: string, status: Complaint['status']) { this.complaints.update(l => l.map(c => c.id === id ? { ...c, status } : c)); this.log(`Complaint ${id} → ${status}`, status); this.toast(`Complaint ${status}`); }
+  setComplaintStatus(id: string, status: Complaint['status']) { this.complaints.update(l => l.map(c => c.id === id ? { ...c, status } : c)); this.log(`Complaint ${id} → ${status}`, status, { target: id }); this.toast(`Complaint ${status}`); }
   sendNotice(n: Omit<Notice, 'id' | 'date'>) { this.notices.update(l => [{ ...n, id: 'N-' + (l.length + 1), date: new Date().toISOString() }, ...l]); this.log(`Sent notification “${n.title}”`, 'active'); this.toast('Notification sent'); }
 }

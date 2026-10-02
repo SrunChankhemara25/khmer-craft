@@ -11,7 +11,7 @@ import { dstr, initials, money } from '../ui/format';
   standalone: true, imports: [BadgeComponent, ConfirmComponent, IconComponent, MenuComponent],
   template: `
   @if (d.ready()) {
-    <div class="page-head"><div><h1 class="page-title">Buyers</h1><p class="page-sub">View, search, suspend or deactivate buyer accounts</p></div>
+    <div class="page-head"><div><h1 class="page-title">Buyers</h1><p class="page-sub">Buyer signup needs no approval — accounts are live after email verification. Suspend or deactivate only for cause, with a recorded reason (demo dataset until an admin user API exists)</p></div>
       <span class="muted">{{rows().length}} buyers</span></div>
     <div class="toolbar">
       <input class="input input-search" placeholder="Search name or email" [value]="q()" (input)="q.set($any($event.target).value)"/>
@@ -67,9 +67,10 @@ import { dstr, initials, money } from '../ui/format';
 
     @if (confirm(); as c) {
       <kc-confirm [title]="(c.to === 'active' ? 'Activate ' : c.to === 'suspended' ? 'Suspend ' : 'Deactivate ') + c.b.name + '?'"
-        [message]="c.to === 'active' ? 'The account will regain full access to the marketplace.' : 'The account will no longer be able to sign in or place orders.'"
+        [message]="c.to === 'active' ? 'The account will regain full access to the marketplace.' : 'The account will no longer be able to sign in or place orders. A reason is required and will be recorded in the audit log.'"
+        [requireReason]="c.to !== 'active'"
         [confirmLabel]="c.to === 'active' ? 'Activate' : c.to === 'suspended' ? 'Suspend' : 'Deactivate'"
-        (confirm)="apply()" (cancel)="confirm.set(null)"></kc-confirm>
+        (confirm)="apply($event)" (cancel)="confirm.set(null)"></kc-confirm>
     }
   } @else { <div class="skel" style="height:360px"></div> }`,
 })
@@ -91,5 +92,10 @@ export class BuyersComponent {
       : [{ label: 'Activate account', icon: 'check', action: 'active' }];
   }
   ask(b: Buyer, to: string) { this.confirm.set({ b, to: to as Buyer['status'] }); }
-  apply() { const c = this.confirm()!; this.d.setBuyerStatus(c.b.id, c.to); this.confirm.set(null); this.sel.set(null); }
+  apply(reason: string) {
+    const c = this.confirm()!;
+    this.d.setBuyerStatus(c.b.id, c.to, reason || undefined);
+    this.confirm.set(null);
+    this.sel.set(null);
+  }
 }

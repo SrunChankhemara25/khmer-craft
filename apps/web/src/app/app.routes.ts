@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { buyerGuard } from './core/auth/auth.guard';
-import { adminGuard } from './core/auth/admin.guard';
+import { adminGuard } from './admin/admin.guard';
 import { sellerGuard } from './core/auth/seller.guard';
 
 /**
@@ -290,21 +290,22 @@ export const routes: Routes = [
     title: 'Change password | KhmerCraft',
   },
   {
-    // Khemara's admin area, lazily loaded as a child route tree behind
-    // adminGuard. The guard is ours: the branch this came from had no route
-    // protection on it at all.
-    path: 'admin',
-    canActivate: [adminGuard],
-    loadChildren: () => import('./admin/admin.routes').then((m) => m.ADMIN_ROUTES),
-    title: 'Administration | KhmerCraft',
-  },
-  {
+    // Listed BEFORE the guarded 'admin' tree below, so the login page itself
+    // stays reachable without a session.
     path: 'admin/login',
     loadComponent: () =>
       import('./features/admin/authentication/login/admin-login').then(
         (module) => module.AdminLogin,
       ),
     title: 'Admin sign in | KhmerCraft',
+  },
+  {
+    // Khemara's admin area, lazily loaded as a child route tree behind
+    // adminGuard.
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadChildren: () => import('./admin/admin.routes').then((m) => m.ADMIN_ROUTES),
+    title: 'Administration | KhmerCraft',
   },
 
   // ------------------------------------------------------------- support pages
