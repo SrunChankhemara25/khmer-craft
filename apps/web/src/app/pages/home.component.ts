@@ -166,13 +166,15 @@ interface CategoryShelf {
     }
 
     @if (!catalog.loaded()) {
-      <div class="discover-state" aria-live="polite">
-        <span class="discover-loader"><ui-icon name="loader" [size]="21" /></span>
-        <div>
-          <span>KhmerCraft marketplace</span>
-          <strong>Loading products</strong>
-          <p>Finding the latest pieces from local sellers.</p>
-        </div>
+      <div class="discover-grid" aria-busy="true" aria-label="Loading products">
+        @for (i of skeletonCards; track i) {
+          <div class="skeleton-card" aria-hidden="true">
+            <div class="skeleton-block skeleton-image"></div>
+            <div class="skeleton-block skeleton-line short"></div>
+            <div class="skeleton-block skeleton-line"></div>
+            <div class="skeleton-block skeleton-line price"></div>
+          </div>
+        }
       </div>
     } @else if (discoverProducts().length) {
       <div class="discover-grid" #discoverGrid>
@@ -242,12 +244,30 @@ interface CategoryShelf {
     </section>
   }
 
-  @if (categoryShelves().length) {
+  @if (!catalog.loaded() || categoryShelves().length) {
     <section class="container section marketplace-explorer">
       <div class="marketplace-heading">
         <span class="marketplace-eyebrow">More ways to shop</span>
         <h2>Explore the marketplace</h2>
       </div>
+
+      @if (!catalog.loaded()) {
+        @for (rail of [0, 1]; track rail) {
+          <div class="category-shelf" aria-hidden="true">
+            <div class="skeleton-block skeleton-title"></div>
+            <div class="skeleton-rail">
+              @for (i of skeletonCards.slice(0, 5); track i) {
+                <div class="skeleton-card">
+                  <div class="skeleton-block skeleton-image"></div>
+                  <div class="skeleton-block skeleton-line short"></div>
+                  <div class="skeleton-block skeleton-line"></div>
+                  <div class="skeleton-block skeleton-line price"></div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      }
 
       @for (shelf of categoryShelves(); track shelf.slug) {
         <div class="category-shelf">
@@ -265,7 +285,6 @@ interface CategoryShelf {
               </nav>
             }
           </div>
-          @if (shelf.products.length) {
           <app-product-rail
             [title]="shelf.name"
             [products]="shelf.products"
@@ -273,18 +292,6 @@ interface CategoryShelf {
             [linkParams]="{ category: shelf.slug }"
             linkLabel="Shop department"
           />
-          } @else {
-            <a class="department-preview" [routerLink]="['/categories', shelf.slug]">
-              <div class="department-preview-copy">
-                <h3>{{ shelf.name }}</h3>
-                <p>{{ shelf.description }}</p>
-                <span class="department-preview-cta">Explore department <ui-icon name="arrow-right" [size]="16" /></span>
-              </div>
-              @if (categoryPosterImage(shelf.slug); as image) {
-                <img [src]="image" alt="" loading="lazy" (error)="categoryPosterFailed(shelf.slug)" />
-              }
-            </a>
-          }
         </div>
       }
     </section>
@@ -708,14 +715,21 @@ interface CategoryShelf {
     .marketplace-eyebrow { color: var(--color-accent); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     .marketplace-heading h2 { font-size: clamp(26px, 2.4vw, 36px); margin-top: 5px; }
     .category-shelf { padding: 23px 0 15px; }
-    .department-preview { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: clamp(18px, 3vw, 32px); border-radius: 16px; background: var(--color-accent-soft); color: var(--color-text); }
-    .department-preview-copy { min-width: 0; }
-    .department-preview h3 { font-size: clamp(20px, 2vw, 28px); }
-    .department-preview p { margin: 8px 0 16px; color: var(--color-text-secondary); line-height: 1.5; }
-    .department-preview-cta { display: inline-flex; align-items: center; gap: 8px; color: var(--color-accent); font-weight: 600; }
-    .department-preview img { width: clamp(88px, 20vw, 180px); height: clamp(88px, 20vw, 180px); object-fit: contain; flex: 0 0 auto; }
-    .department-preview:hover .department-preview-cta { text-decoration: underline; }
-    .department-preview:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; }
+    .skeleton-card { display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; }
+    .skeleton-block {
+      border-radius: 8px;
+      background: linear-gradient(90deg, #efe8dc 0%, #f8f3ea 50%, #efe8dc 100%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.3s ease-in-out infinite;
+    }
+    .skeleton-image { aspect-ratio: 1 / 1; border-radius: 16px; }
+    .skeleton-line { height: 12px; width: 82%; }
+    .skeleton-line.short { width: 45%; height: 9px; }
+    .skeleton-line.price { width: 30%; height: 14px; margin-top: 4px; }
+    .skeleton-title { height: 22px; width: 220px; margin-bottom: 16px; }
+    .skeleton-rail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(190px, 1fr); gap: 16px; overflow: hidden; }
+    @keyframes skeleton-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+    @media (prefers-reduced-motion: reduce) { .skeleton-block { animation: none; } }
     .category-shelf + .category-shelf { border-top: 1px solid var(--color-border); }
     .shelf-context { align-items: center; display: flex; gap: 16px; justify-content: flex-end; margin-bottom: 7px; }
     .subcategory-links { display: flex; gap: 7px; max-width: 62%; overflow-x: auto; padding: 2px 1px 5px; scrollbar-width: none; }
@@ -1174,7 +1188,10 @@ export class HomeComponent {
       .slice(0, 8);
   });
 
-  /** Every department stays discoverable, in navigation order, with live products where available. */
+  /** Placeholder cards shown while the catalog loads. */
+  protected readonly skeletonCards = Array.from({ length: 8 }, (_, i) => i);
+
+  /** Departments that actually have products — an empty one is just a banner with nothing to buy. */
   readonly categoryShelves = computed<CategoryShelf[]>(() => {
     const products = this.catalog.allProducts();
     return this.categories()
@@ -1203,7 +1220,8 @@ export class HomeComponent {
           products: rankedProducts,
           subcategories,
         };
-      });
+      })
+      .filter((shelf) => shelf.products.length > 0);
   });
 
   readonly heroCollection = {
