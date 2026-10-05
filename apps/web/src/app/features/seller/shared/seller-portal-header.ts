@@ -13,7 +13,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   template: `
     <header class="seller-header">
       <div class="header-inner">
-        <a class="brand" routerLink="/" aria-label="KhmerCraft marketplace home">
+        <a class="brand" routerLink="/become-a-seller" aria-label="KhmerCraft Seller home">
           <span>KhmerCraft</span><small>Seller</small>
         </a>
 
@@ -22,7 +22,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
           <a routerLink="/become-a-seller/explore" routerLinkActive="current">Explore</a>
           <a routerLink="/become-a-seller/pricing" routerLinkActive="current">Pricing</a>
           <a routerLink="/become-a-seller/faq" routerLinkActive="current">FAQ</a>
-          <a routerLink="/about">About us</a>
+          <a routerLink="/become-a-seller/about" routerLinkActive="current">About us</a>
         </nav>
 
         <div class="desktop-actions">
@@ -41,7 +41,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
           <a routerLink="/become-a-seller/explore" routerLinkActive="current" (click)="menuOpen.set(false)">Explore</a>
           <a routerLink="/become-a-seller/pricing" routerLinkActive="current" (click)="menuOpen.set(false)">Pricing</a>
           <a routerLink="/become-a-seller/faq" routerLinkActive="current" (click)="menuOpen.set(false)">FAQ</a>
-          <a routerLink="/about" (click)="menuOpen.set(false)">About us</a>
+          <a routerLink="/become-a-seller/about" routerLinkActive="current" (click)="menuOpen.set(false)">About us</a>
           <a routerLink="/seller/login" (click)="menuOpen.set(false)">Seller Sign In</a>
           <a class="start" routerLink="/seller/onboarding" (click)="menuOpen.set(false)">Start Selling</a>
         </nav>

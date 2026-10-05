@@ -87,9 +87,18 @@ export const createProductSchema = z
     name: z.string().trim().min(2).max(200),
     description: z.string().trim().max(4000).optional(),
     price: z.number().positive().max(1_000_000),
-    compareAtPrice: z.number().positive().max(1_000_000).nullable().optional(),
+    compareAtPrice: z
+      .union([z.number().positive().max(1_000_000), z.literal(''), z.null()])
+      .optional()
+      .transform((val) => (typeof val === 'number' && val > 0 ? val : null)),
     category: z.string().trim().min(2).max(80),
-    subcategory: z.string().trim().max(80).nullable().optional(),
+    subcategory: z
+      .string()
+      .trim()
+      .max(80)
+      .nullable()
+      .optional()
+      .transform((val) => (val && val.length > 0 ? val : undefined)),
     sellerName: z.string().trim().max(120).optional(),
     storeName: z.string().trim().max(120).optional(),
     storeId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
@@ -107,7 +116,15 @@ export const createProductSchema = z
       .optional(),
     stock: z.number().int().min(0).max(1_000_000).default(0),
     /** Which stock location holds this — see models/Warehouse.ts. */
-    warehouseId: z.string().regex(/^[a-f\d]{24}$/i, 'Choose a valid location').optional(),
+    warehouseId: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .refine((val) => !val || /^[a-f\d]{24}$/i.test(val), {
+        message: 'Choose a valid location',
+      })
+      .transform((val) => (val && val.length === 24 ? val : undefined)),
     status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).default('ACTIVE'),
     sellerId: z.string().optional(),
   })
@@ -125,9 +142,18 @@ export const updateProductSchema = z
     name: z.string().trim().min(2).max(200).optional(),
     description: z.string().trim().max(4000).optional(),
     price: z.number().positive().max(1_000_000).optional(),
-    compareAtPrice: z.number().positive().max(1_000_000).nullable().optional(),
+    compareAtPrice: z
+      .union([z.number().positive().max(1_000_000), z.literal(''), z.null()])
+      .optional()
+      .transform((val) => (typeof val === 'number' && val > 0 ? val : null)),
     category: z.string().trim().min(2).max(80).optional(),
-    subcategory: z.string().trim().max(80).nullable().optional(),
+    subcategory: z
+      .string()
+      .trim()
+      .max(80)
+      .nullable()
+      .optional()
+      .transform((val) => (val && val.length > 0 ? val : undefined)),
     sellerName: z.string().trim().min(2).max(120).optional(),
     storeName: z.string().trim().max(120).optional(),
     location: z.string().trim().max(80).optional(),
@@ -143,7 +169,15 @@ export const updateProductSchema = z
       .max(12)
       .optional(),
     stock: z.number().int().min(0).max(1_000_000).optional(),
-    warehouseId: z.string().regex(/^[a-f\d]{24}$/i, 'Choose a valid location').nullable().optional(),
+    warehouseId: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .refine((val) => !val || /^[a-f\d]{24}$/i.test(val), {
+        message: 'Choose a valid location',
+      })
+      .transform((val) => (val && val.length === 24 ? val : null)),
     status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).optional(),
   })
   .strip()

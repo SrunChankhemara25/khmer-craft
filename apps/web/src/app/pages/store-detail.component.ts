@@ -6,6 +6,8 @@ import { map } from 'rxjs';
 import { SellerService } from '../core/api/seller.service';
 import { AuthService } from '../core/auth/auth.service';
 import { CatalogService } from '../core/catalog/catalog.service';
+import { Title } from '@angular/platform-browser';
+import { detectStoreSlugFromHost, isStoreDomainActive } from '../core/storefront/store-domain.service';
 import { Product, ProductSort } from '../core/catalog/catalog.models';
 import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
 import { FooterComponent } from '../components/shared/layout/footer/footer.component';
@@ -74,8 +76,10 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
         <section class="store-intro">
           <div class="container">
             <nav class="crumbs">
-              <a routerLink="/">Home</a><span>/</span>
-              <a routerLink="/stores">Stores</a><span>/</span>
+              @if (!isDomainMode()) {
+                <a routerLink="/">Home</a><span>/</span>
+                <a routerLink="/stores">Stores</a><span>/</span>
+              }
               <span>{{ s.name }}</span>
             </nav>
 
@@ -85,7 +89,7 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
                   @if (s.logoUrl) { <img [src]="s.logoUrl" [alt]="s.name + ' logo'" /> } @else { {{ initials(s.name) }} }
                 </div>
                 <div class="identity-copy">
-                  <span class="verified"><ui-icon name="store" [size]="13" /> Marketplace store</span>
+                  <span class="verified"><ui-icon name="store" [size]="13" /> {{ isDomainMode() ? 'Official Store' : 'Marketplace store' }}</span>
                   <h1>{{ s.name }}</h1>
                   <p class="store-tagline">{{ s.tagline || s.description }}</p>
                   <div class="meta">
@@ -291,7 +295,25 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
     .products-head-controls { display: flex; align-items: center; gap: 16px; }
     .item-count { color: var(--color-muted); font-size: 13px; white-space: nowrap; }
     .sort { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--color-muted); }
-    .sort select { padding: 7px 10px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: #fff; font-size: 12.5px; }
+    .sort select {
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+      background: #fff;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 14px;
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-sm);
+      box-sizing: border-box;
+      color: var(--color-text);
+      cursor: pointer;
+      font-size: 13.5px;
+      height: 38px;
+      min-height: 38px;
+      outline: none;
+      padding: 0 32px 0 12px;
+    }
+    .sort select::-ms-expand { display: none; }
     /* Still scrolls when it overflows — just without a visible scrollbar
        cluttering the row underneath it. */
     .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 3px; scrollbar-width: none; }
@@ -358,9 +380,15 @@ export class StoreDetailComponent {
   protected readonly catalog = inject(CatalogService);
   private readonly auth = inject(AuthService);
   private readonly sellers = inject(SellerService);
+  private readonly titleService = inject(Title);
+  protected readonly isDomainMode = signal<boolean>(isStoreDomainActive());
+  private readonly hostSlug = detectStoreSlugFromHost();
   protected readonly activeCategory = signal<string | null>(null);
   protected readonly activeSection = signal<'products' | 'about' | 'reviews'>('products');
-  private readonly storeId = toSignal(this.route.paramMap.pipe(map((params) => params.get('id') ?? '')), { initialValue: this.route.snapshot.paramMap.get('id') ?? '' });
+  private readonly storeId = toSignal(
+    this.route.paramMap.pipe(map((params) => params.get('id') || this.hostSlug || '')),
+    { initialValue: this.route.snapshot.paramMap.get('id') || this.hostSlug || '' }
+  );
   protected readonly store = computed(() => this.catalog.store(this.storeId()));
   private readonly loadedStoreProducts = signal<ReturnType<CatalogService['allProducts']>>([]);
   protected readonly products = computed(() => this.loadedStoreProducts());
@@ -418,6 +446,13 @@ export class StoreDetailComponent {
   private readonly ownedStoreIds = signal<string[]>([]);
 
   constructor() {
+    effect(() => {
+      const s = this.store();
+      if (s?.name) {
+        this.titleService.setTitle(s.name + (this.isDomainMode() ? ' — Official Store' : ' | KhmerCraft'));
+      }
+    });
+
     // Only sellers have stores to own, so anonymous and buyer visitors never
     // pay for this request.
     effect(() => {

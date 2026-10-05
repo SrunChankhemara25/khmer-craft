@@ -12,14 +12,39 @@ import {
 } from './auth.models';
 import { AUTH_URL as API_URL } from '../api/api.config';
 
+const TOKEN_STORAGE_KEY = 'khmercraft_token';
+const USER_STORAGE_KEY = 'khmercraft_user';
+
+function restoreCachedUser(): AuthUser | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  } catch {
+    localStorage.removeItem(USER_STORAGE_KEY);
+    return null;
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
-  private readonly userState = signal<AuthUser | null>(null);
+  private readonly userState = signal<AuthUser | null>(restoreCachedUser());
   private readonly checkedState = signal(false);
 
   readonly user = this.userState.asReadonly();
   readonly isAuthenticated = computed(() => Boolean(this.userState()));
+
+  constructor() {
+    // If a cached user or auth token is present, perform a background check to keep state synced
+    if (typeof localStorage !== 'undefined') {
+      const hasToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+      const hasUser = localStorage.getItem(USER_STORAGE_KEY);
+      if (hasToken || hasUser) {
+        this.loadCurrentUser().subscribe();
+      }
+    }
+  }
 
   /** Creates the account and sends a 6-digit code — no session yet. */
   register(payload: {
@@ -36,7 +61,14 @@ export class AuthService {
   verifyEmail(email: string, code: string) {
     return this.http
       .post<AuthResponse>(`${API_URL}/verify-email`, { email, code })
-      .pipe(tap(({ user }) => this.setUser(user)));
+      .pipe(
+        tap((res) => {
+          if (res.token || res.accessToken) {
+            localStorage.setItem(TOKEN_STORAGE_KEY, res.token || res.accessToken!);
+          }
+          this.setUser(res.user);
+        }),
+      );
   }
 
   resendCode(email: string) {
@@ -75,12 +107,23 @@ export class AuthService {
         password,
         ...(expectedRole ? { expectedRole } : {}),
       })
-      .pipe(tap(({ user }) => this.setUser(user)));
+      .pipe(
+        tap((res) => {
+          if (res.token || res.accessToken) {
+            localStorage.setItem(TOKEN_STORAGE_KEY, res.token || res.accessToken!);
+          }
+          this.setUser(res.user);
+        }),
+      );
   }
 
   logout() {
     return this.http.post<MessageResponse>(`${API_URL}/logout`, {}).pipe(
       finalize(() => {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          localStorage.removeItem(USER_STORAGE_KEY);
+        }
         this.userState.set(null);
         this.checkedState.set(true);
       }),
@@ -128,6 +171,11 @@ export class AuthService {
         return user;
       }),
       catchError(() => {
+        // Clear stale session if the server rejected auth
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          localStorage.removeItem(USER_STORAGE_KEY);
+        }
         this.userState.set(null);
         this.checkedState.set(true);
         return of(null);
@@ -141,9 +189,24 @@ export class AuthService {
     return this.loadCurrentUser();
   }
 
+  /** Update user profile properties locally in cache and state */
+  updateUser(partial: Partial<AuthUser>) {
+    const current = this.userState();
+    if (!current) return;
+    const updated = { ...current, ...partial };
+    this.setUser(updated);
+  }
+
   private setUser(user: AuthUser) {
     this.userState.set(user);
     this.checkedState.set(true);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      } catch (e) {
+        console.warn('Unable to persist user to localStorage:', e);
+      }
+    }
   }
 }
 

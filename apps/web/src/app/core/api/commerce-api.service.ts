@@ -87,6 +87,17 @@ export class CommerceApiService {
     return this.http.post<ApiProduct>(`${API_URL}/products`, input);
   }
 
+  /** SELLER/ADMIN only — updates are restricted to the listing owner. */
+  updateProduct(
+    productId: string,
+    input: Partial<ApiCreateProductInput>,
+  ): Observable<ApiProduct> {
+    return this.http.patch<ApiProduct>(
+      `${API_URL}/products/${encodeURIComponent(productId)}`,
+      input,
+    );
+  }
+
   /** The signed-in seller's own listings, drafts and archived included. */
   myProducts(page = 1, limit = 20, storeId?: string): Observable<ApiMyProductList> {
     let params = new HttpParams().set('page', page).set('limit', limit);
@@ -221,6 +232,21 @@ export class CommerceApiService {
       `${API_URL}/subscriptions/${encodeURIComponent(storeId)}/payments`,
     );
   }
+
+  upgradePlan(storeId: string, plan: PaidPlan | 'STARTER'): Observable<ApiSubscription> {
+    return this.http.post<ApiSubscription>(`${API_URL}/subscriptions/upgrade`, {
+      storeId,
+      plan,
+    });
+  }
+
+  simulatePlanPayment(paymentId: string): Observable<ApiPlanPaymentStatus> {
+    return this.http.post<ApiPlanPaymentStatus>(
+      `${API_URL}/subscriptions/payments/${encodeURIComponent(paymentId)}/simulate`,
+      {},
+    );
+  }
+
 
   // ---------------------------------------------------------- seller desk
   sellerOrders(

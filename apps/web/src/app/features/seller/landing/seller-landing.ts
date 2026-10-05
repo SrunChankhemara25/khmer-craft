@@ -2,8 +2,8 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { KcIcon } from '../../../components/shared/ui/kc-icon/kc-icon';
 import { ScrollReveal } from '../../../components/shared/ui/scroll-reveal/scroll-reveal.directive';
-import { NavbarComponent } from '../../../components/shared/layout/navbar/navbar.component';
-import { FooterComponent } from '../../../components/shared/layout/footer/footer.component';
+import { SellerPortalHeader } from '../shared/seller-portal-header';
+import { SellerFooter } from '../shared/seller-footer';
 import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
 
 /**
@@ -21,9 +21,9 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
  */
 @Component({
   selector: 'app-seller',
-  imports: [RouterLink, KcIcon, ScrollReveal, NavbarComponent, FooterComponent],
+  imports: [RouterLink, KcIcon, ScrollReveal, SellerPortalHeader, SellerFooter],
   template: `
-    <app-navbar />
+    <app-seller-portal-header />
 
     <main class="lp">
       <section class="seller-hero">
@@ -42,16 +42,25 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
         </div>
 
         <div class="showcase reveal">
-          <div class="preview-label"><span></span> Live marketplace preview</div>
+          <div class="preview-label"><span></span> Your storefront preview</div>
           <div class="devices">
           <div class="laptop">
             <div class="screen">
-              <div class="mini-bar">
-                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                <span class="mini-url">khmercraft.com</span>
-              </div>
-              <div class="marketplace-window">
-                <iframe src="/?sellerPreview=1" title="Live KhmerCraft marketplace preview" tabindex="-1"></iframe>
+              <div class="storefront-window">
+                <div class="store-cover">
+                  <img src="/assets/stores/khmer-style-hero.png" alt="" />
+                </div>
+                <div class="storefront-profile">
+                  <div class="store-avatar">KS</div>
+                  <div><strong>Kampot Studio</strong><span>Fashion &amp; Accessories · Kampot</span></div>
+                  <button type="button" tabindex="-1">Follow</button>
+                </div>
+                <div class="storefront-nav"><span class="active">Home</span><span>Products</span><span>About</span></div>
+                <div class="storefront-products">
+                  <article><img src="/categories/fashion.png" alt="" /><strong>Silk krama</strong><span>$18.00</span></article>
+                  <article><img src="/categories/home-living.png" alt="" /><strong>Clay tea set</strong><span>$28.00</span></article>
+                  <article><img src="/categories/beauty-wellness.png" alt="" /><strong>Botanical balm</strong><span>$12.00</span></article>
+                </div>
               </div>
             </div>
             <div class="base"></div>
@@ -60,7 +69,11 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
           <div class="phone">
             <div class="notch"></div>
             <div class="screen">
-              <iframe class="phone-marketplace" src="/?sellerPreview=1" title="KhmerCraft mobile marketplace preview" tabindex="-1"></iframe>
+              <div class="phone-store">
+                <img src="/assets/stores/khmer-style-hero.png" alt="" />
+                <div class="phone-store-body"><i>KS</i><strong>Kampot Studio</strong><span>Fashion &amp; Accessories</span><b>Shop the collection</b></div>
+                <div class="phone-product"><img src="/categories/fashion.png" alt="" /><span><strong>Silk krama</strong><small>$18.00</small></span></div>
+              </div>
             </div>
           </div>
           </div>
@@ -181,7 +194,7 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
       </div>
     </div>
 
-    <app-footer />
+    <app-seller-footer />
   `,
   styles: [`
     /* Apple-ish restraint: one idea per screen, a lot of air, near-monochrome
@@ -248,16 +261,38 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
     .laptop .screen { border: 9px solid #26322c; border-radius: 15px 15px 4px 4px; background: #fffdf8; overflow: hidden; box-shadow: 0 30px 62px -36px rgba(42,34,25,.5); }
     .laptop .base { height: 13px; margin: 0 auto; width: 104%; max-width: none; border-radius: 0 0 14px 14px; background: linear-gradient(#c8c8cc, #9b9ba1); position: relative; left: -2%; }
     .laptop .base::after { content: ''; position: absolute; left: 50%; top: 0; width: 88px; height: 5px; transform: translateX(-50%); border-radius: 0 0 6px 6px; background: #8b8b91; }
-    .mini-bar { display: flex; align-items: center; gap: 6px; padding: 9px 12px; background: #f1ece2; border-bottom: 1px solid #e4ded1; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #d3ccbe; }
-    .mini-url { margin-left: 10px; padding: 3px 12px; border-radius: 999px; background: #fff; color: #9a9184; font-size: 10px; }
-    .marketplace-window { height: 310px; overflow: hidden; position: relative; background: #fffdf8; }
-    .marketplace-window iframe { border: 0; height: 720px; pointer-events: none; transform: scale(.55); transform-origin: top left; width: 1280px; }
+    .storefront-window { overflow: hidden; position: relative; background: #fffdf8; text-align: left; }
+    .store-cover { height: 148px; overflow: hidden; background: #d5b79d; }
+    .store-cover img { display: block; height: 100%; object-fit: cover; object-position: center 42%; width: 100%; }
+    .storefront-profile { align-items: center; background: #fffdf8; display: flex; gap: 12px; min-height: 77px; padding: 12px 22px; }
+    .store-avatar { align-items: center; background: #8e3021; border: 3px solid #fffdf8; border-radius: 50%; color: white; display: flex; font-family: var(--font-heading); font-size: 17px; font-weight: 700; height: 54px; justify-content: center; margin-top: -41px; width: 54px; }
+    .storefront-profile > div:nth-child(2) { display: grid; gap: 4px; }
+    .storefront-profile strong { color: #2b2721; font-family: var(--font-heading); font-size: 17px; }
+    .storefront-profile span { color: #81786d; font-size: 10px; }
+    .storefront-profile button { background: #fff; border: 1px solid #ded5c8; border-radius: 999px; color: #5c544b; font-size: 10px; font-weight: 700; margin-left: auto; padding: 7px 13px; }
+    .storefront-nav { border-top: 1px solid #eee6db; border-bottom: 1px solid #eee6db; display: flex; gap: 24px; padding: 10px 22px; }
+    .storefront-nav span { color: #8a8176; font-size: 10px; font-weight: 700; }
+    .storefront-nav .active { color: #8e3021; }
+    .storefront-products { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 13px 18px 16px; }
+    .storefront-products article { display: grid; gap: 3px; min-width: 0; }
+    .storefront-products img { aspect-ratio: 1.6; background: #f4f0e8; border-radius: 7px; object-fit: contain; padding: 3px; width: 100%; }
+    .storefront-products strong { color: #2b2721; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .storefront-products span { color: #8e3021; font-size: 8px; font-weight: 800; }
 
     .phone { position: absolute; right: max(1%, calc(50% - 390px)); bottom: -22px; width: 154px; border: 8px solid #26322c; border-radius: 25px; background: #26322c; box-shadow: 0 24px 48px -24px rgba(42,34,25,.48); }
     .phone .notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 56px; height: 15px; border-radius: 0 0 9px 9px; background: #1d1d1f; z-index: 2; }
     .phone .screen { border-radius: 18px; height: 278px; overflow: hidden; background: #fffdf8; }
-    .phone-marketplace { border: 0; height: 700px; pointer-events: none; transform: scale(.39); transform-origin: top left; width: 390px; }
+    .phone-store > img { display: block; height: 93px; object-fit: cover; object-position: center 42%; width: 100%; }
+    .phone-store-body { display: grid; gap: 4px; padding: 11px 13px; position: relative; }
+    .phone-store-body i { align-items: center; background: #8e3021; border: 2px solid #fffdf8; border-radius: 50%; color: #fff; display: flex; font-family: var(--font-heading); font-size: 9px; font-style: normal; height: 27px; justify-content: center; margin-top: -25px; width: 27px; }
+    .phone-store-body strong { color: #2b2721; font-family: var(--font-heading); font-size: 12px; }
+    .phone-store-body span { color: #81786d; font-size: 7px; }
+    .phone-store-body b { background: #8e3021; border-radius: 999px; color: #fff; font-size: 7px; margin-top: 6px; padding: 7px; text-align: center; }
+    .phone-product { align-items: center; border-top: 1px solid #eee6db; display: flex; gap: 8px; margin: 9px 12px 0; padding-top: 9px; }
+    .phone-product img { background: #f4f0e8; border-radius: 5px; height: 45px; object-fit: contain; padding: 2px; width: 48px; }
+    .phone-product span { display: grid; gap: 3px; }
+    .phone-product strong { color: #2b2721; font-size: 9px; }
+    .phone-product small { color: #8e3021; font-size: 8px; font-weight: 800; }
     .caption { margin-top: 30px; color: #786f63; font-size: 12.5px; text-align: center; }
 
     /* ---- content -------------------------------------------------------- */
@@ -356,8 +391,12 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
       .step-list, .tool-grid { grid-template-columns: 1fr; }
       .cat { flex-basis: 118px; }
       .cat img { height: 118px; width: 118px; }
-      .marketplace-window { height: 220px; }
-      .marketplace-window iframe { transform: scale(.4); }
+      .store-cover { height: 105px; }
+      .storefront-profile { min-height: 62px; padding: 8px 13px; }
+      .store-avatar { font-size: 13px; height: 42px; margin-top: -29px; width: 42px; }
+      .storefront-profile strong { font-size: 13px; }
+      .storefront-nav { gap: 16px; padding: 8px 13px; }
+      .storefront-products { gap: 6px; padding: 9px 12px 11px; }
     }
   `],
 })

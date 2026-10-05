@@ -306,3 +306,81 @@ export const listPayments = async (user: IUser, storeId: string) => {
     })),
   };
 };
+
+/**
+ * Changes plan for a seller's store.
+ * ONLY downgrading to the free 'STARTER' plan is permitted directly.
+ * All paid plans (STANDARD, PREMIUM) MUST go through real checkout & payment verification.
+ */
+export const upgradePlan = async (
+  user: IUser,
+  storeId: string,
+  plan: 'STARTER' | PaidPlan,
+): Promise<SubscriptionView> => {
+  const store = await loadOwnedStore(user, storeId);
+
+  if (plan === 'STARTER') {
+    store.subscriptionPlan = 'STARTER';
+    store.planExpiresAt = undefined;
+    await store.save();
+    return toView(store);
+  }
+
+  // Any paid plan MUST go through checkout and payment.
+  throw new AppError(
+    400,
+    'Payment is required to activate a paid plan. Please complete checkout with KHQR.',
+    'PAYMENT_REQUIRED',
+  );
+};
+
+/**
+ * Simulates ABA payment settlement for testing and development.
+ */
+export const simulatePlanPayment = async (
+  user: IUser,
+  paymentId: string,
+): Promise<PlanPaymentStatusView> => {
+  if (!mongoose.isValidObjectId(paymentId)) {
+    throw new AppError(404, 'Payment not found', 'PAYMENT_NOT_FOUND');
+  }
+  const payment = await SubscriptionPayment.findById(paymentId);
+  if (!payment || String(payment.userId) !== String(user._id)) {
+    throw new AppError(404, 'Payment not found', 'PAYMENT_NOT_FOUND');
+  }
+
+  const store = await Store.findById(payment.storeId);
+  if (!store) {
+    throw new AppError(404, 'Store not found', 'STORE_NOT_FOUND');
+  }
+
+  const now = new Date();
+  const samePlanStillLive =
+    store.subscriptionPlan === payment.plan &&
+    store.planExpiresAt !== undefined &&
+    store.planExpiresAt !== null &&
+    store.planExpiresAt.getTime() > now.getTime();
+  const periodStart = samePlanStillLive ? store.planExpiresAt! : now;
+  const periodEnd = addDays(periodStart, PLAN_PERIOD_DAYS);
+
+  payment.status = 'PAID';
+  payment.paidAt = now;
+  payment.periodStart = periodStart;
+  payment.periodEnd = periodEnd;
+  await payment.save();
+
+  store.subscriptionPlan = payment.plan;
+  store.planExpiresAt = periodEnd;
+  store.paymentMethod = 'ABA';
+  await store.save();
+
+  return {
+    paymentId: String(payment._id),
+    plan: payment.plan,
+    status: payment.status,
+    paid: true,
+    expiresAt: payment.periodEnd ? payment.periodEnd.toISOString() : null,
+    subscription: toView(store),
+  };
+};
+

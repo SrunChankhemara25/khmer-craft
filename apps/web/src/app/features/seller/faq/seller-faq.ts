@@ -17,7 +17,7 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
           <p class="eyebrow">Questions before you start</p>
           <h1>Seller FAQ</h1>
           <p class="lead">Learn what to prepare before submitting your store. You can also read more about KhmerCraft.</p>
-          <a routerLink="/about" class="text-link">About KhmerCraft <span aria-hidden="true">→</span></a>
+          <a routerLink="/become-a-seller/about" class="text-link">About KhmerCraft Seller <span aria-hidden="true">→</span></a>
         </div>
       </section>
 
@@ -71,7 +71,7 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
   styles: [`
     :host{display:block;background:#fcfaf5;color:#28231f;--green:#213b30;--clay:#9b3827;--line:#e4dbce}*{box-sizing:border-box}.wrap{width:min(760px,calc(100% - 48px));margin-inline:auto}
     .eyebrow{margin:0 0 16px;color:var(--clay);font-size:12px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
-    .intro{padding:clamp(70px,9vw,105px) 0 30px;text-align:center}h1{margin:0 0 18px;font-family:var(--font-heading);font-size:clamp(38px,4.4vw,58px);font-weight:500;letter-spacing:-.04em}.lead{margin:0 auto 22px;max-width:480px;color:#655d54;font-size:clamp(16px,1.4vw,18px);line-height:1.65}
+    .intro{padding:clamp(70px,9vw,105px) 0 30px;text-align:center}h1{margin:0 0 18px;font-family:var(--font-heading);font-size:clamp(38px,4.4vw,58px);font-weight:600;letter-spacing:-.04em}.lead{margin:0 auto 22px;max-width:480px;color:#655d54;font-size:clamp(16px,1.4vw,18px);line-height:1.65}
     .text-link{display:inline-flex;align-items:center;gap:8px;color:var(--green);font-size:13px;font-weight:750;text-decoration:none}.text-link span{transition:transform .25s ease}.text-link:hover span{transform:translateX(3px)}
     .list-wrap{padding:20px 0 clamp(90px,10vw,130px)}
     .faq-list{border-top:1px solid var(--line)}.faq-item{border-bottom:1px solid var(--line)}.faq-item h3{margin:0}
@@ -81,9 +81,9 @@ import { faqItems, sellerSteps } from '../../../core/data/seller-content.data';
     .faq-answer p{min-height:0;overflow:hidden;margin:0;padding:0 4px;color:#6f665c;font-size:14px;line-height:1.7}
     .faq-answer.open p{padding-bottom:26px}
     a:focus-visible,button:focus-visible{outline:3px solid #bd8a42;outline-offset:4px}
-    .timeline-recap{padding:clamp(60px,8vw,90px) 0;background:#f3eee5}.recap-intro.centered{max-width:520px;margin:0 auto 40px;text-align:center}.recap-intro h2{font-family:var(--font-heading);font-size:clamp(24px,2.8vw,34px);font-weight:500;letter-spacing:-.03em;margin:0}
+    .timeline-recap{padding:clamp(60px,8vw,90px) 0;background:#f3eee5}.recap-intro.centered{max-width:520px;margin:0 auto 40px;text-align:center}.recap-intro h2{font-family:var(--font-heading);font-size:clamp(24px,2.8vw,34px);font-weight:600;letter-spacing:-.03em;margin:0}
     .recap-list{margin:0;padding:0;list-style:none;display:grid;gap:16px}.recap-list li{display:flex;gap:16px;align-items:flex-start;padding:18px 20px;background:#fff;border:1px solid #ddd3c2;border-radius:10px}.recap-icon{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--green);color:#fff}.recap-list strong{display:block;font-size:14px;margin-bottom:4px}.recap-list p{margin:0;color:#6e655c;font-size:12.5px;line-height:1.55}
-    .closing{padding:clamp(60px,8vw,90px) 0;text-align:center}.closing h2{font-family:var(--font-heading);font-size:clamp(24px,2.8vw,34px);font-weight:500;letter-spacing:-.03em;margin:0 0 22px}.closing-actions{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap}
+    .closing{padding:clamp(60px,8vw,90px) 0;text-align:center}.closing h2{font-family:var(--font-heading);font-size:clamp(24px,2.8vw,34px);font-weight:600;letter-spacing:-.03em;margin:0 0 22px}.closing-actions{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap}
     .button{display:inline-flex;align-items:center;justify-content:center;gap:22px;min-height:50px;padding:0 24px;border:0;border-radius:8px;font-weight:750;cursor:pointer;background:var(--green);color:#fff}
     .button span{transition:transform .25s ease}.button:hover span{transform:translateX(4px)}
     @media(max-width:600px){.recap-list li{padding:16px}}

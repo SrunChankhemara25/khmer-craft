@@ -539,12 +539,24 @@ const SORTS: { value: ProductSort; label: string }[] = [
         color: var(--color-muted);
       }
       .sort select {
-        padding: 5px 8px;
+        appearance: none; -webkit-appearance: none; -moz-appearance: none;
+        background: #fff;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 14px;
         border: 1px solid var(--color-border-strong);
         border-radius: var(--radius-sm);
-        background: #fff;
-        font-size: 13px;
+        box-sizing: border-box;
+        color: var(--color-text);
+        cursor: pointer;
+        font-size: 13.5px;
+        height: 38px;
+        min-height: 38px;
+        outline: none;
+        padding: 0 32px 0 12px;
       }
+      .sort select::-ms-expand { display: none; }
       .view {
         display: flex;
         border: 1px solid var(--color-border-strong);

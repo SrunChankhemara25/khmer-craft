@@ -10,3 +10,13 @@ export const createPlanCheckoutSchema = z
   .strict();
 
 export type CreatePlanCheckoutInput = z.infer<typeof createPlanCheckoutSchema>;
+
+export const upgradePlanSchema = z
+  .object({
+    storeId: z.string().trim().min(1),
+    plan: z.enum(['STARTER', 'STANDARD', 'PREMIUM']),
+  })
+  .strict();
+
+export type UpgradePlanInput = z.infer<typeof upgradePlanSchema>;
+

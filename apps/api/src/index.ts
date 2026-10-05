@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
-import dbConnect from '../lib/mongodb';
+import dbConnect, { ensureDatabaseCollections } from '../lib/mongodb';
 import { createApp } from './app';
 import { assertEnv, env } from './config/env';
 
@@ -66,7 +66,8 @@ const port = process.env.PORT || 3001;
 const app = createApp();
 
 dbConnect()
-  .then(() => {
+  .then(async () => {
+    await ensureDatabaseCollections();
     app.listen(port, () => {
       console.log(`KhmerCraft API running at http://localhost:${port}`);
     });

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { KcIcon } from '../../../components/shared/ui/kc-icon/kc-icon';
 import { AuthService, apiErrorMessage } from '../../../core/auth/auth.service';
 import { CommerceApiService } from '../../../core/api/commerce-api.service';
-import { ApiProduct } from '../../../core/api/api.models';
+import { ApiCreateProductInput, ApiProduct } from '../../../core/api/api.models';
 import { CATEGORIES } from '../../../core/data/categories.data';
 
 type DashboardView = 'dashboard' | 'products' | 'add' | 'orders' | 'profile' | 'sales' | 'reviews' | 'settings';
@@ -896,7 +896,22 @@ interface DashboardMetric {
 
     .dash-input {
       height: 43px;
+      min-height: 43px;
+      box-sizing: border-box;
     }
+
+    select.dash-input {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 16px;
+      padding-right: 40px !important;
+      cursor: pointer;
+    }
+    select.dash-input::-ms-expand { display: none; }
 
     .dash-textarea {
       min-height: 116px;
@@ -1956,7 +1971,7 @@ interface DashboardMetric {
                 </article>
 
                 <div class="quick-actions">
-                  <button class="quick-action" type="button" (click)="view.set('add')"><kc-icon name="plus-square" [size]="24" /> Add New<br />Product</button>
+                  <button class="quick-action" type="button" (click)="openCreateProduct()"><kc-icon name="plus-square" [size]="24" /> Add New<br />Product</button>
                   <button class="quick-action" type="button" (click)="view.set('orders')"><kc-icon name="box" [size]="24" /> View Orders</button>
                   <button class="quick-action" type="button" (click)="view.set('profile')"><kc-icon name="edit" [size]="24" /> Edit Store<br />Profile</button>
                   <button class="quick-action" type="button" (click)="view.set('sales')"><kc-icon name="wallet" [size]="24" /> Sales / Payout</button>
@@ -1995,7 +2010,7 @@ interface DashboardMetric {
                 <h1>Products</h1>
                 <p class="muted">Add, edit, deactivate, or remove your product listings.</p>
               </div>
-              <button class="btn btn-primary" type="button" (click)="view.set('add')"><kc-icon name="plus" [size]="15" /> Add Product</button>
+              <button class="btn btn-primary" type="button" (click)="openCreateProduct()"><kc-icon name="plus" [size]="15" /> Add Product</button>
             </div>
 
             @if (loadingProducts()) {
@@ -2032,7 +2047,7 @@ interface DashboardMetric {
                         <td><span class="pill" [class.green]="product.status === 'ACTIVE'" [class.yellow]="product.status === 'DRAFT'" [class.red]="product.status === 'ARCHIVED'">{{ product.status }}</span></td>
                         <td>
                           <div class="row-actions">
-                            <button class="icon-btn" type="button" disabled title="Editing from here is coming soon"><kc-icon name="edit" [size]="15" /></button>
+                            <button class="icon-btn" type="button" (click)="editProduct(product)" [attr.aria-label]="'Edit ' + product.name" title="Edit product"><kc-icon name="edit" [size]="15" /></button>
                           </div>
                         </td>
                       </tr>
@@ -2055,8 +2070,8 @@ interface DashboardMetric {
           </main>
         } @else if (view() === 'add') {
           <main class="page">
-            <h1>Add New Product</h1>
-            <p class="muted" style="max-width:690px">Create a new product listing for buyers to discover. Provide detailed information to increase your visibility in the KhmerCraft marketplace.</p>
+            <h1>{{ editingProductId() ? 'Edit Product' : 'Add New Product' }}</h1>
+            <p class="muted" style="max-width:690px">{{ editingProductId() ? 'Update the listing details, price, stock, or publishing status.' : 'Create a new product listing for buyers to discover. Provide detailed information to increase your visibility in the KhmerCraft marketplace.' }}</p>
 
             @if (saveProductError()) {
               <p class="muted" style="color:#c73030;font-weight:700">{{ saveProductError() }}</p>
@@ -2153,9 +2168,9 @@ interface DashboardMetric {
                 <span class="autosave"><kc-icon name="clock" [size]="14" /> Saving…</span>
               }
               <div class="actions">
-                <button class="btn btn-ghost" type="button" (click)="view.set('products')" [disabled]="savingProduct()">Cancel</button>
+                <button class="btn btn-ghost" type="button" (click)="cancelProductForm()" [disabled]="savingProduct()">Cancel</button>
                 <button class="btn btn-ghost" type="button" (click)="publishImmediately.set(false); saveProduct()" [disabled]="savingProduct()">Save as Draft</button>
-                <button class="btn btn-primary" type="button" (click)="publishImmediately.set(true); saveProduct()" [disabled]="savingProduct()">Save Product</button>
+                <button class="btn btn-primary" type="button" (click)="publishImmediately.set(true); saveProduct()" [disabled]="savingProduct()">{{ editingProductId() ? 'Save Changes' : 'Save Product' }}</button>
               </div>
             </div>
           </main>
@@ -2624,6 +2639,7 @@ export class SellerDashboardPage {
   protected readonly publishImmediately = signal(true);
   protected readonly savingProduct = signal(false);
   protected readonly saveProductError = signal('');
+  protected readonly editingProductId = signal<string | null>(null);
 
   protected togglePublishImmediately(): void {
     this.publishImmediately.update((value) => !value);
@@ -2644,8 +2660,7 @@ export class SellerDashboardPage {
     this.savingProduct.set(true);
     this.saveProductError.set('');
 
-    this.api
-      .createProduct({
+    const input: ApiCreateProductInput = {
         name,
         description: this.productForm.description.trim() || undefined,
         price,
@@ -2655,7 +2670,13 @@ export class SellerDashboardPage {
         image: this.productForm.image.trim() || undefined,
         stock: this.productForm.stock,
         status: this.publishImmediately() ? 'ACTIVE' : 'DRAFT',
-      })
+      };
+    const editingId = this.editingProductId();
+    const request = editingId
+      ? this.api.updateProduct(editingId, input)
+      : this.api.createProduct(input);
+
+    request
       .subscribe({
         next: () => {
           this.savingProduct.set(false);
@@ -2664,7 +2685,7 @@ export class SellerDashboardPage {
           this.view.set('products');
         },
         error: (error) => {
-          this.saveProductError.set(apiErrorMessage(error, 'Could not create the product.'));
+          this.saveProductError.set(apiErrorMessage(error, editingId ? 'Could not save your changes.' : 'Could not create the product.'));
           this.savingProduct.set(false);
         },
       });
@@ -2675,6 +2696,38 @@ export class SellerDashboardPage {
     this.selectedCategory.set('');
     this.subcategoryValue.set('');
     this.publishImmediately.set(true);
+    this.editingProductId.set(null);
+  }
+
+  protected openCreateProduct(): void {
+    this.resetProductForm();
+    this.saveProductError.set('');
+    this.view.set('add');
+  }
+
+  protected editProduct(product: ApiProduct): void {
+    this.productForm = {
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      stock: product.stock,
+      location: product.location,
+      // The list endpoint deliberately omits full images. Leaving this blank
+      // preserves the current image until the seller enters a replacement URL.
+      image: '',
+    };
+    this.selectedCategory.set(product.category);
+    this.subcategoryValue.set(product.subcategory ?? '');
+    this.publishImmediately.set(product.status === 'ACTIVE');
+    this.editingProductId.set(product.id);
+    this.saveProductError.set('');
+    this.view.set('add');
+  }
+
+  protected cancelProductForm(): void {
+    this.resetProductForm();
+    this.saveProductError.set('');
+    this.view.set('products');
   }
   protected readonly selectedOrder = signal<SellerOrder | null>(null);
   protected readonly currentPassword = signal('');

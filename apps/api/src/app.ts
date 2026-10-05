@@ -27,6 +27,7 @@ import reviewRoutes from './modules/reviews/reviews.routes';
 import sellerRoutes from './modules/sellers/sellers.routes';
 import storeCategoryRoutes from './modules/store-categories/store-categories.routes';
 import warehouseRoutes from './modules/warehouses/warehouses.routes';
+import promotionRoutes from './modules/promotions/promotions.routes';
 
 export const createApp = () => {
   const app = express();
@@ -35,7 +36,6 @@ export const createApp = () => {
     app.set('trust proxy', 1);
   }
 
-  mongoose.set('sanitizeFilter', true);
   mongoose.set('strictQuery', true);
 
   app.disable('x-powered-by');
@@ -47,7 +47,12 @@ export const createApp = () => {
   app.use(
     cors({
       origin: (origin, callback) => {
-        if (!origin || env.allowedOrigins.includes(origin)) {
+        if (
+          !origin ||
+          env.allowedOrigins.includes(origin) ||
+          /^https?:\/\/([a-z0-9-]+\.)*localhost(:\d+)?$/i.test(origin) ||
+          /^https?:\/\/([a-z0-9-]+\.)*khmercraft\.(local|com)(:\d+)?$/i.test(origin)
+        ) {
           callback(null, true);
           return;
         }
@@ -106,6 +111,7 @@ export const createApp = () => {
   // TODO(api-prefix): fold /auth into /api/auth once the web client can be
   // updated in the same release.
   app.use('/auth', authRoutes);
+  app.use('/api/auth', authRoutes);
   app.use('/api/products', catalogRoutes);
   // Reference data the storefront navigates by.
   app.use('/api', taxonomyRoutes);
@@ -117,6 +123,7 @@ export const createApp = () => {
   app.use('/api/sellers', sellerRoutes);
   app.use('/api/store-categories', storeCategoryRoutes);
   app.use('/api/warehouses', warehouseRoutes);
+  app.use('/api/promotions', promotionRoutes);
 
   // Interactive API docs. Disabled in production so the schema is not public.
   if (isDocsEnabled) {

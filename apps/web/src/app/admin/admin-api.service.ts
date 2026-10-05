@@ -157,4 +157,30 @@ export class AdminApiService {
       error: () => this.badgeDrafts.set(null),
     });
   }
+
+  // ------------------------------------------------------------- Promotions
+  getPromotionCampaigns(): Observable<any[]> {
+    return this.http.get<any[]>(`${API_URL}/promotions/campaigns`);
+  }
+
+  createPromotionCampaign(payload: any): Observable<any> {
+    return this.http.post<any>(`${API_URL}/promotions/campaigns`, payload);
+  }
+
+  updatePromotionCampaign(id: string, payload: any): Observable<any> {
+    return this.http.patch<any>(`${API_URL}/promotions/campaigns/${id}`, payload);
+  }
+
+  getAdminPromotionSlides(status?: string): Observable<any[]> {
+    return this.http.get<any[]>(`${API_URL}/promotions/admin/slides`, {
+      params: status && status !== 'ALL' ? { status } : {},
+    });
+  }
+
+  reviewPromotionSlide(id: string, status: 'APPROVED' | 'REJECTED', rejectionReason?: string): Observable<any> {
+    return this.http.patch<any>(`${API_URL}/promotions/admin/slides/${id}/review`, {
+      status,
+      rejectionReason,
+    });
+  }
 }

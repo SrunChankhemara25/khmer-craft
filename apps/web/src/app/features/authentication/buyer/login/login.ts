@@ -107,15 +107,6 @@ export class Login {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly content = computed(() => ROLE_CONTENT['BUYER']);
-  /**
-   * Explains why someone who clicked "Start selling" is suddenly looking at a
-   * sign-in form. Creating a store requires an account (see createStore in
-   * sellers.service.ts), so the guard bounce is correct — but landing on a
-   * bare login page with no reason given reads as the app losing their click.
-   */
-  protected readonly sellerIntent = signal(
-    (this.route.snapshot?.queryParamMap.get('returnUrl') ?? '').startsWith('/seller'),
-  );
   protected readonly passwordVisible = signal(false);
   protected readonly loading = signal(false);
   protected readonly submitted = signal(false);
@@ -152,6 +143,27 @@ export class Login {
   private goToDestination(role: LoginRole) {
     const returnUrl = this.route.snapshot?.queryParamMap.get('returnUrl');
     if (returnUrl?.startsWith('/')) {
+      // If user is a BUYER, ensure returnUrl does not send them to seller/admin or auth pages
+      if (
+        role === 'BUYER' &&
+        (returnUrl.startsWith('/seller') ||
+          returnUrl.startsWith('/admin') ||
+          returnUrl.startsWith('/login') ||
+          returnUrl.startsWith('/register'))
+      ) {
+        void this.router.navigateByUrl('/');
+        return;
+      }
+      // If user is a SELLER, avoid sending back to auth pages
+      if (
+        role === 'SELLER' &&
+        (returnUrl.startsWith('/login') ||
+          returnUrl.startsWith('/register') ||
+          returnUrl.startsWith('/seller/login'))
+      ) {
+        void this.router.navigateByUrl('/seller/dashboard');
+        return;
+      }
       void this.router.navigateByUrl(returnUrl);
       return;
     }

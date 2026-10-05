@@ -20,8 +20,8 @@ const FILTERS: { value: OrderStatus | ''; label: string }[] = [
 
 /** How each available action should be presented. */
 const ACTION_LABELS: Record<string, { label: string; style: string }> = {
-  CONFIRMED: { label: 'Accept order', style: 'btn-primary' },
-  SHIPPED: { label: 'Mark shipped', style: 'btn-outline' },
+  CONFIRMED: { label: '✓ Confirm Order', style: 'btn-primary' },
+  SHIPPED: { label: '📦 Mark Shipped', style: 'btn-outline' },
   DELIVERED: { label: 'Mark delivered', style: 'btn-outline' },
   CANCELLED: { label: 'Reject', style: 'btn-ghost danger' },
 };

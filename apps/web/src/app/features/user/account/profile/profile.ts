@@ -54,8 +54,13 @@ import { IconComponent } from '../../../../components/shared/ui/icon/icon.compon
               <span class="info-icon"><ui-icon name="map-pin" [size]="17" /></span>
               <div>
                 <strong>Delivery location</strong>
-                <span>No saved address yet</span>
-                <small>Address management will appear after account sync is connected.</small>
+                @if (savedAddress(); as addr) {
+                  <span>{{ addr.address }}, {{ addr.city }}, {{ addr.province }}</span>
+                  <small>Recipient: {{ addr.fullName }} ({{ addr.phone }})</small>
+                } @else {
+                  <span>No saved address yet</span>
+                  <small>Saved automatically during checkout.</small>
+                }
               </div>
             </article>
             <article class="card info-card">
@@ -183,6 +188,23 @@ export class Profile {
 
   protected readonly user = this.auth.user;
   protected readonly signingOut = signal(false);
+  protected readonly savedAddress = signal<{
+    fullName: string;
+    phone: string;
+    province: string;
+    city: string;
+    address: string;
+  } | null>(this.getStoredAddress());
+
+  private getStoredAddress() {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('khmercraft_delivery_address');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
 
   protected signOut(): void {
     this.signingOut.set(true);

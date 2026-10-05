@@ -12,14 +12,6 @@ import { AuthLayout } from '../../../../components/shared/authentication/auth-la
 
 /**
  * Seller sign-in.
- *
- * Sellers previously had nowhere to sign in: the seller guard sent them to
- * /admin/login, which requests expectedRole ADMIN and so rejected every seller
- * account before checking the password.
- *
- * TODO(seller-branch): sellers here are Users with role SELLER. If the Seller
- * collection on origin/prototype becomes the account of record, this form
- * needs to point at whatever endpoint authenticates those instead.
  */
 @Component({
   selector: 'app-seller-login',
@@ -111,14 +103,27 @@ export class SellerLogin {
 
     const { email, password } = this.form.getRawValue();
     this.auth
-      .login(email, password, 'SELLER')
+      .login(email, password)
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: ({ user }) => {
           this.success.set(`Signed in as ${user.name}.`);
+          if (user.role === 'BUYER') {
+            void this.router.navigateByUrl('/');
+            return;
+          }
+          if (user.role === 'ADMIN') {
+            void this.router.navigateByUrl('/admin/dashboard');
+            return;
+          }
           const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
           void this.router.navigateByUrl(
-            returnUrl && returnUrl.startsWith('/') ? returnUrl : '/seller/dashboard',
+            returnUrl &&
+              returnUrl.startsWith('/') &&
+              !returnUrl.startsWith('/seller/login') &&
+              !returnUrl.startsWith('/login')
+              ? returnUrl
+              : '/seller/dashboard',
           );
         },
         error: (error) =>

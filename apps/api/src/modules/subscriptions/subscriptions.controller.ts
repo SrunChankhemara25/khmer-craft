@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as subscriptionsService from './subscriptions.service';
 import { param } from '../../utils/request-params';
-import { CreatePlanCheckoutInput } from './subscriptions.validation';
+import { CreatePlanCheckoutInput, UpgradePlanInput } from './subscriptions.validation';
 
 export const createPlanCheckout = async (
   request: Request,
@@ -15,6 +15,25 @@ export const createPlanCheckout = async (
   );
   response.json(checkout);
 };
+
+export const upgrade = async (request: Request, response: Response) => {
+  const { storeId, plan } = request.body as UpgradePlanInput;
+  const updated = await subscriptionsService.upgradePlan(
+    request.auth!.user,
+    storeId,
+    plan,
+  );
+  response.json(updated);
+};
+
+export const simulatePayment = async (request: Request, response: Response) => {
+  const status = await subscriptionsService.simulatePlanPayment(
+    request.auth!.user,
+    param(request, 'paymentId'),
+  );
+  response.json(status);
+};
+
 
 /**
  * Polled by the plan payment page. Reads as a GET, but is not free: it asks

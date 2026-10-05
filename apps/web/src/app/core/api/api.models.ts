@@ -53,6 +53,9 @@ export interface ApiStore {
   phoneNumber: string | null;
   showContact: boolean;
   featuredProductIds: string[];
+  subscriptionPlan?: 'STARTER' | 'STANDARD' | 'PREMIUM';
+  planExpiresAt?: string | null;
+  isPaidPlan?: boolean;
 }
 
 export interface ApiStoreList {

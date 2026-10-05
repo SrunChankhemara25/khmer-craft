@@ -1,10 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { CommerceApiService } from '../core/api/commerce-api.service';
 import { ApiPlanCheckoutSession, PaidPlan } from '../core/api/api.models';
-import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
-import { FooterComponent } from '../components/shared/layout/footer/footer.component';
+import { SellerFlowHeaderComponent } from '../components/shared/layout/seller-flow-header/seller-flow-header.component';
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
 import { PaywayQrComponent } from '../components/shared/payments/payway-qr/payway-qr.component';
 import { PaymentCheck, PaymentPoller } from '../core/payments/payment-poller';
@@ -23,22 +22,16 @@ const PAID_PLANS: PaidPlan[] = ['STANDARD', 'PREMIUM'];
   selector: 'app-plan-payment',
   imports: [
     RouterLink,
-    NavbarComponent,
-    FooterComponent,
+    SellerFlowHeaderComponent,
     IconComponent,
     PaywayQrComponent,
   ],
   template: `
-    <app-navbar />
+    <!-- A focused checkout: the full site navbar (search, categories, cart,
+         account menu) is all somewhere to wander off to mid-payment. -->
+    <app-seller-flow-header [step]="fromSetup ? 2 : null" />
 
-    <section class="container pay">
-      <nav class="crumbs">
-        <a routerLink="/seller/dashboard">Dashboard</a> <span>›</span>
-        <a [routerLink]="['/seller/billing']" [queryParams]="{ store: storeId }">
-          Billing
-        </a>
-        <span>›</span> <span>Payment</span>
-      </nav>
+    <section class="pay">
 
       @if (poller.loading()) {
         <div class="card state">
@@ -54,12 +47,8 @@ const PAID_PLANS: PaidPlan[] = ['STANDARD', 'PREMIUM'];
             <button class="btn btn-primary" (click)="poller.start()">
               Try again
             </button>
-            <a
-              class="btn btn-ghost"
-              [routerLink]="['/seller/billing']"
-              [queryParams]="{ store: storeId }"
-            >
-              Back to billing
+            <a class="btn btn-ghost" [routerLink]="leaveLink" [queryParams]="leaveParams">
+              {{ fromSetup ? 'Skip for now' : 'Back to billing' }}
             </a>
           </div>
         </div>
@@ -125,6 +114,17 @@ const PAID_PLANS: PaidPlan[] = ['STANDARD', 'PREMIUM'];
               }}
             </button>
 
+            <button
+              class="btn btn-solid btn-block"
+              style="margin-top: 8px; justify-content: center; background: var(--brand-700, #176242); color: #fff;"
+              (click)="simulatePayment()"
+              [disabled]="simulating()"
+            >
+              <ui-icon [name]="simulating() ? 'loader' : 'check'" [size]="15" />
+              {{ simulating() ? 'Activating…' : 'Simulate Payment (Dev / Test)' }}
+            </button>
+
+
             <ol class="how">
               <li>Open ABA Mobile, or any KHQR-capable banking app.</li>
               <li>Scan this code and confirm the payment.</li>
@@ -141,34 +141,29 @@ const PAID_PLANS: PaidPlan[] = ['STANDARD', 'PREMIUM'];
               when it runs out.
             </p>
 
-            <a
-              class="leave"
-              [routerLink]="['/seller/billing']"
-              [queryParams]="{ store: storeId }"
-            >
-              Pay later — back to billing
+            <a class="leave" [routerLink]="leaveLink" [queryParams]="leaveParams">
+              {{
+                fromSetup
+                  ? 'Pay later — continue on the free Starter plan'
+                  : 'Pay later — back to billing'
+              }}
             </a>
           </aside>
         </div>
       }
     </section>
-
-    <app-footer />
   `,
   styles: [
     `
+      :host {
+        display: block;
+        min-height: 100vh;
+        background: var(--color-bg-alt);
+      }
       .pay {
-        padding: 26px 32px 60px;
-      }
-      .crumbs {
-        display: flex;
-        gap: 8px;
-        font-size: 12.5px;
-        color: var(--color-muted);
-        margin-bottom: 16px;
-      }
-      .crumbs a:hover {
-        color: var(--color-accent);
+        width: min(100%, 980px);
+        margin: 0 auto;
+        padding: clamp(28px, 5vh, 56px) 20px 60px;
       }
       h1 {
         font-size: 26px;
@@ -288,6 +283,15 @@ export class PlanPaymentComponent {
 
   protected readonly storeId =
     this.route.snapshot.queryParamMap.get('store') ?? '';
+  /** Paying as the last step of creating a store, vs. renewing from billing. */
+  protected readonly fromSetup =
+    this.route.snapshot.queryParamMap.get('from') === 'setup';
+  protected readonly leaveLink = this.fromSetup
+    ? ['/seller/store-ready']
+    : ['/seller/dashboard'];
+  protected readonly leaveParams = this.fromSetup
+    ? { store: this.storeId }
+    : { storeId: this.storeId, view: 'billing' };
   private readonly plan = this.route.snapshot.queryParamMap.get(
     'plan',
   ) as PaidPlan | null;
@@ -297,6 +301,22 @@ export class PlanPaymentComponent {
    * own config cannot reference the poller it is constructing.
    */
   private paymentId = '';
+  protected readonly simulating = signal(false);
+
+  protected async simulatePayment(): Promise<void> {
+    if (!this.paymentId) return;
+    this.simulating.set(true);
+    try {
+      await firstValueFrom(this.api.simulatePlanPayment(this.paymentId));
+      await this.afterPaid();
+    } catch (err: unknown) {
+      const body = (err as { error?: { error?: { message?: string } } })?.error;
+      alert(body?.error?.message ?? 'Failed to simulate payment. Please try again.');
+    } finally {
+      this.simulating.set(false);
+    }
+  }
+
 
   protected readonly poller = new PaymentPoller<ApiPlanCheckoutSession>({
     open: async () => {
@@ -312,7 +332,7 @@ export class PlanPaymentComponent {
       );
       return { paid: status.paid, failed: status.status === 'FAILED' };
     },
-    onPaid: () => this.goToBilling(),
+    onPaid: () => this.afterPaid(),
     missingTarget: this.missingTarget(),
     pendingMessage:
       'ABA has not received this payment yet. Finish it in your banking app, then check again.',
@@ -334,9 +354,16 @@ export class PlanPaymentComponent {
     return '';
   }
 
-  private async goToBilling(): Promise<void> {
-    await this.router.navigate(['/seller/billing'], {
-      queryParams: { store: this.storeId, paid: 1 },
-    });
+  /** Setup ends on the "store is live" page; a renewal goes back to billing. */
+  private async afterPaid(): Promise<void> {
+    if (this.fromSetup) {
+      await this.router.navigate(['/seller/store-ready'], {
+        queryParams: { store: this.storeId, paid: 1 },
+      });
+    } else {
+      await this.router.navigate(['/seller/dashboard'], {
+        queryParams: { storeId: this.storeId, view: 'billing', paid: 1 },
+      });
+    }
   }
 }

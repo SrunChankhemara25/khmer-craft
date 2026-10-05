@@ -457,30 +457,43 @@ export class CheckoutComponent {
     return [...groups.values()];
   });
 
-  protected readonly form = new FormGroup({
-    // Prefilled from the signed-in profile; the guard guarantees there is one.
-    fullName: new FormControl(this.auth.user()?.name ?? '', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.minLength(2)],
-    }),
-    phone: new FormControl(this.auth.user()?.phone ?? '', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.minLength(6)],
-    }),
-    province: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.minLength(2)],
-    }),
-    city: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.minLength(2)],
-    }),
-    address: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.minLength(4)],
-    }),
-    note: new FormControl('', { nonNullable: true }),
-  });
+  private getCachedAddress() {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('khmercraft_delivery_address');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  protected readonly form = (() => {
+    const cached = this.getCachedAddress();
+    const user = this.auth.user();
+    return new FormGroup({
+      fullName: new FormControl(cached?.fullName || user?.name || '', {
+        nonNullable: true,
+        validators: [Validators.required, Validators.minLength(2)],
+      }),
+      phone: new FormControl(cached?.phone || user?.phone || '', {
+        nonNullable: true,
+        validators: [Validators.required, Validators.minLength(6)],
+      }),
+      province: new FormControl(cached?.province || '', {
+        nonNullable: true,
+        validators: [Validators.required, Validators.minLength(2)],
+      }),
+      city: new FormControl(cached?.city || '', {
+        nonNullable: true,
+        validators: [Validators.required, Validators.minLength(2)],
+      }),
+      address: new FormControl(cached?.address || '', {
+        nonNullable: true,
+        validators: [Validators.required, Validators.minLength(4)],
+      }),
+      note: new FormControl('', { nonNullable: true }),
+    });
+  })();
 
   protected invalid(field: string): boolean {
     const control = this.form.get(field);
@@ -498,6 +511,24 @@ export class CheckoutComponent {
 
     this.submitting.set(true);
     const { note, ...rest } = this.form.getRawValue();
+
+    // Cache the delivery address so the customer never has to re-type it
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(
+          'khmercraft_delivery_address',
+          JSON.stringify({
+            fullName: rest.fullName,
+            phone: rest.phone,
+            province: rest.province,
+            city: rest.city,
+            address: rest.address,
+          }),
+        );
+      } catch (err) {
+        console.warn('Failed to cache delivery address:', err);
+      }
+    }
 
     try {
       const created = await firstValueFrom(

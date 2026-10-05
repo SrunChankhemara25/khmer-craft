@@ -5,8 +5,16 @@ node_modules/
 dist/
 **/dist/
 .env
+.env.*
 **/.env
+**/.env.*
 .DS_Store
+
+# Temporary & agent scratch
+.claude/
+scripts_gen/
+output/
+*.py
 
 # Database backups taken before destructive cleanups — never commit.
 backups/

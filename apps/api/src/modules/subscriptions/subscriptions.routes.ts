@@ -5,9 +5,11 @@ import {
   createPlanCheckout,
   payments,
   planPaymentStatus,
+  simulatePayment,
   subscription,
+  upgrade,
 } from './subscriptions.controller';
-import { createPlanCheckoutSchema } from './subscriptions.validation';
+import { createPlanCheckoutSchema, upgradePlanSchema } from './subscriptions.validation';
 
 const router = Router();
 
@@ -17,9 +19,12 @@ const router = Router();
 router.use(authenticate);
 
 router.post('/checkout', validate(createPlanCheckoutSchema), createPlanCheckout);
+router.post('/upgrade', validate(upgradePlanSchema), upgrade);
 
 // Literal paths must precede the ':storeId' route, or they are read as ids.
 router.get('/payments/:paymentId/status', planPaymentStatus);
+router.post('/payments/:paymentId/simulate', simulatePayment);
+
 
 router.get('/:storeId', subscription);
 router.get('/:storeId/payments', payments);

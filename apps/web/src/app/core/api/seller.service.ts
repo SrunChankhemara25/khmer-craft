@@ -202,8 +202,18 @@ export class SellerService {
   getStoreProducts(storeId: string) {
     // The authenticated endpoint enforces ownership and also returns drafts
     // and archived listings. A public sellerId query can never safely power
-    // a seller's management dashboard.
-    return this.http.get<any>(`${API_URL}/products/mine`, { params: { storeId } });
+    // a seller's management dashboard. Product records deliberately omit
+    // base64 photos here, so point each row at the lightweight image route
+    // instead of rendering an empty thumbnail after a save refresh.
+    return this.http.get<any>(`${API_URL}/products/mine`, { params: { storeId } }).pipe(
+      map((response) => ({
+        ...response,
+        products: (response.products ?? []).map((product: { id: string }) => ({
+          ...product,
+          image: `${API_URL}/products/${encodeURIComponent(product.id)}/image`,
+        })),
+      })),
+    );
   }
 
   createProduct(data: any) {
@@ -284,5 +294,204 @@ export class SellerService {
     return this.http.delete<StoreCategoryDTO>(
       `${API_URL}/store-categories/my-stores/${storeId}/${categoryId}/subcategories/${subcategoryId}`,
     );
+  }
+
+  // ------------------------------------------------------------- Advertisements (Marketplace Hero & Big Cards)
+  getPromotionCampaigns() {
+    return this.http.get<any[]>(`${API_URL}/promotions/campaigns`);
+  }
+
+  getMyPromotionSlides() {
+    return this.http.get<any[]>(`${API_URL}/promotions/slides/my`);
+  }
+
+  applyPromotionSlide(payload: any) {
+    return this.http.post<any>(`${API_URL}/promotions/slides/apply`, payload);
+  }
+
+  updatePromotionSlide(slideId: string, payload: any) {
+    return this.http.patch<any>(`${API_URL}/promotions/slides/${slideId}`, payload);
+  }
+
+  submitDraftPromotionSlide(slideId: string) {
+    return this.http.post<any>(`${API_URL}/promotions/slides/${slideId}/submit`, {});
+  }
+
+  deletePromotionSlide(slideId: string) {
+    return this.http.delete<any>(`${API_URL}/promotions/slides/${slideId}`);
+  }
+
+  payPromotionSlide(slideId: string) {
+    return this.http.post<any>(`${API_URL}/promotions/slides/${slideId}/pay`, {});
+  }
+
+  // ------------------------------------------------------------- Customers
+  getStoreCustomers(storeId: string, search?: string) {
+    return this.http.get<{ customers: any[]; total: number }>(
+      `${API_URL}/sellers/my-stores/${storeId}/customers`,
+      { params: search ? { search } : {} }
+    );
+  }
+
+  getStoreCustomerDetail(storeId: string, customerId: string) {
+    return this.http.get<any>(
+      `${API_URL}/sellers/my-stores/${storeId}/customers/${encodeURIComponent(customerId)}`
+    );
+  }
+
+  // ------------------------------------------------------------- POS
+  listPosRegisters(storeId: string) {
+    return this.http.get<any[]>(`${API_URL}/sellers/my-stores/${storeId}/pos/registers`);
+  }
+
+  createPosRegister(storeId: string, data: { name: string; registerNumber?: string; location?: string; settings?: any }) {
+    return this.http.post<any>(`${API_URL}/sellers/my-stores/${storeId}/pos/registers`, data);
+  }
+
+  updatePosRegister(storeId: string, registerId: string, data: any) {
+    return this.http.patch<any>(`${API_URL}/sellers/my-stores/${storeId}/pos/registers/${registerId}`, data);
+  }
+
+  getPosCurrentShift(storeId: string, registerId?: string) {
+    return this.http.get<any>(`${API_URL}/sellers/my-stores/${storeId}/pos/shift`, {
+      params: registerId ? { registerId } : {},
+    });
+  }
+
+  openPosShift(storeId: string, data: { startingCash: number; registerId?: string; notes?: string } | number) {
+    const payload = typeof data === 'number' ? { startingCash: data } : data;
+    return this.http.post<any>(`${API_URL}/sellers/my-stores/${storeId}/pos/shift/open`, payload);
+  }
+
+  closePosShift(storeId: string, actualCash: number, notes?: string) {
+    return this.http.post<any>(`${API_URL}/sellers/my-stores/${storeId}/pos/shift/close`, {
+      actualCash,
+      notes,
+    });
+  }
+
+  recordPosCashMovement(storeId: string, type: 'IN' | 'OUT' | 'ADJUSTMENT', amount: number, reason?: string) {
+    return this.http.post<any>(
+      `${API_URL}/sellers/my-stores/${storeId}/pos/shift/cash-movement`,
+      { type, amount, reason }
+    );
+  }
+
+  listPosShifts(storeId: string, limit = 20, page = 1) {
+    return this.http.get<{ shifts: any[]; total: number; page: number; totalPages: number }>(
+      `${API_URL}/sellers/my-stores/${storeId}/pos/shifts`,
+      { params: { limit, page } }
+    );
+  }
+
+  createPosOrder(storeId: string, payload: any) {
+    return this.http.post<{ order: any; receipt: any }>(
+      `${API_URL}/sellers/my-stores/${storeId}/pos/orders`,
+      payload
+    );
+  }
+
+  getPosOrders(storeId: string, query?: any) {
+    return this.http.get<{ orders: any[]; total: number; page: number; totalPages: number }>(
+      `${API_URL}/sellers/my-stores/${storeId}/pos/orders`,
+      { params: query || {} }
+    );
+  }
+
+  createPosRefund(storeId: string, orderId: string, payload: { items: any[]; reason: string; refundMethod?: string }) {
+    return this.http.post<any>(
+      `${API_URL}/sellers/my-stores/${storeId}/pos/orders/${orderId}/refund`,
+      payload
+    );
+  }
+
+  voidPosOrder(storeId: string, orderId: string, reason?: string) {
+    return this.http.post<any>(
+      `${API_URL}/sellers/my-stores/${storeId}/pos/orders/${orderId}/void`,
+      { reason: reason || 'Manager Void' }
+    );
+  }
+
+  listPosRefunds(storeId: string) {
+    return this.http.get<any[]>(`${API_URL}/sellers/my-stores/${storeId}/pos/refunds`);
+  }
+
+  getPosReports(storeId: string, params?: { startDate?: string; endDate?: string }) {
+    return this.http.get<any>(`${API_URL}/sellers/my-stores/${storeId}/pos/reports`, {
+      params: params || {},
+    });
+  }
+
+  generatePosKhqr(storeId: string, payload: { amount: number; items?: any[]; customerName?: string; customerPhone?: string }) {
+    return this.http.post<any>(
+      `${API_URL}/sellers/my-stores/${storeId}/pos/khqr/generate`,
+      payload
+    );
+  }
+
+  checkPosKhqr(storeId: string, tranId: string) {
+    return this.http.get<{ tranId: string; status: string; paid: boolean }>(
+      `${API_URL}/sellers/my-stores/${storeId}/pos/khqr/check/${encodeURIComponent(tranId)}`
+    );
+  }
+
+  simulatePosKhqr(storeId: string, tranId: string) {
+    return this.http.post<{ tranId: string; status: string; paid: boolean; simulated: boolean }>(
+      `${API_URL}/sellers/my-stores/${storeId}/pos/khqr/simulate/${encodeURIComponent(tranId)}`,
+      {}
+    );
+  }
+
+  updateOrderStatus(orderId: string, status: string) {
+    return this.http.patch<any>(`${API_URL}/orders/${orderId}/status`, { status });
+  }
+
+  // ------------------------------------------------------------- Store Promotions / Discounts
+  getStorePromotions(storeId: string) {
+    return this.http.get<any[]>(`${API_URL}/sellers/my-stores/${storeId}/promotions`);
+  }
+
+  createStorePromotion(storeId: string, payload: any) {
+    return this.http.post<any>(`${API_URL}/sellers/my-stores/${storeId}/promotions`, payload);
+  }
+
+  deleteStorePromotion(storeId: string, promoId: string) {
+    return this.http.delete<any>(
+      `${API_URL}/sellers/my-stores/${storeId}/promotions/${promoId}`
+    );
+  }
+
+  // ------------------------------------------------------------- Support Cases
+  getStoreSupportCases(storeId: string) {
+    return this.http.get<any[]>(`${API_URL}/sellers/my-stores/${storeId}/support-cases`);
+  }
+
+  createStoreSupportCase(storeId: string, payload: any) {
+    return this.http.post<any>(
+      `${API_URL}/sellers/my-stores/${storeId}/support-cases`,
+      payload
+    );
+  }
+
+  replyStoreSupportCase(storeId: string, caseId: string, text: string) {
+    return this.http.post<any>(
+      `${API_URL}/sellers/my-stores/${storeId}/support-cases/${caseId}/reply`,
+      { text }
+    );
+  }
+
+  // ------------------------------------------------------------- Finance, Notifications, Analytics
+  getStoreFinance(storeId: string) {
+    return this.http.get<any>(`${API_URL}/sellers/my-stores/${storeId}/finance`);
+  }
+
+  getStoreNotifications(storeId: string) {
+    return this.http.get<any[]>(`${API_URL}/sellers/my-stores/${storeId}/notifications`);
+  }
+
+  getStoreAnalytics(storeId: string, period: 'today' | '7d' | '30d' | 'all' = '30d') {
+    return this.http.get<any>(`${API_URL}/sellers/my-stores/${storeId}/analytics`, {
+      params: { period },
+    });
   }
 }

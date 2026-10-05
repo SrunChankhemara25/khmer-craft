@@ -17,6 +17,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
 import { ProductRailComponent } from '../components/user/catalog/product-rail/product-rail.component';
 import { HeroSliderComponent } from '../components/user/home/hero-slider/hero-slider.component';
 import { ProductCardComponent } from '../components/user/catalog/product-card/product-card.component';
+import { BrandAdsSliderComponent } from '../components/user/home/brand-ads-slider/brand-ads-slider.component';
 import { Category, Product } from '../core/catalog/catalog.models';
 
 interface CategoryShelf {
@@ -30,24 +31,11 @@ interface CategoryShelf {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavbarComponent, FooterComponent, IconComponent, ProductRailComponent, ProductCardComponent, HeroSliderComponent],
+  imports: [CommonModule, RouterLink, NavbarComponent, FooterComponent, IconComponent, ProductRailComponent, ProductCardComponent, HeroSliderComponent, BrandAdsSliderComponent],
   template: `
   <app-navbar></app-navbar>
 
   <app-hero-slider />
-
-  @if (catalog.productError()) {
-    <section class="container catalog-notice" role="alert">
-      <ui-icon name="alert-circle" [size]="18" />
-      <div>
-        <strong>Products are temporarily unavailable</strong>
-        <span>{{ catalog.productError() }}</span>
-      </div>
-      <button type="button" class="btn btn-outline btn-sm" (click)="catalog.load()">
-        Try again
-      </button>
-    </section>
-  }
 
   <section class="container section category-section">
     <div class="section-head">
@@ -120,6 +108,22 @@ interface CategoryShelf {
   }
 
   <section class="container section discover">
+    @if (catalog.productError()) {
+      <div class="catalog-pause" role="status" aria-live="polite">
+        <img class="catalog-pause-art" src="/assets/ads/multi-category-store-landscape.png" alt="" />
+        <div class="catalog-pause-scrim"></div>
+        <div class="catalog-pause-card">
+          <span class="catalog-pause-icon"><ui-icon name="store" [size]="20" /></span>
+          <p class="catalog-pause-kicker">KhmerCraft marketplace</p>
+          <h2>Products will be back shortly.</h2>
+          <p>We are refreshing the marketplace right now. You can still explore collections and stores below.</p>
+          <div class="catalog-pause-actions">
+            <button type="button" class="catalog-retry" (click)="catalog.load()">Try again <ui-icon name="refresh-cw" [size]="15" /></button>
+            <a href="#curated-collections" class="catalog-browse">Browse collections <ui-icon name="arrow-right" [size]="15" /></a>
+          </div>
+        </div>
+      </div>
+    } @else {
     <header class="discover-head">
       <h2>The whole marketplace</h2>
       @if (catalog.loaded()) {
@@ -198,6 +202,7 @@ interface CategoryShelf {
         <div><strong>No products here yet</strong><p>Choose another category to keep exploring.</p></div>
       </div>
     }
+    }
   </section>
 
   <section class="container section">
@@ -232,26 +237,18 @@ interface CategoryShelf {
     </div>
   </section>
 
-  @if (fashionEdit().length) {
-    <section class="container section fashion-edit">
-      <app-product-rail
-        title="Fashion & Accessories"
-        [products]="fashionEdit()"
-        variant="editorial"
-        linkRoute="/products"
-        linkLabel="Explore products"
-      />
+    <section class="container section brand-ads-section">
+      <app-brand-ads-slider />
     </section>
-  }
 
-  @if (!catalog.loaded() || categoryShelves().length) {
+  @if ((!catalog.loaded() && !catalog.productError()) || categoryShelves().length) {
     <section class="container section marketplace-explorer">
       <div class="marketplace-heading">
         <span class="marketplace-eyebrow">More ways to shop</span>
         <h2>Explore the marketplace</h2>
       </div>
 
-      @if (!catalog.loaded()) {
+      @if (!catalog.loaded() && !catalog.productError()) {
         @for (rail of [0, 1]; track rail) {
           <div class="category-shelf" aria-hidden="true">
             <div class="skeleton-block skeleton-title"></div>
@@ -297,7 +294,7 @@ interface CategoryShelf {
     </section>
   }
 
-  <section class="container section collections-section">
+  <section id="curated-collections" class="container section collections-section">
     <div class="section-head collections-head">
       <div>
         <h2>Shop curated collections</h2>
@@ -359,21 +356,6 @@ interface CategoryShelf {
     .hero-actions { display: flex; gap: 12px; }
     .hero-image { height: 340px; border-radius: var(--radius-lg); }
     .section { padding: 17px 32px; }
-    .catalog-notice {
-      align-items: center;
-      background: #fff8ed;
-      border: 1px solid #ead7b7;
-      border-radius: 12px;
-      color: var(--color-text);
-      display: flex;
-      gap: 12px;
-      margin-top: 18px;
-      padding: 14px 18px;
-    }
-    .catalog-notice > ui-icon { color: #9b6517; flex: 0 0 auto; }
-    .catalog-notice div { display: grid; flex: 1; gap: 2px; }
-    .catalog-notice strong { font-size: 13px; }
-    .catalog-notice span { color: var(--color-muted); font-size: 12px; }
     .category-section { padding-top: 22px; padding-bottom: 14px; }
     .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .section-head h2 { font-size: 22px; }
@@ -414,6 +396,30 @@ interface CategoryShelf {
        The one catalogue section, given more weight than a normal shelf so it
        reads as the centre of the page rather than another rail. */
     .discover { padding-top: clamp(40px, 5vw, 72px); }
+    .catalog-pause {
+      align-items: center;
+      background: #503528;
+      border-radius: 22px;
+      display: flex;
+      justify-content: center;
+      min-height: clamp(340px, 34vw, 440px);
+      overflow: hidden;
+      padding: 34px;
+      position: relative;
+    }
+    .catalog-pause-art { height: 100%; inset: 0; object-fit: cover; position: absolute; width: 100%; }
+    .catalog-pause-scrim { background: linear-gradient(90deg, rgba(39, 24, 15, .86), rgba(68, 35, 23, .55)); inset: 0; position: absolute; }
+    .catalog-pause-card { color: #fff; max-width: 510px; position: relative; text-align: center; }
+    .catalog-pause-icon { align-items: center; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.36); border-radius: 50%; display: inline-flex; height: 46px; justify-content: center; width: 46px; }
+    .catalog-pause-kicker { color: #f5d4a6; font-size: 10px; font-weight: 800; letter-spacing: .13em; margin: 15px 0 8px; text-transform: uppercase; }
+    .catalog-pause-card h2 { color: #fff; font-family: var(--font-heading); font-size: clamp(28px, 3.5vw, 42px); letter-spacing: -.03em; line-height: 1.06; margin: 0; }
+    .catalog-pause-card > p:not(.catalog-pause-kicker) { color: rgba(255,255,255,.86); font-size: 14px; line-height: 1.6; margin: 13px auto 0; max-width: 47ch; }
+    .catalog-pause-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 23px; }
+    .catalog-retry, .catalog-browse { align-items: center; border-radius: 999px; cursor: pointer; display: inline-flex; font: inherit; font-size: 13px; font-weight: 750; gap: 8px; justify-content: center; min-height: 42px; padding: 0 18px; text-decoration: none; }
+    .catalog-retry { background: #fff; border: 1px solid #fff; color: #713023; }
+    .catalog-browse { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.42); color: #fff; }
+    .catalog-retry:hover { background: #fff4e5; }
+    .catalog-browse:hover { background: rgba(255,255,255,.18); }
     /* Sized like every other section heading on this page (.section-head h2,
        22px). It used to run to 60px with an eyebrow above it, a rule under it
        and a line of instructions below — four stacked pieces of chrome
@@ -538,6 +544,22 @@ interface CategoryShelf {
     .discover-empty { align-items: center; color: var(--color-text-muted, #9b8f80); display: flex; gap: 13px; justify-content: center; margin-top: 28px; min-height: 180px; text-align: left; }
 
     @media (max-width: 640px) {
+      .catalog-pause { border-radius: 16px; min-height: 390px; padding: 28px 18px; }
+      .catalog-pause-scrim { background: linear-gradient(180deg, rgba(39, 24, 15, .74), rgba(39, 24, 15, .87)); }
+      .catalog-pause-actions { flex-direction: column; }
+      .catalog-retry, .catalog-browse { width: 100%; }
+      /* Departments are a browse control, not a paragraph. Keep one row so
+         the next chip peeking at the edge makes the horizontal gesture clear. */
+      .discover-filters {
+        flex-wrap: nowrap;
+        margin-inline: -4px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        padding: 2px 4px 8px;
+        scrollbar-width: none;
+      }
+      .discover-filters::-webkit-scrollbar { display: none; }
+      .discover-filters .chip { flex: 0 0 auto; scroll-snap-align: start; white-space: nowrap; }
       .discover-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
     }
 

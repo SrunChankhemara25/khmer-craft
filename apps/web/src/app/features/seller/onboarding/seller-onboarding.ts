@@ -7,6 +7,7 @@ import { SellerService, SellerStore } from '../../../core/api/seller.service';
 import { AuthService, apiErrorMessage } from '../../../core/auth/auth.service';
 
 import { DEFAULT_STORE_APPEARANCE, STORE_FONTS, StoreAppearance, storeBrandColor, storeFontFamily } from '../../../core/catalog/store-appearance';
+import { SELLER_CATEGORY_OPTIONS, SELLER_LOCATION_OPTIONS } from '../../../core/data/seller-form-options.data';
 
 type OnboardingStep = 1 | 2 | 3 | 4 | 5;
 type PlanKey = 'STARTER' | 'STANDARD' | 'PREMIUM';
@@ -42,7 +43,6 @@ export class SellerOnboardingPage implements OnInit {
   protected readonly selectedPlan = signal<PlanKey>('STARTER');
   protected readonly selectedPayment = signal<PaymentKey>('FREE');
   protected readonly existingStores = signal<SellerStore[]>([]);
-  protected readonly createdStore = signal<SellerStore | null>(null);
   protected readonly errors = signal<Record<string, string>>({});
   protected readonly submitError = signal('');
   protected readonly submitting = signal(false);
@@ -152,27 +152,8 @@ export class SellerOnboardingPage implements OnInit {
     return this.categories.filter((category) => category.toLowerCase().includes(query));
   });
 
-  protected readonly categories = [
-    'Fashion & Accessories',
-    'Food & Groceries',
-    'Home & Living',
-    'Beauty & Wellness',
-    'Electronics',
-    'Kids & Family',
-    'Arts & Culture',
-  ];
-
-  protected readonly locations = [
-    'Phnom Penh',
-    'Siem Reap',
-    'Battambang',
-    'Kampong Cham',
-    'Kampong Speu',
-    'Kandal',
-    'Kampot',
-    'Takeo',
-    'Other province',
-  ];
+  protected readonly categories = SELLER_CATEGORY_OPTIONS;
+  protected readonly locations = SELLER_LOCATION_OPTIONS;
 
   protected readonly plans: Array<{
     key: PlanKey;
@@ -211,7 +192,7 @@ export class SellerOnboardingPage implements OnInit {
   );
 
   protected readonly progressPercent = computed(() =>
-    this.step() === 5 ? 100 : Math.max(8, ((this.step() - 1) / 4) * 100),
+    Math.max(8, ((this.step() - 1) / 4) * 100),
   );
 
   protected storeInitials(): string {
@@ -366,7 +347,6 @@ export class SellerOnboardingPage implements OnInit {
         ...(this.cover() ? { bannerUrl: this.cover() } : {}),
       }));
 
-      this.createdStore.set(store);
       if (typeof localStorage !== 'undefined') localStorage.removeItem(this.draftKey);
       await firstValueFrom(this.auth.refreshCurrentUser());
 
@@ -376,28 +356,17 @@ export class SellerOnboardingPage implements OnInit {
       // would imply they are already on the plan they picked.
       if (plan !== 'STARTER') {
         await this.router.navigate(['/seller/plan/pay'], {
-          queryParams: { store: store.id, plan },
+          queryParams: { store: store.id, plan, from: 'setup' },
         });
         return;
       }
 
-      this.step.set(5);
-      this.scrollToTop();
+      await this.router.navigate(['/seller/store-ready'], { queryParams: { store: store.id } });
     } catch (error: unknown) {
       this.submitError.set(apiErrorMessage(error, 'We could not create your store. Check your details and try again.'));
     } finally {
       this.submitting.set(false);
     }
-  }
-
-  protected openDashboard(): void {
-    const store = this.createdStore();
-    void this.router.navigate(['/seller/dashboard'], { queryParams: store ? { storeId: store.id } : undefined });
-  }
-
-  protected storeRoute(): string[] {
-    const store = this.createdStore();
-    return ['/stores', store?.slug || store?.id || ''];
   }
 
   protected fieldError(name: string): string {

@@ -31,6 +31,8 @@ export const registerSeller = async (request: Request, response: Response) => {
   response.status(201).json({
     message: 'Store created successfully',
     user: result.user,
+    token: result.accessToken,
+    accessToken: result.accessToken,
     store: {
       id: String(result.store._id),
       slug: result.store.slug,
@@ -85,6 +87,8 @@ export const verifyEmail = async (request: Request, response: Response) => {
   response.json({
     message: 'Email verified successfully',
     user: result.user,
+    token: result.accessToken,
+    accessToken: result.accessToken,
   });
 };
 
@@ -101,6 +105,8 @@ export const login = async (request: Request, response: Response) => {
   response.json({
     message: 'Signed in successfully',
     user: result.user,
+    token: result.accessToken,
+    accessToken: result.accessToken,
   });
 };
 

@@ -75,6 +75,16 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
         <h3 class="card-title" style="margin-bottom:10px">Account & store details</h3>
         <div class="kv"><span class="k">Store slug</span>{{s.slug}}</div>
         <div class="kv"><span class="k">Account status</span><kc-badge [value]="acct(s)"></kc-badge></div>
+        <div class="kv">
+          <span class="k">Subscription plan</span>
+          <kc-badge [value]="s.isPaidPlan ? 'active' : 'inactive'"></kc-badge>
+          <span style="margin-left:6px;font-weight:600" [style.color]="s.isPaidPlan ? 'var(--brand)' : 'var(--muted)'">
+            {{ s.subscriptionPlan === 'PREMIUM' ? 'Professional ($29/mo)' : s.subscriptionPlan === 'STANDARD' ? 'Growth ($12/mo)' : 'Starter (Free)' }}
+          </span>
+        </div>
+        @if (s.isPaidPlan && s.planExpiresAt) {
+          <div class="kv"><span class="k">Plan renewal</span>{{ dstr(s.planExpiresAt) }}</div>
+        }
         <div class="kv"><span class="k">Theme</span><kc-badge [value]="s.theme.toLowerCase()"></kc-badge></div>
         @if (s.showContact && s.phoneNumber) { <div class="kv"><span class="k">Public phone</span>{{s.phoneNumber}}</div> }
         @if (s.tagline) { <div class="kv"><span class="k">Tagline</span>{{s.tagline}}</div> }
@@ -123,6 +133,13 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
       <p class="page-sub">Seller accounts and their stores — signup is open; verification is reviewed here and account status is managed here</p></div>
   </div>
 
+  <div class="grid g4 mb">
+    <kc-stat label="Total stores" icon="store" [value]="totalCount()"></kc-stat>
+    <kc-stat label="Paid subscribers" icon="check" [value]="paidCount()" hint="Growth & Pro plans"></kc-stat>
+    <kc-stat label="Free sellers" icon="user" [value]="freeCount()" hint="Starter plan"></kc-stat>
+    <kc-stat label="Verified stores" icon="award" [value]="verifiedCount()"></kc-stat>
+  </div>
+
   <div class="toolbar">
     <div class="tabs">
       <button class="tab" [class.active]="tab() === 'stores'" (click)="tab.set('stores')">Seller accounts</button>
@@ -130,6 +147,11 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
     </div>
     @if (tab() === 'stores') {
       <input class="input input-search" placeholder="Filter loaded stores…" [value]="q()" (input)="q.set($any($event.target).value)"/>
+      <select class="input" [value]="planFilter()" (change)="planFilter.set($any($event.target).value)">
+        <option value="all">All billing plans</option>
+        <option value="paid">Paid stores (Growth & Pro)</option>
+        <option value="free">Free stores (Starter)</option>
+      </select>
       <select class="input" [value]="acctFilter()" (change)="acctFilter.set($any($event.target).value)">
         <option value="all">All account statuses</option><option value="active">Active</option>
         <option value="suspended">Suspended</option><option value="deactivated">Deactivated</option>
@@ -149,7 +171,7 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
       @else if (!storeRows().length) { <kc-state mode="empty" message="No seller accounts match these filters."></kc-state> }
       @else {
         <table class="tbl">
-          <thead><tr><th>Store / seller account</th><th>Location</th><th>Category</th><th>Rating</th><th>Verification</th><th>Account</th><th class="right">Actions</th></tr></thead>
+          <thead><tr><th>Store / seller account</th><th>Location</th><th>Category</th><th>Plan & Billing</th><th>Rating</th><th>Verification</th><th>Account</th><th class="right">Actions</th></tr></thead>
           <tbody>
             @for (s of storeRows(); track s.id) {
               <tr>
@@ -157,6 +179,17 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
                   <div><div class="cell-main">{{s.name}}</div><div class="cell-sub">{{s.slug}}</div></div></div></td>
                 <td>{{s.location || '—'}}</td>
                 <td class="cell-sub">{{s.categoryName || '—'}}</td>
+                <td>
+                  @if (s.isPaidPlan) {
+                    <kc-badge value="active"></kc-badge>
+                    <div class="cell-sub" style="color:var(--brand);font-weight:600">
+                      {{ s.subscriptionPlan === 'PREMIUM' ? 'Pro ($29/mo)' : 'Growth ($12/mo)' }}
+                    </div>
+                  } @else {
+                    <kc-badge value="inactive"></kc-badge>
+                    <div class="cell-sub">Starter (Free)</div>
+                  }
+                </td>
                 <td>@if (s.reviewCount > 0) { ★ {{s.rating}} <span class="cell-sub">({{s.reviewCount}})</span> } @else { <span class="cell-sub">New</span> }</td>
                 <td>@if (ext(s).isVerified) { <kc-badge value="verified"></kc-badge> } @else { <kc-badge value="pending"></kc-badge> }</td>
                 <td><kc-badge [value]="acct(s)"></kc-badge></td>
@@ -265,7 +298,13 @@ export class SellersComponent {
   storesError = signal('');
   totalPages = signal(1);
   acctFilter = signal<'all' | AccountStatus>('all');
+  planFilter = signal<'all' | 'paid' | 'free'>('all');
   override = signal<Record<string, AccountStatus>>({});
+
+  totalCount = computed(() => this.stores().length);
+  paidCount = computed(() => this.stores().filter((s) => s.isPaidPlan).length);
+  freeCount = computed(() => this.stores().filter((s) => !s.isPaidPlan).length);
+  verifiedCount = computed(() => this.stores().filter((s) => this.ext(s).isVerified).length);
 
   profile = signal<StoreExt | null>(null);
   profileProducts = signal<LiveProduct[]>([]);
@@ -296,9 +335,18 @@ export class SellersComponent {
 
   storeRows = computed(() => {
     const needle = this.q().trim().toLowerCase();
-    return this.stores().filter(s =>
-      (this.acctFilter() === 'all' || this.acct(s) === this.acctFilter()) &&
-      (!needle || [s.name, s.location ?? '', s.categoryName ?? ''].join(' ').toLowerCase().includes(needle)));
+    return this.stores().filter(
+      (s) =>
+        (this.acctFilter() === 'all' || this.acct(s) === this.acctFilter()) &&
+        (this.planFilter() === 'all' ||
+          (this.planFilter() === 'paid' && s.isPaidPlan) ||
+          (this.planFilter() === 'free' && !s.isPaidPlan)) &&
+        (!needle ||
+          [s.name, s.slug, s.location ?? '', s.categoryName ?? '']
+            .join(' ')
+            .toLowerCase()
+            .includes(needle))
+    );
   });
 
   go(p: number) { this.page.set(p); this.loadStores(); }

@@ -5,16 +5,16 @@ const imageValue = z
   .trim()
   .max(5_000_000)
   .refine(
-    (value) => /^https?:\/\//i.test(value) || /^data:image\/[a-z0-9.+-]+;base64,/i.test(value),
+    (value) => !value || /^https?:\/\//i.test(value) || /^\//.test(value) || /^data:image\/[a-z0-9.+-]+;base64,/i.test(value),
     'Use an image URL or an uploaded image',
   );
 
 const appearanceSchema = z.object({
-  style: z.enum(['clean', 'warm', 'bold']),
-  font: z.enum(['sans', 'serif', 'rounded']),
-  brandColor: z.string().regex(/^#[0-9a-f]{6}$/i),
-  shade: z.number().int().min(-60).max(60),
-}).strict();
+  style: z.enum(['clean', 'warm', 'bold']).optional(),
+  font: z.enum(['sans', 'serif', 'rounded']).optional(),
+  brandColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
+  shade: z.number().int().min(-60).max(60).optional(),
+});
 
 /** Every field optional — a seller fixing one thing shouldn't have to resend the whole profile. */
 export const updateStoreProfileSchema = z
@@ -26,13 +26,15 @@ export const updateStoreProfileSchema = z
     announcement: z.string().trim().max(120).optional(),
     theme: z.enum(['FOREST', 'CLAY', 'GOLD', 'MIDNIGHT']).optional(),
     showContact: z.boolean().optional(),
-    featuredProductIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).max(12).optional(),
+    featuredProductIds: z.array(z.string()).max(12).optional(),
     location: z.string().trim().max(80).optional(),
     phoneNumber: z.string().trim().max(30).optional(),
+    category: z.string().trim().max(80).optional(),
     logoUrl: imageValue.optional(),
     bannerUrl: imageValue.optional(),
+    storeAvatarUrl: imageValue.optional(),
+    storeCoverImages: z.array(imageValue).max(10).optional(),
   })
-  .strict()
   .refine((body) => Object.keys(body).length > 0, {
     message: 'Provide at least one field to update',
   });

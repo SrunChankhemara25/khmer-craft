@@ -53,7 +53,7 @@ export const verifyAccessToken = (token: string): AuthTokenPayload => {
 export const authCookieOptions = {
   httpOnly: true,
   secure: env.isProduction,
-  sameSite: 'strict' as const,
+  sameSite: (env.isProduction ? 'strict' : 'lax') as 'strict' | 'lax',
   maxAge: env.jwtExpiresInSeconds * 1000,
   path: '/',
 };
@@ -61,7 +61,7 @@ export const authCookieOptions = {
 export const refreshCookieOptions = {
   httpOnly: true,
   secure: env.isProduction,
-  sameSite: 'strict' as const,
+  sameSite: (env.isProduction ? 'strict' : 'lax') as 'strict' | 'lax',
   maxAge: env.refreshTokenExpiresInDays * 24 * 60 * 60 * 1000,
-  path: '/auth',
+  path: '/',
 };

@@ -49,6 +49,7 @@ const seed = async () => {
           ...testUser,
           password_hash: passwordHash,
           status: 'ACTIVE',
+          email_verified: true,
         },
       },
       { upsert: true },

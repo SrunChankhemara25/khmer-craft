@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+import { env } from '../config/env';
 import { AppError } from '../errors/app-error';
 
 const rateLimitHandler = (_request: Request, response: Response) => {
@@ -49,10 +50,10 @@ const credentialLimiter = (windowMs: number, limit: number) =>
     handler: rateLimitHandler,
   });
 
-export const apiRateLimit = limiter(15 * 60 * 1000, 300);
-export const loginRateLimit = credentialLimiter(15 * 60 * 1000, 5);
-export const registrationRateLimit = limiter(60 * 60 * 1000, 10);
-export const passwordResetRateLimit = credentialLimiter(15 * 60 * 1000, 5);
+export const apiRateLimit = limiter(15 * 60 * 1000, env.isProduction ? 300 : 10000);
+export const loginRateLimit = credentialLimiter(15 * 60 * 1000, env.isProduction ? 5 : 1000);
+export const registrationRateLimit = limiter(60 * 60 * 1000, env.isProduction ? 10 : 1000);
+export const passwordResetRateLimit = credentialLimiter(15 * 60 * 1000, env.isProduction ? 5 : 1000);
 
 const containsOperatorKey = (value: unknown): boolean => {
   if (!value || typeof value !== 'object') {

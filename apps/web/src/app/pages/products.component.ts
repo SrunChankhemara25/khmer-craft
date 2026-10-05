@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CatalogService } from '../core/catalog/catalog.service';
@@ -14,6 +14,21 @@ const SORTS: { value: ProductSort; label: string }[] = [
   { value: 'price-desc', label: 'Price: high to low' },
   { value: 'rating', label: 'Top rated' },
   { value: 'newest', label: 'Newest' },
+];
+
+const PRICE_OPTIONS = [
+  { value: '', label: 'Any price' },
+  { value: 'under-5', label: 'Under $5' },
+  { value: '5-10', label: '$5–$10' },
+  { value: '10-20', label: '$10–$20' },
+  { value: 'over-20', label: 'Over $20' },
+];
+
+const RATING_OPTIONS = [
+  { value: null, label: 'Any rating' },
+  { value: 4.5, label: '4.5 & up' },
+  { value: 4.0, label: '4.0 & up' },
+  { value: 3.5, label: '3.5 & up' },
 ];
 
 @Component({
@@ -80,54 +95,333 @@ const SORTS: { value: ProductSort; label: string }[] = [
         </div>
       </div>
 
+      <!-- Click backdrop for open dropdown popovers -->
+      @if (openDropdown()) {
+        <div class="dropdown-backdrop" (click)="closeDropdowns()"></div>
+      }
+
       <div class="filters-row">
-        <div class="scroll-fade">
-          <div class="quick-filters" aria-label="Product filters">
-            <label>
-              <span>Price</span>
-              <select [value]="priceBand()" (change)="setPriceBand($event)">
-                <option value="">Any price</option>
-                <option value="under-5">Under $5</option>
-                <option value="5-10">$5–$10</option>
-                <option value="10-20">$10–$20</option>
-                <option value="over-20">Over $20</option>
-              </select>
-            </label>
-            <label>
-              <span>Rating</span>
-              <select [value]="minRating() ?? ''" (change)="setRating($event)">
-                <option value="">Any rating</option>
-                <option value="4.5">4.5 & up</option>
-                <option value="4">4.0 & up</option>
-              </select>
-            </label>
-            <button type="button" class="toggle-filter" [class.active]="inStockOnly()" (click)="toggleInStock()">
-              <ui-icon name="check" [size]="12" /> In stock
+        <div class="quick-filters" aria-label="Product filters">
+          <!-- All Filters button -->
+          <button
+            type="button"
+            class="filter-trigger-btn"
+            [class.active]="drawerOpen()"
+            (click)="drawerOpen.set(true)"
+          >
+            <ui-icon name="filter" [size]="14" />
+            <span>Filters</span>
+            @if (activeFilterCount(); as cnt) {
+              <span class="filter-count-badge">{{ cnt }}</span>
+            }
+          </button>
+
+          <!-- Price dropdown button with checkboxes -->
+          <div class="filter-dropdown-wrapper">
+            <button
+              type="button"
+              class="filter-btn"
+              [class.active]="!!priceBand()"
+              (click)="toggleDropdown('price', $event)"
+              aria-haspopup="true"
+              [attr.aria-expanded]="openDropdown() === 'price'"
+            >
+              <span>{{ priceLabel() }}</span>
+              <ui-icon name="chevron-down" [size]="13" />
             </button>
-            <button type="button" class="toggle-filter" [class.active]="onSaleOnly()" (click)="toggleSale()">
-              <ui-icon name="percent" [size]="12" /> On sale
+
+            @if (openDropdown() === 'price') {
+              <div class="dropdown-popover" (click)="$event.stopPropagation()">
+                <div class="popover-header">
+                  <span>Price Range</span>
+                </div>
+                <div class="popover-list">
+                  @for (band of priceOptions; track band.value) {
+                    <button
+                      type="button"
+                      class="filter-option-row"
+                      [class.active]="priceBand() === band.value"
+                      (click)="selectPrice(band.value)"
+                    >
+                      <span class="check" [class.on]="priceBand() === band.value">
+                        @if (priceBand() === band.value) {
+                          <ui-icon name="check" [size]="11" color="#fff" />
+                        }
+                      </span>
+                      <span class="grow">{{ band.label }}</span>
+                      <span class="n">({{ countForPrice(band.value) }})</span>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Rating dropdown button with checkboxes -->
+          <div class="filter-dropdown-wrapper">
+            <button
+              type="button"
+              class="filter-btn"
+              [class.active]="!!minRating()"
+              (click)="toggleDropdown('rating', $event)"
+              aria-haspopup="true"
+              [attr.aria-expanded]="openDropdown() === 'rating'"
+            >
+              <span>{{ ratingLabel() }}</span>
+              <ui-icon name="chevron-down" [size]="13" />
+            </button>
+
+            @if (openDropdown() === 'rating') {
+              <div class="dropdown-popover" (click)="$event.stopPropagation()">
+                <div class="popover-header">
+                  <span>Customer Rating</span>
+                </div>
+                <div class="popover-list">
+                  @for (r of ratingOptions; track r.label) {
+                    <button
+                      type="button"
+                      class="filter-option-row"
+                      [class.active]="(r.value === null && !minRating()) || (r.value !== null && minRating() === r.value)"
+                      (click)="selectRating(r.value)"
+                    >
+                      <span class="check" [class.on]="(r.value === null && !minRating()) || (r.value !== null && minRating() === r.value)">
+                        @if ((r.value === null && !minRating()) || (r.value !== null && minRating() === r.value)) {
+                          <ui-icon name="check" [size]="11" color="#fff" />
+                        }
+                      </span>
+                      <span class="grow stars-row">
+                        @if (r.value !== null) {
+                          <ui-icon name="star" [size]="12" [filled]="true" />
+                        }
+                        {{ r.label }}
+                      </span>
+                      <span class="n">({{ countForRating(r.value) }})</span>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- In stock toggle button with checkbox inside -->
+          <button
+            type="button"
+            class="filter-btn toggle-filter"
+            [class.active]="inStockOnly()"
+            (click)="toggleInStock()"
+          >
+            <span class="check" [class.on]="inStockOnly()">
+              @if (inStockOnly()) {
+                <ui-icon name="check" [size]="11" color="#fff" />
+              }
+            </span>
+            <span>In stock</span>
+          </button>
+
+          <!-- On sale toggle button with checkbox inside -->
+          <button
+            type="button"
+            class="filter-btn toggle-filter"
+            [class.active]="onSaleOnly()"
+            (click)="toggleSale()"
+          >
+            <span class="check" [class.on]="onSaleOnly()">
+              @if (onSaleOnly()) {
+                <ui-icon name="check" [size]="11" color="#fff" />
+              }
+            </span>
+            <span>On sale</span>
+          </button>
+
+          @if (hasFilters()) {
+            <button class="clear" (click)="clearAll()">
+              <ui-icon name="x" [size]="13" /> Clear filters
+            </button>
+          }
+        </div>
+
+        <!-- Sort dropdown with checkboxes -->
+        <div class="filter-dropdown-wrapper sort-wrapper">
+          <button
+            type="button"
+            class="filter-btn sort-btn"
+            (click)="toggleDropdown('sort', $event)"
+            aria-haspopup="true"
+            [attr.aria-expanded]="openDropdown() === 'sort'"
+          >
+            <span class="sort-prefix">Sort:</span>
+            <strong>{{ currentSortLabel() }}</strong>
+            <ui-icon name="chevron-down" [size]="13" />
+          </button>
+
+          @if (openDropdown() === 'sort') {
+            <div class="dropdown-popover dropdown-popover-right" (click)="$event.stopPropagation()">
+              <div class="popover-header">
+                <span>Sort by</span>
+              </div>
+              <div class="popover-list">
+                @for (option of sorts; track option.value) {
+                  <button
+                    type="button"
+                    class="filter-option-row"
+                    [class.active]="sort() === option.value"
+                    (click)="selectSort(option.value)"
+                  >
+                    <span class="check" [class.on]="sort() === option.value">
+                      @if (sort() === option.value) {
+                        <ui-icon name="check" [size]="11" color="#fff" />
+                      }
+                    </span>
+                    <span class="grow">{{ option.label }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- All Filters Drawer matching category-detail structure -->
+    @if (drawerOpen()) {
+      <div class="drawer-backdrop" (click)="drawerOpen.set(false)"></div>
+      <aside class="filters-drawer">
+        <div class="drawer-head">
+          <div class="drawer-title">
+            <ui-icon name="filter" [size]="17" />
+            <strong>Filters</strong>
+            @if (activeFilterCount(); as cnt) {
+              <span class="filter-count-badge">{{ cnt }}</span>
+            }
+          </div>
+          <button type="button" class="drawer-close-btn" (click)="drawerOpen.set(false)" aria-label="Close filters">
+            <ui-icon name="x" [size]="18" />
+          </button>
+        </div>
+
+        <div class="drawer-body">
+          <!-- Categories with checkboxes -->
+          <div class="drawer-group">
+            <h4>Category</h4>
+            <button
+              type="button"
+              class="filter-row"
+              [class.active]="!category()"
+              (click)="setCategory(null)"
+            >
+              <span class="check" [class.on]="!category()">
+                @if (!category()) {
+                  <ui-icon name="check" [size]="11" color="#fff" />
+                }
+              </span>
+              <span class="grow">All Categories</span>
+            </button>
+            @for (cat of categories; track cat.slug) {
+              <button
+                type="button"
+                class="filter-row"
+                [class.active]="category() === cat.slug"
+                (click)="setCategory(cat.slug)"
+              >
+                <span class="check" [class.on]="category() === cat.slug">
+                  @if (category() === cat.slug) {
+                    <ui-icon name="check" [size]="11" color="#fff" />
+                  }
+                </span>
+                <span class="grow">{{ cat.name }}</span>
+              </button>
+            }
+          </div>
+
+          <!-- Price with checkboxes -->
+          <div class="drawer-group">
+            <h4>Price</h4>
+            @for (band of priceOptions; track band.value) {
+              <button
+                type="button"
+                class="filter-row"
+                [class.active]="priceBand() === band.value"
+                (click)="selectPrice(band.value)"
+              >
+                <span class="check" [class.on]="priceBand() === band.value">
+                  @if (priceBand() === band.value) {
+                    <ui-icon name="check" [size]="11" color="#fff" />
+                  }
+                </span>
+                <span class="grow">{{ band.label }}</span>
+                <span class="n">({{ countForPrice(band.value) }})</span>
+              </button>
+            }
+          </div>
+
+          <!-- Rating with checkboxes -->
+          <div class="drawer-group">
+            <h4>Rating</h4>
+            @for (r of ratingOptions; track r.label) {
+              <button
+                type="button"
+                class="filter-row"
+                [class.active]="(r.value === null && !minRating()) || (r.value !== null && minRating() === r.value)"
+                (click)="selectRating(r.value)"
+              >
+                <span class="check" [class.on]="(r.value === null && !minRating()) || (r.value !== null && minRating() === r.value)">
+                  @if ((r.value === null && !minRating()) || (r.value !== null && minRating() === r.value)) {
+                    <ui-icon name="check" [size]="11" color="#fff" />
+                  }
+                </span>
+                <span class="grow stars-row">
+                  @if (r.value !== null) {
+                    <ui-icon name="star" [size]="12" [filled]="true" />
+                  }
+                  {{ r.label }}
+                </span>
+                <span class="n">({{ countForRating(r.value) }})</span>
+              </button>
+            }
+          </div>
+
+          <!-- Availability with checkboxes -->
+          <div class="drawer-group">
+            <h4>Availability</h4>
+            <button
+              type="button"
+              class="filter-row"
+              [class.active]="inStockOnly()"
+              (click)="toggleInStock()"
+            >
+              <span class="check" [class.on]="inStockOnly()">
+                @if (inStockOnly()) {
+                  <ui-icon name="check" [size]="11" color="#fff" />
+                }
+              </span>
+              <span class="grow">In stock only</span>
+            </button>
+            <button
+              type="button"
+              class="filter-row"
+              [class.active]="onSaleOnly()"
+              (click)="toggleSale()"
+            >
+              <span class="check" [class.on]="onSaleOnly()">
+                @if (onSaleOnly()) {
+                  <ui-icon name="check" [size]="11" color="#fff" />
+                }
+              </span>
+              <span class="grow">On sale</span>
             </button>
           </div>
         </div>
 
-        <!-- Deliberately outside the scrollable row above — it must never be
-             something a user has to discover by scrolling sideways. -->
-        @if (hasFilters()) {
-          <button class="clear" (click)="clearAll()">
-            <ui-icon name="x" [size]="13" /> Clear filters
+        <div class="drawer-footer">
+          @if (hasFilters()) {
+            <button type="button" class="btn btn-ghost btn-sm" (click)="clearAll()">Clear filters</button>
+          }
+          <button type="button" class="btn btn-primary btn-sm btn-apply" (click)="drawerOpen.set(false)">
+            View {{ results().length }} Products
           </button>
-        }
-
-        <label class="sort">
-          <span>Sort</span>
-          <select [value]="sort()" (change)="setSort($event)">
-            @for (option of sorts; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
-            }
-          </select>
-        </label>
-      </div>
-    </section>
+        </div>
+      </aside>
+    }
 
     <section class="container grid-section" [attr.aria-busy]="!catalog.loaded()">
       @if (!catalog.loaded()) {
@@ -230,95 +524,318 @@ const SORTS: { value: ProductSort; label: string }[] = [
       }
       .filters-row {
         display: flex;
-        align-items: flex-end;
+        align-items: center;
         justify-content: space-between;
         gap: 16px;
         flex-wrap: wrap;
-        margin-top: 12px;
-      }
-      .sort {
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        font-size: 13px;
-        color: var(--color-muted);
-      }
-      .sort select {
-        padding: 8px 11px;
-        border: 1px solid var(--color-border-strong);
-        border-radius: var(--radius-sm);
-        background: #fff;
-        font-size: 13px;
-      }
-      /* Only does anything at the mobile breakpoint below, where the row
-         inside becomes a hidden-scrollbar horizontal scroller — the fade is
-         the only remaining hint that there's more to the right. */
-      .scroll-fade {
+        margin-top: 14px;
         position: relative;
       }
-      .scroll-fade::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 4px;
-        width: 32px;
-        background: linear-gradient(to right, rgba(255, 253, 248, 0), var(--color-bg, #faf4eb));
-        pointer-events: none;
-      }
-      .chips {
+      .quick-filters {
         display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
+        align-items: center;
+        flex-wrap: wrap;
         gap: 8px;
-        padding-bottom: 4px;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
       }
-      .chips::-webkit-scrollbar {
-        display: none;
+      .filter-dropdown-wrapper {
+        position: relative;
       }
-      .chip {
-        flex: 0 0 auto;
-        white-space: nowrap;
-        padding: 7px 14px;
+      .filter-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 36px;
+        padding: 0 14px;
         border: 1px solid var(--color-border-strong);
         border-radius: var(--radius-full);
         background: #fff;
-        font-size: 12.5px;
-        font-weight: 550;
         color: var(--color-text-secondary);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 550;
         cursor: pointer;
+        transition: all 0.15s ease;
       }
-      .chip:hover {
+      .filter-btn:hover {
         border-color: var(--color-muted);
         background: var(--color-bg-alt);
+        color: var(--color-text);
       }
-      .chip.active {
+      .filter-btn.active {
+        background: var(--color-accent-soft);
+        border-color: var(--color-accent);
+        color: var(--color-accent);
+        font-weight: 650;
+      }
+      .filter-trigger-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 36px;
+        padding: 0 13px;
+        border: 1px solid var(--color-border-strong);
+        border-radius: var(--radius-full);
+        background: #fff;
+        color: var(--color-text);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 650;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .filter-trigger-btn:hover {
+        border-color: var(--color-accent);
+        color: var(--color-accent);
+      }
+      .filter-trigger-btn.active {
         background: var(--color-accent);
         border-color: var(--color-accent);
         color: #fff;
       }
-      .clear {
+      .filter-count-badge {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        padding: 0;
-        border: 0;
-        background: none;
+        justify-content: center;
+        width: 17px;
+        height: 17px;
+        border-radius: 50%;
+        background: var(--color-accent);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 1;
+      }
+      .filter-trigger-btn.active .filter-count-badge {
+        background: #fff;
         color: var(--color-accent);
+      }
+      .sort-wrapper {
+        margin-left: auto;
+      }
+      .sort-btn {
+        gap: 6px;
+      }
+      .sort-prefix {
+        color: var(--color-muted);
+        font-size: 11.5px;
+      }
+
+      /* Checkbox component matching category-detail */
+      .check {
+        display: grid;
+        place-items: center;
+        width: 15px;
+        height: 15px;
+        flex-shrink: 0;
+        border: 1.5px solid var(--color-border-strong);
+        border-radius: 3px;
+        background: #fff;
+        transition: all 0.15s ease;
+      }
+      .check.on {
+        background: var(--color-accent);
+        border-color: var(--color-accent);
+      }
+      .stars-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--color-gold);
+      }
+
+      /* Dropdown popover */
+      .dropdown-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        background: transparent;
+      }
+      .dropdown-popover {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        z-index: 50;
+        min-width: 210px;
+        background: var(--color-surface, #fff);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md, 10px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        animation: dropdownIn 0.15s ease-out;
+      }
+      .dropdown-popover-right {
+        left: auto;
+        right: 0;
+      }
+      @keyframes dropdownIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .popover-header {
+        padding: 6px 10px 4px;
+        border-bottom: 1px solid var(--color-border);
+        margin-bottom: 4px;
+      }
+      .popover-header span {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-muted);
+      }
+      .popover-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .filter-option-row {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 10px;
+        border: 0;
+        border-radius: var(--radius-xs, 4px);
+        background: none;
+        font: inherit;
         font-size: 12.5px;
-        font-weight: 600;
+        color: var(--color-text-secondary);
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.12s ease;
       }
-      .clear:hover {
-        text-decoration: underline;
+      .filter-option-row:hover {
+        background: var(--color-bg-alt);
+        color: var(--color-text);
       }
-      .quick-filters { align-items: flex-end; display: flex; flex-wrap: wrap; gap: 8px; }
-      .quick-filters label { display: grid; gap: 4px; }
-      .quick-filters label > span { color: var(--color-muted); font-size: 10px; font-weight: 650; }
-      .quick-filters select, .toggle-filter { min-height: 34px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-full); background: #fff; color: var(--color-text-secondary); font: inherit; font-size: 11.5px; padding: 0 12px; }
-      .toggle-filter { align-items: center; display: inline-flex; gap: 5px; }
-      .toggle-filter.active { background: var(--color-accent-soft); border-color: var(--color-accent); color: var(--color-accent); }
+      .filter-option-row.active {
+        background: var(--color-accent-soft);
+        color: var(--color-accent);
+        font-weight: 650;
+      }
+      .filter-option-row .grow {
+        flex: 1;
+      }
+      .filter-option-row .n {
+        color: var(--color-muted);
+        font-size: 11px;
+      }
+
+      /* Full Filter Drawer (Side panel) */
+      .drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 998;
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(2px);
+      }
+      .filters-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(380px, 90vw);
+        z-index: 999;
+        background: var(--color-surface, #fff);
+        box-shadow: -10px 0 25px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: drawerSlideIn 0.22s ease-out;
+      }
+      @keyframes drawerSlideIn {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+      }
+      .drawer-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--color-border);
+      }
+      .drawer-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 16px;
+      }
+      .drawer-close-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--color-muted);
+        padding: 4px;
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+      }
+      .drawer-close-btn:hover {
+        color: var(--color-text);
+        background: var(--color-bg-alt);
+      }
+      .drawer-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 18px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+      .drawer-group h4 {
+        font-size: 11.5px;
+        font-weight: 750;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--color-muted);
+        margin: 0 0 8px;
+      }
+      .filter-row {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 8px;
+        border: 0;
+        border-radius: var(--radius-sm);
+        background: none;
+        font: inherit;
+        font-size: 13px;
+        color: var(--color-text-secondary);
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.12s ease;
+      }
+      .filter-row:hover {
+        background: var(--color-bg-alt);
+        color: var(--color-text);
+      }
+      .filter-row.active {
+        background: var(--color-accent-soft);
+        color: var(--color-accent);
+        font-weight: 650;
+      }
+      .filter-row .grow {
+        flex: 1;
+      }
+      .filter-row .n {
+        color: var(--color-muted);
+        font-size: 11px;
+      }
+      .drawer-footer {
+        padding: 16px 22px;
+        border-top: 1px solid var(--color-border);
+        background: var(--color-bg-alt);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .btn-apply {
+        flex: 1;
+      }
       .grid-section {
         padding: 26px 32px 60px;
       }
@@ -431,6 +948,11 @@ export class ProductsComponent {
 
   protected readonly categories = this.catalog.categories;
   protected readonly sorts = SORTS;
+  protected readonly priceOptions = PRICE_OPTIONS;
+  protected readonly ratingOptions = RATING_OPTIONS;
+
+  protected readonly openDropdown = signal<'price' | 'rating' | 'sort' | null>(null);
+  protected readonly drawerOpen = signal(false);
 
   // The URL is the single source of truth for filter state, so a filtered view
   // is shareable and the back button steps back through filters.
@@ -462,6 +984,38 @@ export class ProductsComponent {
       default: return {};
     }
   });
+
+  protected readonly priceLabel = computed(() => {
+    const band = this.priceBand();
+    switch (band) {
+      case 'under-5': return 'Price: Under $5';
+      case '5-10': return 'Price: $5–$10';
+      case '10-20': return 'Price: $10–$20';
+      case 'over-20': return 'Price: Over $20';
+      default: return 'Price';
+    }
+  });
+
+  protected readonly ratingLabel = computed(() => {
+    const r = this.minRating();
+    return r ? `Rating: ${r}★ & up` : 'Rating';
+  });
+
+  protected readonly currentSortLabel = computed(() => {
+    const s = this.sort();
+    return SORTS.find((opt) => opt.value === s)?.label ?? 'Featured';
+  });
+
+  protected readonly activeFilterCount = computed(() => {
+    let count = 0;
+    if (this.priceBand()) count++;
+    if (this.minRating()) count++;
+    if (this.inStockOnly()) count++;
+    if (this.onSaleOnly()) count++;
+    if (this.category()) count++;
+    return count;
+  });
+
   protected readonly hasFilters = computed(() => Boolean(
     this.search() || this.category() || this.collection() || this.onSaleOnly() ||
     this.inStockOnly() || this.minRating() || this.priceBand(),
@@ -497,6 +1051,59 @@ export class ProductsComponent {
     }
     return this.search() ? 'Search results' : 'All products';
   });
+
+  protected toggleDropdown(type: 'price' | 'rating' | 'sort', event?: Event): void {
+    if (event) event.stopPropagation();
+    this.openDropdown.update((current) => (current === type ? null : type));
+  }
+
+  protected closeDropdowns(): void {
+    this.openDropdown.set(null);
+  }
+
+  protected selectPrice(val: string): void {
+    this.merge({ price: val || null });
+    this.openDropdown.set(null);
+  }
+
+  protected selectRating(val: number | null): void {
+    this.merge({ rating: val ? String(val) : null });
+    this.openDropdown.set(null);
+  }
+
+  protected selectSort(val: ProductSort): void {
+    this.merge({ sort: val });
+    this.openDropdown.set(null);
+  }
+
+  protected countForPrice(bandValue: string): number {
+    let range = {};
+    switch (bandValue) {
+      case 'under-5': range = { priceMax: 5 }; break;
+      case '5-10': range = { priceMin: 5, priceMax: 10 }; break;
+      case '10-20': range = { priceMin: 10, priceMax: 20 }; break;
+      case 'over-20': range = { priceMin: 20 }; break;
+    }
+    return this.catalog.search({
+      category: this.category() ?? undefined,
+      collection: this.collection() ?? undefined,
+      onSaleOnly: this.onSaleOnly() || undefined,
+      inStockOnly: this.inStockOnly() || undefined,
+      minRating: this.minRating() ?? undefined,
+      ...range,
+    }).length;
+  }
+
+  protected countForRating(r: number | null): number {
+    return this.catalog.search({
+      category: this.category() ?? undefined,
+      collection: this.collection() ?? undefined,
+      onSaleOnly: this.onSaleOnly() || undefined,
+      inStockOnly: this.inStockOnly() || undefined,
+      minRating: r ?? undefined,
+      ...this.priceRange(),
+    }).length;
+  }
 
   protected setCategory(slug: string | null): void {
     this.merge({ category: slug });

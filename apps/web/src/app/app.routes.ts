@@ -2,14 +2,29 @@ import { Routes } from '@angular/router';
 import { buyerGuard } from './core/auth/auth.guard';
 import { adminGuard } from './admin/admin.guard';
 import { sellerGuard } from './core/auth/seller.guard';
+import { onboardingGuard } from './core/auth/onboarding.guard';
+import { storeDomainMatchGuard } from './core/storefront/store-domain.service';
 
 /**
  * Everything is lazy-loaded. The storefront branch imported all 19 page
  * components eagerly, which put the whole site in the initial bundle.
  */
 export const routes: Routes = [
-  { path: '__storefront-design-test', loadComponent: () => import('./features/seller/onboarding/storefront-preview.fixture').then(m => m.StorefrontPreviewFixture) },
+  // The visual fixture used to mock SellerService, so attempting to finish
+  // onboarding here could never create a store. Keep old bookmarks useful by
+  // sending them to the real, authenticated onboarding flow.
+  { path: '__storefront-design-test', pathMatch: 'full', redirectTo: 'seller/onboarding' },
   // ---------------------------------------------------------------- storefront
+  // If visited via a dedicated store domain/subdomain (e.g. `seoul-2.localhost:4200` or `?store=seoul-2`),
+  // immediately render that store's standalone website as the homepage!
+  {
+    path: '',
+    canMatch: [storeDomainMatchGuard],
+    loadComponent: () =>
+      import('./pages/store-detail.component').then(
+        (m) => m.StoreDetailComponent,
+      ),
+  },
   {
     path: '',
     loadComponent: () =>
@@ -148,6 +163,12 @@ export const routes: Routes = [
       import('./features/seller/faq/seller-faq').then((m) => m.SellerFaq),
     title: 'Seller FAQ | KhmerCraft',
   },
+  {
+    path: 'become-a-seller/about',
+    loadComponent: () =>
+      import('./features/seller/about/seller-about').then((m) => m.SellerAbout),
+    title: 'About KhmerCraft Seller | KhmerCraft',
+  },
   // The spec uses /become-seller; keep both spellings working.
   { path: 'become-seller', pathMatch: 'full', redirectTo: 'become-a-seller' },
 
@@ -178,7 +199,7 @@ export const routes: Routes = [
   },
   {
     path: 'seller/onboarding',
-    canActivate: [buyerGuard],
+    canActivate: [onboardingGuard],
     loadComponent: () =>
       import('./features/seller/onboarding/seller-onboarding').then(
         (m) => m.SellerOnboardingPage,
@@ -216,6 +237,17 @@ export const routes: Routes = [
         (m) => m.PlanPaymentComponent,
       ),
     title: 'Activate your plan | KhmerCraft',
+  },
+  {
+    // Last step of store setup — after the plan is paid, or straight after
+    // creating a store on the free plan.
+    path: 'seller/store-ready',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./pages/seller-store-ready.component').then(
+        (m) => m.SellerStoreReadyComponent,
+      ),
+    title: 'Your store is live | KhmerCraft',
   },
   {
     path: 'seller/orders',

@@ -7,10 +7,10 @@ import { RouterLink } from '@angular/router';
   template: `
     <footer class="seller-footer">
       <div class="wrap footer-inner">
-        <a class="footer-brand" routerLink="/" aria-label="KhmerCraft marketplace home">KhmerCraft <span>Seller</span></a>
+        <a class="footer-brand" routerLink="/become-a-seller" aria-label="KhmerCraft Seller home">KhmerCraft <span>Seller</span></a>
         <nav aria-label="Seller footer">
           <a routerLink="/">Marketplace</a>
-          <a routerLink="/about">About</a>
+          <a routerLink="/become-a-seller/about">About</a>
           <a routerLink="/seller/login">Seller sign in</a>
           <a routerLink="/seller/onboarding">Start selling</a>
         </nav>

@@ -16,6 +16,34 @@ import {
   replyToReview,
   reviewSellerApplication,
   updateStoreProfile,
+  getStoreCustomers,
+  getStoreCustomerDetail,
+  createPosOrder,
+  getPosOrders,
+  getPosCurrentShift,
+  openPosShift,
+  closePosShift,
+  recordPosCashMovement,
+  listPosRegisters,
+  createPosRegister,
+  updatePosRegister,
+  listPosShifts,
+  createPosRefund,
+  voidPosOrder,
+  listPosRefunds,
+  getPosReports,
+  getStorePromotions,
+  createStorePromotion,
+  deleteStorePromotion,
+  getStoreSupportCases,
+  createStoreSupportCase,
+  replyStoreSupportCase,
+  getStoreFinance,
+  getStoreNotifications,
+  getStoreAnalytics,
+  generatePosKhqr,
+  checkPosKhqr,
+  simulatePosKhqrPayment,
 } from './sellers.service';
 import {
   CreateSellerApplicationInput,
@@ -140,3 +168,212 @@ export const reviewApplication = async (request: Request, response: Response) =>
     ),
   );
 };
+
+// --------------------------------------------------- merchant dashboard features
+
+export const getCustomersHandler = async (request: Request, response: Response) => {
+  const search = request.query.search as string | undefined;
+  response.json(await getStoreCustomers(param(request, 'storeId'), request.auth!.userId, search));
+};
+
+export const getCustomerDetailHandler = async (request: Request, response: Response) => {
+  response.json(
+    await getStoreCustomerDetail(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      param(request, 'customerId')
+    )
+  );
+};
+
+export const createPosOrderHandler = async (request: Request, response: Response) => {
+  response
+    .status(201)
+    .json(await createPosOrder(param(request, 'storeId'), request.auth!.userId, request.body));
+};
+
+export const getPosOrdersHandler = async (request: Request, response: Response) => {
+  response.json(await getPosOrders(param(request, 'storeId'), request.auth!.userId));
+};
+
+// --- POS Registers ---
+export const listPosRegistersHandler = async (request: Request, response: Response) => {
+  response.json(await listPosRegisters(param(request, 'storeId'), request.auth!.userId));
+};
+
+export const createPosRegisterHandler = async (request: Request, response: Response) => {
+  response
+    .status(201)
+    .json(await createPosRegister(param(request, 'storeId'), request.auth!.userId, request.body));
+};
+
+export const updatePosRegisterHandler = async (request: Request, response: Response) => {
+  response.json(
+    await updatePosRegister(
+      param(request, 'storeId'),
+      param(request, 'registerId'),
+      request.auth!.userId,
+      request.body
+    )
+  );
+};
+
+// --- POS Shifts ---
+export const getPosShiftHandler = async (request: Request, response: Response) => {
+  response.json(await getPosCurrentShift(param(request, 'storeId'), request.auth!.userId, request.query.registerId as string));
+};
+
+export const openPosShiftHandler = async (request: Request, response: Response) => {
+  response
+    .status(201)
+    .json(await openPosShift(param(request, 'storeId'), request.auth!.userId, request.body));
+};
+
+export const closePosShiftHandler = async (request: Request, response: Response) => {
+  response.json(
+    await closePosShift(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      request.body
+    )
+  );
+};
+
+export const recordCashMovementHandler = async (request: Request, response: Response) => {
+  response.json(
+    await recordPosCashMovement(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      request.body
+    )
+  );
+};
+
+export const listPosShiftsHandler = async (request: Request, response: Response) => {
+  const limit = Number(request.query.limit) || 20;
+  const page = Number(request.query.page) || 1;
+  response.json(await listPosShifts(param(request, 'storeId'), request.auth!.userId, limit, page));
+};
+
+// --- POS Returns, Voids & Reports ---
+export const createPosRefundHandler = async (request: Request, response: Response) => {
+  response
+    .status(201)
+    .json(
+      await createPosRefund(
+        param(request, 'storeId'),
+        request.auth!.userId,
+        param(request, 'orderId'),
+        request.body
+      )
+    );
+};
+
+export const voidPosOrderHandler = async (request: Request, response: Response) => {
+  response.json(
+    await voidPosOrder(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      param(request, 'orderId'),
+      request.body.reason
+    )
+  );
+};
+
+export const listPosRefundsHandler = async (request: Request, response: Response) => {
+  response.json(await listPosRefunds(param(request, 'storeId'), request.auth!.userId));
+};
+
+export const getPosReportsHandler = async (request: Request, response: Response) => {
+  response.json(
+    await getPosReports(param(request, 'storeId'), request.auth!.userId, {
+      startDate: request.query.startDate as string,
+      endDate: request.query.endDate as string,
+    })
+  );
+};
+
+export const getPromotionsHandler = async (request: Request, response: Response) => {
+  response.json(await getStorePromotions(param(request, 'storeId'), request.auth!.userId));
+};
+
+export const createPromotionHandler = async (request: Request, response: Response) => {
+  response
+    .status(201)
+    .json(await createStorePromotion(param(request, 'storeId'), request.auth!.userId, request.body));
+};
+
+export const deletePromotionHandler = async (request: Request, response: Response) => {
+  response.json(
+    await deleteStorePromotion(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      param(request, 'promotionId')
+    )
+  );
+};
+
+export const getSupportCasesHandler = async (request: Request, response: Response) => {
+  response.json(await getStoreSupportCases(param(request, 'storeId'), request.auth!.userId));
+};
+
+export const createSupportCaseHandler = async (request: Request, response: Response) => {
+  response
+    .status(201)
+    .json(await createStoreSupportCase(param(request, 'storeId'), request.auth!.userId, request.body));
+};
+
+export const replySupportCaseHandler = async (request: Request, response: Response) => {
+  response.json(
+    await replyStoreSupportCase(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      param(request, 'caseId'),
+      request.body.text
+    )
+  );
+};
+
+export const getFinanceHandler = async (request: Request, response: Response) => {
+  response.json(await getStoreFinance(param(request, 'storeId'), request.auth!.userId));
+};
+
+export const getNotificationsHandler = async (request: Request, response: Response) => {
+  response.json(await getStoreNotifications(param(request, 'storeId'), request.auth!.userId));
+};
+
+export const getAnalyticsHandler = async (request: Request, response: Response) => {
+  const period = (request.query.period as any) || '30d';
+  response.json(await getStoreAnalytics(param(request, 'storeId'), request.auth!.userId, period));
+};
+
+export const generatePosKhqrHandler = async (request: Request, response: Response) => {
+  response.json(
+    await generatePosKhqr(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      request.body
+    )
+  );
+};
+
+export const checkPosKhqrHandler = async (request: Request, response: Response) => {
+  response.json(
+    await checkPosKhqr(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      param(request, 'tranId')
+    )
+  );
+};
+
+export const simulatePosKhqrHandler = async (request: Request, response: Response) => {
+  response.json(
+    await simulatePosKhqrPayment(
+      param(request, 'storeId'),
+      request.auth!.userId,
+      param(request, 'tranId')
+    )
+  );
+};
+

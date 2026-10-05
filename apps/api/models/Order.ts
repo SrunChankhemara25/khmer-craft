@@ -17,8 +17,13 @@ export const PAYMENT_METHODS = [
   'ABA_PAYWAY',
   'ABA_DEMO',
   'STRIPE_SANDBOX',
+  'POS_CASH',
+  'POS_KHQR',
 ] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export const ORDER_CHANNELS = ['MARKETPLACE', 'STOREFRONT', 'POS'] as const;
+export type OrderChannel = (typeof ORDER_CHANNELS)[number];
 
 /**
  * Order lines DO copy the price and product details, unlike cart lines.
@@ -82,6 +87,19 @@ export interface IOrder extends Document {
   subtotal: number;
   deliveryFee: number;
   totalAmount: number;
+  channel?: OrderChannel;
+  registerId?: mongoose.Types.ObjectId;
+  shiftId?: mongoose.Types.ObjectId;
+  cashierId?: mongoose.Types.ObjectId;
+  cashierName?: string;
+  cashReceived?: number;
+  changeGiven?: number;
+  discountAmount?: number;
+  taxAmount?: number;
+  isVoided?: boolean;
+  voidReason?: string;
+  refundStatus?: 'NONE' | 'PARTIAL' | 'FULL';
+  refundedAmount?: number;
   statusHistory: IStatusEvent[];
   createdAt: Date;
   updatedAt: Date;
@@ -148,6 +166,20 @@ const OrderSchema = new Schema<IOrder>(
     subtotal: { type: Number, required: true, min: 0 },
     deliveryFee: { type: Number, required: true, min: 0 },
     totalAmount: { type: Number, required: true, min: 0 },
+
+    channel: { type: String, enum: ORDER_CHANNELS, default: 'MARKETPLACE', index: true },
+    registerId: { type: Schema.Types.ObjectId, ref: 'PosRegister', index: true },
+    shiftId: { type: Schema.Types.ObjectId, ref: 'PosShift', index: true },
+    cashierId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+    cashierName: { type: String },
+    cashReceived: { type: Number },
+    changeGiven: { type: Number },
+    discountAmount: { type: Number, default: 0 },
+    taxAmount: { type: Number, default: 0 },
+    isVoided: { type: Boolean, default: false, index: true },
+    voidReason: { type: String },
+    refundStatus: { type: String, enum: ['NONE', 'PARTIAL', 'FULL'], default: 'NONE', index: true },
+    refundedAmount: { type: Number, default: 0 },
 
     statusHistory: {
       type: [

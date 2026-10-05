@@ -1,20 +1,60 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, ActivatedRoute, Router  } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { finalize, firstValueFrom } from 'rxjs';
 import { API_URL } from '../../core/api/api.config';
 import { KcIcon } from '../../components/shared/ui/kc-icon/kc-icon';
 import { StoreCategoriesManagerComponent } from '../../features/seller/store-categories/store-categories-manager.component';
 import { WarehousesManagerComponent } from '../../features/seller/warehouses/warehouses-manager.component';
+import { SellerBillingComponent } from '../seller-billing.component';
 import { SellerService, Warehouse } from '../../core/api/seller.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { CommerceApiService } from '../../core/api/commerce-api.service';
+import { CatalogService } from '../../core/catalog/catalog.service';
 import { OrderStatus } from '../../core/api/api.models';
 import { cartErrorMessage } from '../../core/cart/cart.service';
+import { SELLER_CATEGORY_OPTIONS, SELLER_LOCATION_OPTIONS } from '../../core/data/seller-form-options.data';
 
-type DashboardView = 'dashboard' | 'products' | 'add' | 'orders' | 'profile' | 'store-categories' | 'warehouses' | 'sales' | 'reviews' | 'settings';
+export type DashboardView =
+  | 'dashboard'
+  | 'products'
+  | 'store-categories'
+  | 'inventory'
+  | 'warehouses'
+  | 'orders'
+  | 'pos'
+  | 'customers'
+  | 'reviews'
+  | 'promotions'
+  | 'advertisements'
+  | 'storefront'
+  | 'sales'
+  | 'payments'
+  | 'transactions'
+  | 'analytics'
+  | 'reports'
+  | 'support'
+  | 'notifications'
+  | 'profile'
+  | 'settings'
+  | 'billing'
+  | 'add';
+
+export type PosSubArea =
+  | 'checkout'
+  | 'orders'
+  | 'products'
+  | 'customers'
+  | 'registers'
+  | 'shifts'
+  | 'payments'
+  | 'returns'
+  | 'discounts'
+  | 'reports'
+  | 'settings';
+
 type OrderStatusClass = 'pending' | 'shipped' | 'delivered';
 
 interface SellerOrder {
@@ -53,12 +93,10 @@ interface DashboardMetric {
 
 @Component({
   selector: 'app-seller-dashboard',
-  imports: [KcIcon, RouterLink, FormsModule, CurrencyPipe, StoreCategoriesManagerComponent, WarehousesManagerComponent],
+  imports: [KcIcon, RouterLink, FormsModule, CurrencyPipe, DatePipe, StoreCategoriesManagerComponent, WarehousesManagerComponent, SellerBillingComponent],
   styles: [`
     /* ==========================================================
-       KhmerCraft seller console - design tokens.
-       One palette, one spacing rhythm, one elevation ladder.
-       Every rule reads from these; change a token, not a rule.
+       KhmerCraft seller console - design tokens
        ========================================================== */
     :host {
       --brand-900: #0e3a28;
@@ -106,7 +144,7 @@ interface DashboardMetric {
 
     .portal { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
 
-    /* ============================ sidebar ============================ */
+    /* ============================ Grouped Sidebar ============================ */
     .sidebar {
       background: var(--brand-900);
       border-right: 0;
@@ -115,51 +153,82 @@ interface DashboardMetric {
       flex-direction: column;
       height: 100vh;
       min-height: 100vh;
-      overflow-y: auto;
-      padding: 22px 0 18px;
+      overflow-y: hidden;
+      padding: 16px 0 12px;
       position: sticky;
       top: 0;
     }
+    .sidebar-head { flex: none; padding: 0 18px 10px; border-bottom: 1px solid rgba(255,255,255,.07); }
     .logo {
       color: #fff; display: block; font-family: var(--font-heading, Georgia, serif);
-      font-size: 20px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; padding: 0 22px;
+      font-size: 20px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; margin: 0;
     }
     .portal-label {
-      color: #7fae95; display: block; font-size: 10.5px; font-weight: 700;
-      letter-spacing: .13em; padding: 5px 22px 0; text-transform: uppercase;
+      color: #7fae95; display: block; font-size: 10px; font-weight: 700;
+      letter-spacing: .12em; margin-top: 3px; text-transform: uppercase;
     }
-    .store-switch { margin: 20px 14px 6px; }
-    .nav { display: flex; flex-direction: column; gap: 2px; margin-top: 18px; padding: 0 12px; }
-    .nav button {
+    .store-control { margin-top: 8px; }
+    .store-control label { color: #8cbba2; display: block; font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .store-control select {
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+      background: rgba(255,255,255,.08);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 14px;
+      border: 1px solid rgba(255,255,255,.14); border-radius: var(--r-sm);
+      box-sizing: border-box; color: #fff; cursor: pointer;
+      font-size: 13px; font-weight: 600; height: 38px; min-height: 38px;
+      margin-top: 4px; outline: none; padding: 0 34px 0 12px; width: 100%;
+    }
+    .store-control select::-ms-expand { display: none; }
+    .store-control select option { background: var(--brand-900); color: #fff; }
+    .new-store {
+      background: none; border: 0; color: #9edcc0; cursor: pointer; font-size: 10.5px; font-weight: 600;
+      margin-top: 3px; padding: 0; text-align: left;
+    }
+    .new-store:hover { text-decoration: underline; color: #fff; }
+
+    .sidebar-nav-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .sidebar-nav-scroll::-webkit-scrollbar { width: 4px; }
+    .sidebar-nav-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
+
+    .nav-group { display: flex; flex-direction: column; gap: 1px; }
+    .nav-group-title {
+      color: #7fae95; font-size: 9px; font-weight: 700; letter-spacing: .13em;
+      padding: 3px 10px 2px; text-transform: uppercase; user-select: none;
+    }
+    .nav-item {
       align-items: center; background: none; border: 0; border-radius: var(--r-md);
-      color: #b9d3c6; cursor: pointer; display: flex; font: inherit; font-size: 13.5px;
-      font-weight: 550; gap: 11px; padding: 10px 12px; position: relative; text-align: left;
+      color: #b9d3c6; cursor: pointer; display: flex; font: inherit; font-size: 12.5px;
+      font-weight: 550; gap: 9px; padding: 6px 10px; position: relative; text-align: left;
       transition: background .14s ease, color .14s ease; width: 100%;
     }
-    .nav button kc-icon { flex: none; opacity: .9; }
-    .nav button:hover { background: rgba(255, 255, 255, .07); color: #fff; }
-    .nav button.active { background: #fff; box-shadow: var(--sh-sm); color: var(--brand-900); font-weight: 700; }
-    .nav button.active kc-icon { opacity: 1; }
-    .nav button.active::after { display: none; }
+    .nav-item kc-icon { flex: none; opacity: .85; }
+    .nav-item:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+    .nav-item.active { background: #fff; box-shadow: var(--sh-sm); color: var(--brand-900); font-weight: 700; }
+    .nav-item.active kc-icon { opacity: 1; }
+
     .logout {
       align-items: center; background: none; border: 0; border-top: 1px solid rgba(255, 255, 255, .1);
-      color: #e8a99f; cursor: pointer; display: flex; font: inherit; font-size: 13px; font-weight: 650;
-      gap: 10px; margin: auto 12px 0; padding: 16px 12px 4px; width: calc(100% - 24px);
+      color: #e8a99f; cursor: pointer; display: flex; flex: none; font: inherit; font-size: 12px; font-weight: 650;
+      gap: 8px; margin: 0 12px; padding: 10px 8px 2px; width: calc(100% - 24px);
     }
     .logout:hover { color: #ffc9c0; }
-    .side-link {
-      align-items: center; color: rgba(255, 255, 255, .75); display: flex; font-size: 13px;
-      font-weight: 650; gap: 10px; margin: 6px 12px 0; padding: 11px 12px; border-radius: 9px;
-    }
-    .side-link:hover { background: rgba(255, 255, 255, .07); color: #fff; }
-    .portal-version { color: rgba(255, 255, 255, .3); font-size: 10.5px; padding: 12px 22px 0; }
 
     /* ============================ topbar ============================ */
     .content { display: flex; flex-direction: column; min-width: 0; }
     .topbar {
       align-items: center; backdrop-filter: saturate(180%) blur(12px);
       background: rgba(255, 255, 255, .88); border-bottom: 1px solid var(--line);
-      display: flex; gap: 18px; height: var(--topbar-h); padding: 0 26px;
+      display: flex; gap: 16px; height: var(--topbar-h); padding: 0 24px;
       position: sticky; top: 0; z-index: 30;
     }
     .search {
@@ -176,14 +245,14 @@ interface DashboardMetric {
     .view-store {
       align-items: center; background: var(--surface); border: 1px solid var(--line);
       border-radius: var(--r-md); color: var(--ink-700); cursor: pointer; display: inline-flex;
-      font: inherit; font-size: 12.5px; font-weight: 650; gap: 7px; padding: 8px 13px;
+      font: inherit; font-size: 12.5px; font-weight: 650; gap: 7px; padding: 7px 12px;
       text-decoration: none; transition: border-color .15s ease, color .15s ease;
     }
     .view-store:hover { border-color: var(--brand-600); color: var(--brand-700); }
     .seller-mini { align-items: center; border-left: 1px solid var(--line); display: flex; gap: 10px; padding-left: 14px; }
     .seller-mini strong {
       color: var(--ink-900); display: block; font-size: 12.5px; font-weight: 700; line-height: 1.25;
-      max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .seller-mini span { color: var(--ink-500); font-size: 11px; }
     .avatar {
@@ -192,28 +261,28 @@ interface DashboardMetric {
     }
 
     /* ============================ page frame ============================ */
-    .page { margin: 0 auto; max-width: 1320px; padding: 28px 26px 64px; width: 100%; }
-    .page > h1 {
-      color: var(--ink-900); font-family: var(--font-heading, Georgia, serif); font-size: 27px;
-      font-weight: 700; letter-spacing: -.02em; line-height: 1.15;
+    .page { margin: 0 auto; max-width: 1360px; padding: 22px 22px 64px; width: 100%; }
+    .page > h1, .page-header h1 {
+      color: var(--ink-900); font-family: var(--font-heading, Georgia, serif); font-size: 26px;
+      font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 0;
     }
-    .muted { color: var(--ink-500); font-size: 13.5px; margin-top: 5px; }
-    .orders-head, .products-head, .payout-head {
-      align-items: flex-start; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between;
-    }
-    .actions { display: flex; flex-wrap: wrap; gap: 9px; }
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; }
+    .muted { color: var(--ink-500); font-size: 13px; margin-top: 4px; }
 
     /* ============================ buttons ============================ */
     .btn {
       align-items: center; border: 1px solid transparent; border-radius: var(--r-md); cursor: pointer;
       display: inline-flex; font: inherit; font-size: 13px; font-weight: 650; gap: 7px;
-      justify-content: center; padding: 9px 16px; text-decoration: none; white-space: nowrap;
+      justify-content: center; padding: 8px 15px; text-decoration: none; white-space: nowrap;
       transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
     }
     .btn-primary { background: var(--brand-700); border-color: var(--brand-700); box-shadow: var(--sh-sm); color: #fff; }
     .btn-primary:hover { background: var(--brand-600); border-color: var(--brand-600); }
     .btn-ghost { background: var(--surface); border-color: var(--line); color: var(--ink-700); }
     .btn-ghost:hover { border-color: var(--ink-400); color: var(--ink-900); }
+    .btn-danger { background: var(--danger-bg); border-color: #fecaca; color: var(--danger); }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; }
     .btn[disabled] { cursor: not-allowed; opacity: .55; }
     .icon-btn {
       align-items: center; background: none; border: 1px solid transparent; border-radius: var(--r-sm);
@@ -223,642 +292,452 @@ interface DashboardMetric {
     .icon-btn:hover { background: var(--canvas); border-color: var(--line); color: var(--ink-900); }
 
     /* ============================ metric cards ============================ */
-    .metrics { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-top: 24px; }
+    .metrics { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 18px; }
     .metric {
       background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
       box-shadow: var(--sh-sm); display: flex; flex-direction: column; gap: 3px;
-      padding: 16px 17px 17px; position: relative;
-      transition: border-color .18s ease, box-shadow .18s ease;
+      padding: 15px 16px; position: relative; transition: border-color .18s ease, box-shadow .18s ease;
     }
     .metric:hover { border-color: #d3ded8; box-shadow: var(--sh-md); }
     .metric-icon {
       align-items: center; background: var(--brand-50); border-radius: 9px; color: var(--brand-700);
-      display: flex; height: 32px; justify-content: center; margin-bottom: 9px; width: 32px;
+      display: flex; height: 32px; justify-content: center; margin-bottom: 8px; width: 32px;
     }
     .metric.warn .metric-icon, .metric.gold .metric-icon { background: var(--warn-bg); color: var(--warn); }
-    .metric-label { color: var(--ink-500); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-    .metric strong { color: var(--ink-900); font-size: 25px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
-    .metric > span:last-child { color: var(--ink-500); font-size: 12px; }
-    .metric.warn > span:last-child { color: var(--warn); font-weight: 650; }
+    .metric-label { color: var(--ink-500); font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    .metric strong { color: var(--ink-900); font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+    .metric-note { color: var(--ink-500); font-size: 11.5px; margin-top: 2px; }
+    .metric.warn .metric-note { color: var(--warn); font-weight: 650; }
 
-    /* ============================ cards / panels ============================ */
-    .table-card, .form-card, .low-stock-card, .inventory-card, .goal-widget, .goal-card,
-    .seller-card, .completion-card, .how-card, .tip-card, .settings-card, .danger-card,
-    .publish-card, .product-preview, .filters, .product-filters {
-      background: var(--surface); border: 1px solid var(--line);
-      border-radius: var(--r-lg); box-shadow: var(--sh-sm);
+    /* ============================ tables and panels ============================ */
+    .table-card, .form-card, .info-card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+      box-shadow: var(--sh-sm); overflow: hidden;
     }
-    .table-card { margin-top: 20px; overflow: hidden; }
-    .table-card > header, .inventory-card > h2, .low-stock-card > h2, .goal-widget > h3,
-    .form-card > h2, .how-card > h2, .tip-card > h2, .settings-card > h2, .danger-card > h2 {
-      color: var(--ink-900); font-family: var(--font-heading, Georgia, serif);
-      font-size: 15.5px; font-weight: 700; letter-spacing: -.01em;
-    }
-    .table-card > header {
+    .table-card { margin-top: 18px; }
+    .table-card > header, .payout-head {
       align-items: center; border-bottom: 1px solid var(--line-soft);
-      display: flex; justify-content: space-between; padding: 15px 18px;
+      display: flex; justify-content: space-between; padding: 13px 18px;
     }
-    .table-card > header a, .table-card > header button {
-      background: none; border: 0; color: var(--brand-700); cursor: pointer;
-      font: inherit; font-size: 12.5px; font-weight: 700; text-decoration: none;
+    .table-card > header h2, .payout-head h2 {
+      color: var(--ink-900); font-family: var(--font-heading, Georgia, serif);
+      font-size: 15px; font-weight: 700; letter-spacing: -.01em; margin: 0;
     }
-    .table-card > header a:hover { text-decoration: underline; }
-
-    /* ============================ tables ============================ */
     table { border-collapse: collapse; font-size: 13px; width: 100%; }
     th {
       background: var(--raised); border-bottom: 1px solid var(--line); color: var(--ink-500);
-      font-size: 10.5px; font-weight: 700; letter-spacing: .07em; padding: 11px 18px;
+      font-size: 10.5px; font-weight: 700; letter-spacing: .07em; padding: 10px 16px;
       text-align: left; text-transform: uppercase; white-space: nowrap;
     }
-    td { border-bottom: 1px solid var(--line-soft); color: var(--ink-700); padding: 13px 18px; vertical-align: middle; }
-    tbody tr { transition: background .13s ease; }
+    td { border-bottom: 1px solid var(--line-soft); color: var(--ink-700); padding: 12px 16px; vertical-align: middle; }
     tbody tr:hover { background: var(--brand-50); }
     tbody tr:last-child td { border-bottom: 0; }
     .order-id { color: var(--brand-700); font-weight: 700; }
-    .buyer { align-items: center; display: flex; gap: 9px; }
-    .initial {
-      align-items: center; border-radius: 50%; color: #fff; display: flex; flex: none;
-      font-size: 11px; font-weight: 700; height: 28px; justify-content: center; width: 28px;
-    }
-    .table-foot {
-      align-items: center; border-top: 1px solid var(--line-soft); color: var(--ink-500);
-      display: flex; flex-wrap: wrap; font-size: 12.5px; gap: 12px;
-      justify-content: space-between; padding: 12px 18px;
-    }
-    .pagination { display: flex; gap: 5px; }
-    .pagination span, .pagination button {
-      align-items: center; background: var(--surface); border: 1px solid var(--line);
-      border-radius: var(--r-sm); color: var(--ink-700); cursor: pointer; display: inline-flex;
-      font: inherit; font-size: 12.5px; height: 30px; justify-content: center; min-width: 30px; padding: 0 8px;
-    }
-    .pagination .current { background: var(--brand-700); border-color: var(--brand-700); color: #fff; font-weight: 700; }
 
-    /* ============================ status + pills ============================ */
+    /* ============================ status pills ============================ */
     .status, .pill {
-      align-items: center; border-radius: var(--r-pill); display: inline-flex; font-size: 10.5px;
-      font-weight: 700; gap: 5px; letter-spacing: .05em; padding: 4px 10px;
+      align-items: center; border-radius: var(--r-pill); display: inline-flex; font-size: 10px;
+      font-weight: 700; gap: 5px; letter-spacing: .05em; padding: 3px 9px;
       text-transform: uppercase; white-space: nowrap;
     }
     .status::before { background: currentColor; border-radius: 50%; content: ''; height: 5px; width: 5px; }
-    .cancelled { background: var(--danger-bg); color: var(--danger); }
-    .pending { background: var(--warn-bg); color: var(--warn); }
-    .shipped { background: var(--info-bg); color: var(--info); }
-    .delivered { background: var(--ok-bg); color: var(--ok); }
-        .pill.blue { background: var(--info-bg); color: var(--info); }
-    .pill.green { background: var(--ok-bg); color: var(--ok); }
-    .pill.yellow { background: var(--warn-bg); color: var(--warn); }
-    .pill.red { background: var(--danger-bg); color: var(--danger); }
-    .critical {
-      background: var(--danger-bg); border-radius: var(--r-pill); color: var(--danger);
-      font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 3px 9px; text-transform: uppercase;
-    }
+    .status.pending, .pending { background: var(--warn-bg); color: var(--warn); }
+    .status.shipped, .shipped { background: var(--info-bg); color: var(--info); }
+    .status.delivered, .delivered, .status.completed, .paid { background: var(--ok-bg); color: var(--ok); }
+    .status.cancelled, .cancelled, .out-of-stock { background: var(--danger-bg); color: var(--danger); }
+    .in-stock { background: var(--ok-bg); color: var(--ok); }
+    .low-stock { background: var(--warn-bg); color: var(--warn); }
 
-    /* ============================ filters + controls ============================ */
-    .filters, .product-filters {
-      align-items: flex-end; display: flex; flex-wrap: wrap; gap: 14px; margin-top: 20px; padding: 15px 17px;
+    /* ============================ filters ============================ */
+    .filter-bar {
+      align-items: center; background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--r-lg); display: flex; flex-wrap: wrap; gap: 12px;
+      margin-top: 16px; padding: 12px 16px;
     }
-    .field { display: flex; flex: 1 1 180px; flex-direction: column; gap: 6px; min-width: 0; }
-    .field label { color: var(--ink-500); font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-    .field-control, .dash-input, .dash-textarea, select {
-      background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
-      color: var(--ink-900); font: inherit; font-size: 13px; padding: 9px 12px; width: 100%;
-      transition: border-color .15s ease, box-shadow .15s ease;
+    .filter-input {
+      align-items: center; background: var(--canvas); border: 1px solid var(--line);
+      border-radius: var(--r-md); display: flex; flex: 1 1 220px; gap: 8px; height: 42px; min-height: 42px; padding: 0 12px;
+      box-sizing: border-box;
     }
-    .field-control:focus, .field-control:focus-within, .dash-input:focus, .dash-textarea:focus, select:focus {
-      border-color: var(--brand-600); box-shadow: 0 0 0 3px var(--brand-50); outline: none;
+    .filter-input input { background: none; border: 0; color: var(--ink-900); font: inherit; font-size: 13.5px; outline: none; width: 100%; }
+    .filter-select {
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+      background: var(--surface);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 16px;
+      border: 1px solid var(--line); border-radius: var(--r-md);
+      box-sizing: border-box; color: var(--ink-900); cursor: pointer;
+      font: inherit; font-size: 13.5px; height: 42px; min-height: 42px;
+      outline: none; padding: 0 40px 0 14px;
     }
-    .field-control { align-items: center; display: flex; gap: 8px; }
-    .field-control kc-icon { color: var(--ink-400); flex: none; }
-    .field-control input { background: none; border: 0; color: inherit; font: inherit; font-size: 13px; outline: none; width: 100%; }
-    .dash-textarea { line-height: 1.55; min-height: 96px; resize: vertical; }
-    .reset { background: none; border: 0; color: var(--brand-700); cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 700; padding: 9px 2px; }
-    .reset:hover { text-decoration: underline; }
-    .dash-form { display: flex; flex-direction: column; gap: 16px; }
-    .two-cols { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
-    .form-actions { display: flex; flex-wrap: wrap; gap: 9px; }
-    .required { color: var(--danger); }
+    .filter-select::-ms-expand { display: none; }
+    .tab-pills { display: flex; gap: 6px; }
+    .tab-pill {
+      background: var(--canvas); border: 1px solid var(--line); border-radius: var(--r-pill);
+      color: var(--ink-700); cursor: pointer; font: inherit; font-size: 12px; font-weight: 650;
+      padding: 6px 14px; transition: all .14s ease;
+    }
+    .tab-pill.active { background: var(--brand-700); border-color: var(--brand-700); color: #fff; }
 
     /* ============================ empty states ============================ */
-    .empty-state, .placeholder {
+    .empty-state {
       align-items: center; display: flex; flex-direction: column; gap: 6px;
-      padding: 52px 24px 58px; text-align: center;
+      padding: 44px 20px; text-align: center;
     }
-    .empty-state kc-icon, .placeholder kc-icon {
+    .empty-state kc-icon {
       align-items: center; background: var(--canvas); border-radius: 50%; color: var(--ink-400);
-      display: flex; height: 54px; justify-content: center; margin-bottom: 8px; width: 54px;
+      display: flex; height: 48px; justify-content: center; margin-bottom: 6px; width: 48px;
     }
-    .empty-state h2, .empty-state h3, .placeholder h2 {
-      color: var(--ink-900); font-family: var(--font-heading, Georgia, serif); font-size: 16px; font-weight: 700;
-    }
-    .empty-state p, .placeholder p { color: var(--ink-500); font-size: 13px; max-width: 380px; }
-    .empty-state .btn { margin-top: 10px; }
+    .empty-state h3 { color: var(--ink-900); font-family: var(--font-heading, Georgia, serif); font-size: 16px; font-weight: 700; margin: 0; }
+    .empty-state p { color: var(--ink-500); font-size: 13px; max-width: 400px; margin: 0; }
 
-    /* ============================ dashboard home ============================ */
-    .dashboard-grid {
-      align-items: start; display: grid; gap: 18px;
-      grid-template-columns: minmax(0, 1fr) 320px; margin-top: 20px;
-    }
-    .dash-main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-    .dashboard-grid > aside { display: flex; flex-direction: column; gap: 18px; }
-    .quick-actions { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-    .quick-action {
+    /* ============================ Complete Production POS ============================ */
+    .pos-top-bar {
       align-items: center; background: var(--surface); border: 1px solid var(--line);
-      border-radius: var(--r-lg); box-shadow: var(--sh-sm); color: var(--ink-900); cursor: pointer;
-      display: flex; flex-direction: column; font: inherit; font-size: 12.5px; font-weight: 650;
-      gap: 9px; padding: 18px 12px; text-align: center;
-      transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+      border-radius: var(--r-lg); display: flex; flex-wrap: wrap; gap: 16px;
+      justify-content: space-between; padding: 12px 18px; margin-bottom: 12px;
     }
-    .quick-action:hover { border-color: var(--brand-600); box-shadow: var(--sh-md); transform: translateY(-2px); }
-    .quick-action kc-icon {
-      align-items: center; background: var(--brand-50); border-radius: 10px; color: var(--brand-700);
-      display: flex; height: 38px; justify-content: center; width: 38px;
+    .pos-meta-item { display: flex; flex-direction: column; gap: 2px; }
+    .pos-meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-400); letter-spacing: .08em; }
+    .pos-meta-val { font-size: 13px; font-weight: 700; color: var(--ink-900); }
+
+    .pos-subnav {
+      display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 12px;
+      border-bottom: 1px solid var(--line-soft); margin-bottom: 14px;
     }
-    .low-stock-card, .inventory-card, .goal-widget, .goal-card { padding: 17px 18px 18px; }
-    .low-stock-card > h2, .inventory-card > h2 {
-      align-items: center; display: flex; gap: 10px; justify-content: space-between; margin-bottom: 4px;
+    .pos-subnav::-webkit-scrollbar { height: 4px; }
+    .pos-subnav::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+    .pos-subnav-btn {
+      align-items: center; background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--r-pill); color: var(--ink-700); cursor: pointer; display: inline-flex;
+      font: inherit; font-size: 12px; font-weight: 650; gap: 6px; padding: 6px 13px; white-space: nowrap;
+      transition: all .14s ease;
     }
-    .stock-item {
-      align-items: center; border-top: 1px solid var(--line-soft); display: grid; gap: 12px;
-      grid-template-columns: 46px minmax(0, 1fr); padding: 13px 0;
+    .pos-subnav-btn:hover { border-color: var(--brand-600); color: var(--brand-700); }
+    .pos-subnav-btn.active { background: var(--brand-700); border-color: var(--brand-700); color: #fff; }
+
+    .pos-checkout-grid {
+      display: grid; gap: 16px; grid-template-columns: 1.4fr 1.1fr 1fr; align-items: start;
     }
-    .stock-item:first-of-type { border-top: 0; }
-    .stock-item img, .product-thumb, .product-line img, .product-preview img, .review-img {
+    .pos-catalog-panel, .pos-cart-panel, .pos-summary-panel {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+      padding: 14px; display: flex; flex-direction: column; min-height: 560px; box-shadow: var(--sh-sm);
+    }
+    .pos-product-grid {
+      display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      max-height: calc(100vh - 340px); overflow-y: auto; padding-right: 4px; margin-top: 10px;
+    }
+    .pos-tile {
       background: var(--canvas); border: 1px solid var(--line-soft); border-radius: var(--r-md);
-      display: block; object-fit: cover;
+      cursor: pointer; display: flex; flex-direction: column; padding: 8px; text-align: left;
+      transition: all .14s ease; position: relative;
     }
-    .stock-item img { height: 46px; width: 46px; }
-    .stock-item strong {
-      color: var(--ink-900); display: block; font-size: 13px; font-weight: 650;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    .pos-tile:hover { border-color: var(--brand-600); transform: translateY(-2px); box-shadow: var(--sh-md); }
+    .pos-tile img { aspect-ratio: 1; border-radius: 6px; object-fit: cover; width: 100%; background: #eef2f0; }
+    .pos-tile strong { font-size: 12px; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-900); }
+    .pos-tile-price { color: var(--brand-700); font-weight: 700; font-size: 13px; margin-top: 2px; }
+    .pos-tile-stock { font-size: 10.5px; color: var(--ink-400); }
+
+    .pos-cart-lines { flex: 1; max-height: calc(100vh - 390px); overflow-y: auto; margin: 10px 0; }
+    .pos-cart-row {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid var(--line-soft);
     }
-    .stock-item span { color: var(--danger); font-size: 12px; font-weight: 650; }
-    .small-green {
-      background: var(--brand-700); border: 0; border-radius: var(--r-sm); color: #fff;
-      cursor: pointer; font: inherit; font-size: 11.5px; font-weight: 650; margin-top: 6px; padding: 5px 11px;
+    .pos-customer-banner {
+      background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: var(--r-md);
+      padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;
     }
-    .small-green:hover { background: var(--brand-600); }
-    .goal-widget strong, .goal-card strong {
-      color: var(--ink-900); display: block; font-size: 27px; font-weight: 700;
-      letter-spacing: -.02em; margin: 6px 0 10px;
-    }
-    .track { background: var(--line-soft); border-radius: var(--r-pill); height: 7px; overflow: hidden; width: 100%; }
-    .fill { background: var(--brand-600); border-radius: var(--r-pill); display: block; height: 100%; transition: width .4s ease; }
-    .fill.low { background: var(--warn); }
-    .goal-widget em, .goal-card em, .info-note {
-      color: var(--ink-500); display: block; font-size: 12px; font-style: normal; line-height: 1.55; margin-top: 10px;
+    .qty-controls { align-items: center; display: flex; gap: 6px; }
+    .qty-btn {
+      align-items: center; background: var(--canvas); border: 1px solid var(--line);
+      border-radius: 4px; cursor: pointer; display: flex; font-weight: bold;
+      height: 24px; justify-content: center; width: 24px;
     }
 
-    /* ============================ products ============================ */
-    .products-head { margin-bottom: 4px; }
-    .product-thumb { height: 44px; width: 44px; }
-    .product-name strong { color: var(--ink-900); display: block; font-size: 13.5px; font-weight: 650; line-height: 1.35; }
-    .product-name span { color: var(--ink-400); font-size: 11.5px; }
-    .row-actions { display: flex; gap: 2px; justify-content: flex-end; }
-    .product-insights { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 18px; }
-    .tip-card, .inventory-card { padding: 17px 18px 18px; }
-    .tip-card p, .inventory-card p { color: var(--ink-500); font-size: 12.5px; line-height: 1.6; margin-top: 6px; }
-    .sparkle { color: var(--warn); }
+    .cash-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+    .cash-preset-btn {
+      background: var(--canvas); border: 1px solid var(--line); border-radius: var(--r-sm);
+      color: var(--ink-900); font-weight: 700; font-size: 11.5px; padding: 6px 0; cursor: pointer; text-align: center;
+    }
+    .cash-preset-btn:hover { background: var(--brand-50); border-color: var(--brand-600); }
+    .total-display-card {
+      background: var(--brand-900); color: #fff; border-radius: var(--r-md); padding: 12px; text-align: center; margin: 10px 0;
+    }
+    .total-display-val { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
 
-    /* ============================ add product ============================ */
-    .add-layout { align-items: start; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 312px; margin-top: 20px; }
-    .add-main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-    .add-side { display: flex; flex-direction: column; gap: 18px; }
-    .form-card { padding: 19px 20px 20px; }
-    .form-card > h2 { margin-bottom: 15px; }
-    .upload-row { display: flex; flex-wrap: wrap; gap: 12px; }
-    /* ---- product photos + options ---- */
-    .shot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-top: 10px; }
-    .shot-thumb { position: relative; margin: 0; border: 1px solid #e3e0d8; border-radius: 8px; overflow: hidden; background: #fff; aspect-ratio: 1; }
-    .shot-thumb.is-main { border-color: #146242; box-shadow: 0 0 0 2px rgba(20,98,66,.16); }
-    .shot-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .shot-thumb figcaption { position: absolute; left: 4px; bottom: 4px; padding: 2px 6px; border-radius: 999px; background: #146242; color: #fff; font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-    .shot-thumb .mk-main { position: absolute; left: 4px; bottom: 4px; padding: 2px 6px; border: 0; border-radius: 999px; background: rgba(22,22,22,.72); color: #fff; font-size: 9.5px; font-weight: 600; cursor: pointer; opacity: 0; transition: opacity 140ms ease; }
-    .shot-thumb:hover .mk-main { opacity: 1; }
-    .shot-thumb .rm { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(22,22,22,.66); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; }
-    .shot-thumb .rm:hover { background: #a12f2f; }
-    .opt { margin-left: 6px; color: #8d8577; font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0; }
-    .hint { margin: 0 0 12px; color: #6f6759; font-size: 12.5px; line-height: 1.5; }
-    .variant-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .variant-row img { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; border: 1px solid #e3e0d8; flex: 0 0 auto; }
-    .variant-row .dash-input { flex: 1; }
-    .rm-variant { width: 30px; height: 30px; flex: 0 0 auto; border: 1px solid #e3e0d8; border-radius: 8px; background: #fff; color: #8d8577; font-size: 16px; line-height: 1; cursor: pointer; }
-    .rm-variant:hover { color: #a12f2f; border-color: #a12f2f; }
-    .variant-add { margin-top: 4px; }
-
-    .upload-box, .upload-drop, .add-tile {
-      align-items: center; background: var(--raised); border: 1.5px dashed var(--line);
-      border-radius: var(--r-md); color: var(--ink-500); cursor: pointer; display: flex;
-      flex-direction: column; gap: 6px; justify-content: center; padding: 22px 16px; text-align: center;
-      transition: background .16s ease, border-color .16s ease, color .16s ease;
-    }
-    .upload-box:hover, .upload-drop:hover, .add-tile:hover {
-      background: var(--brand-50); border-color: var(--brand-600); color: var(--brand-700);
-    }
-    .upload-box strong, .upload-drop strong { color: var(--ink-900); font-size: 13px; font-weight: 650; }
-    .upload-drop small { color: var(--ink-400); font-size: 11.5px; }
-    .publish-card { padding: 17px 18px; }
-    .publish-card strong { color: var(--ink-900); display: block; font-size: 14px; font-weight: 700; }
-    .publish-card span { color: var(--ink-500); display: block; font-size: 12.5px; line-height: 1.55; margin-top: 4px; }
-    .preview-label { color: var(--ink-500); font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-    .product-preview { overflow: hidden; }
-    .product-preview img { border: 0; border-radius: 0; height: 168px; width: 100%; }
-    .preview-body { padding: 14px 16px 16px; }
-    .preview-body small { color: var(--brand-700); font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-    .preview-body h3 { color: var(--ink-900); font-size: 15px; font-weight: 700; margin-top: 4px; }
-    .preview-body p { color: var(--ink-500); font-size: 12.5px; line-height: 1.55; margin-top: 5px; }
-    .preview-price { align-items: baseline; display: flex; gap: 7px; margin-top: 10px; }
-    .preview-price strong { color: var(--ink-900); font-size: 19px; font-weight: 700; }
-    .pro-tip {
-      background: var(--warn-bg); border: 1px solid #f0e0bd; border-radius: var(--r-lg);
-      color: #7a5310; font-size: 12.5px; line-height: 1.6; padding: 14px 16px;
-    }
-    .sticky-save {
-      align-items: center; backdrop-filter: blur(10px); background: rgba(255, 255, 255, .92);
-      border-top: 1px solid var(--line); bottom: 0; display: flex; gap: 12px;
-      justify-content: flex-end; margin: 22px -26px -64px; padding: 14px 26px; position: sticky; z-index: 20;
-    }
-    .autosave { color: var(--ink-500); font-size: 12px; margin-right: auto; }
-
-    /* ============================ reviews ============================ */
-    .reviews-layout { display: flex; flex-direction: column; gap: 18px; }
-    .rating-row { display: grid; gap: 16px; grid-template-columns: 250px minmax(0, 1fr); margin-top: 20px; }
-    .rating-card {
-      background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
-      box-shadow: var(--sh-sm); padding: 19px 20px;
-    }
-    .average { text-align: center; }
-    .average strong { color: var(--ink-900); display: block; font-size: 42px; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
-    .average span { color: var(--ink-500); display: block; font-size: 12.5px; margin-top: 7px; }
-    .stars-large { color: #d9a441; display: flex; gap: 3px; justify-content: center; margin-top: 9px; }
-    .dist h2 { color: var(--ink-900); font-size: 14.5px; font-weight: 700; margin-bottom: 12px; }
-    .bar-row { align-items: center; display: grid; gap: 11px; grid-template-columns: 42px minmax(0, 1fr) 38px; margin-bottom: 8px; }
-    .bar-row span { color: var(--ink-500); font-size: 12px; }
-    .review-tabs { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
-    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
-    .chip {
-      background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill);
-      color: var(--ink-700); cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600;
-      padding: 7px 14px; transition: background .15s ease, border-color .15s ease, color .15s ease;
-    }
-    .chip:hover { border-color: var(--brand-600); color: var(--brand-700); }
-    .chip.active { background: var(--brand-700); border-color: var(--brand-700); color: #fff; }
-    .review-list { display: flex; flex-direction: column; gap: 14px; }
-    .review-card {
-      background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
-      box-shadow: var(--sh-sm); padding: 17px 19px 18px;
-    }
-    .review-top { align-items: flex-start; display: flex; gap: 12px; justify-content: space-between; }
-    .review-person { align-items: center; display: flex; gap: 11px; }
-    .review-person .initial { font-size: 13px; height: 38px; width: 38px; }
-    .review-person h3 { color: var(--ink-900); font-size: 13.5px; font-weight: 700; }
-    .date { color: var(--ink-400); font-size: 11.5px; }
-    .review-stars { color: #d9a441; display: flex; gap: 2px; }
-    .review-text { color: var(--ink-700); font-size: 13.5px; line-height: 1.65; margin-top: 11px; }
-    .review-img { height: 76px; margin-top: 11px; width: 76px; }
-    .response {
-      background: var(--brand-50); border-left: 3px solid var(--brand-600);
-      border-radius: 0 var(--r-md) var(--r-md) 0; font-size: 12.5px; line-height: 1.6;
-      margin-top: 12px; padding: 11px 14px;
-    }
-    .response strong { color: var(--brand-700); display: block; font-size: 12px; margin-bottom: 3px; }
-    .review-actions { display: flex; gap: 8px; margin-top: 13px; }
-    .review-actions button {
-      background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
-      color: var(--ink-700); cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 650; padding: 7px 13px;
-    }
-    .review-actions button:hover { border-color: var(--brand-600); color: var(--brand-700); }
-
-    /* ============================ store profile ============================ */
-    .profile-grid { align-items: start; display: grid; gap: 18px; grid-template-columns: 312px minmax(0, 1fr); margin-top: 20px; }
-    .seller-card { overflow: hidden; }
-    .banner { background: linear-gradient(135deg, var(--brand-800), var(--brand-600)); height: 92px; }
-    .seller-card-body { padding: 0 18px 19px; text-align: center; }
-    .store-logo-preview {
-      align-items: center; background: var(--surface); border: 3px solid var(--surface);
-      border-radius: 50%; box-shadow: var(--sh-md); color: var(--brand-700); display: flex;
-      font-family: var(--font-heading, Georgia, serif); font-size: 24px; font-weight: 700;
-      height: 72px; justify-content: center; margin: -36px auto 12px; width: 72px;
-    }
-    .seller-card h2 { color: var(--ink-900); font-size: 17px; font-weight: 700; }
-    .seller-card p { color: var(--ink-500); font-size: 12.5px; line-height: 1.6; margin-top: 7px; }
-    .store-rating { align-items: center; color: #d9a441; display: flex; gap: 5px; justify-content: center; margin-top: 7px; }
-    .store-rating strong { color: var(--ink-900); font-size: 13px; }
-    .completion-card { padding: 17px 18px 18px; }
-    .completion-head { align-items: center; display: flex; justify-content: space-between; margin-bottom: 10px; }
-    .completion-head strong { color: var(--ink-900); font-size: 14px; font-weight: 700; }
-    .progress-line { background: var(--line-soft); border-radius: var(--r-pill); height: 7px; overflow: hidden; }
-    .progress-line span { background: var(--brand-600); display: block; height: 100%; }
-    .check-list { display: flex; flex-direction: column; gap: 8px; margin-top: 13px; }
-    .check-list span { align-items: center; color: var(--ink-700); display: flex; font-size: 12.5px; gap: 8px; }
-    .profile-form { display: flex; flex-direction: column; gap: 18px; }
-
-    /* ============================ sales / payout ============================ */
-    .sales-grid { align-items: start; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 312px; margin-top: 20px; }
-    .sales-main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-    .sales-grid > aside { display: flex; flex-direction: column; gap: 18px; }
-    .payout-head { margin-bottom: 14px; }
-    .payout-actions { display: flex; flex-wrap: wrap; gap: 9px; }
-    .money { color: var(--ink-900); font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
-    .commission { color: var(--ink-500); font-size: 12.5px; }
-    .paid { color: var(--ok); font-weight: 650; }
-    .how-card { padding: 17px 18px 18px; }
-    .how-card p { color: var(--ink-500); font-size: 12.5px; line-height: 1.6; margin-top: 6px; }
-    .calc-row {
-      align-items: center; border-top: 1px solid var(--line-soft); display: flex;
-      font-size: 13px; justify-content: space-between; padding: 10px 0;
-    }
-    .calc-row:first-of-type { border-top: 0; }
-    .earning { color: var(--ok); font-weight: 700; }
-
-    /* ============================ settings ============================ */
-    .settings-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-top: 20px; }
-    .settings-card { padding: 19px 20px 20px; }
-    .settings-card label { color: var(--ink-700); display: block; font-size: 12.5px; font-weight: 650; margin-bottom: 6px; }
-    .settings-form { display: flex; flex-direction: column; gap: 15px; }
-    .toggle-row {
-      align-items: center; border-top: 1px solid var(--line-soft); display: flex;
-      gap: 14px; justify-content: space-between; padding: 13px 0;
-    }
-    .toggle-row:first-of-type { border-top: 0; }
-    .toggle-row strong { color: var(--ink-900); display: block; font-size: 13px; font-weight: 650; }
-    .toggle-row span { color: var(--ink-500); font-size: 12px; }
-    .switch {
-      background: #cdd6d1; border: 0; border-radius: var(--r-pill); cursor: pointer; flex: none;
-      height: 23px; padding: 0; position: relative; transition: background .18s ease; width: 41px;
-    }
-    .switch::after {
-      background: #fff; border-radius: 50%; box-shadow: var(--sh-sm); content: '';
-      height: 17px; left: 3px; position: absolute; top: 3px; transition: transform .18s ease; width: 17px;
-    }
-    .danger-card { border-color: #f0d3ce; padding: 19px 20px 20px; }
-    .danger-card > h2 { color: var(--danger); }
-    .danger-card > p { color: var(--ink-500); font-size: 12.5px; line-height: 1.6; margin-top: 6px; }
-    .danger-action {
-      align-items: center; border-top: 1px solid var(--line-soft); display: flex;
-      gap: 14px; justify-content: space-between; padding: 13px 0;
-    }
-    .danger-action strong { color: var(--ink-900); display: block; font-size: 13px; font-weight: 650; }
-    .danger-action span { color: var(--ink-500); font-size: 12px; }
-    .danger-link { background: none; border: 0; color: var(--danger); cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 700; }
-    .danger-btn {
-      background: var(--danger); border: 0; border-radius: var(--r-md); color: #fff;
-      cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 650; padding: 8px 14px;
-    }
-    .danger-btn:hover { background: #9c2e23; }
-
-    /* ============================ modal ============================ */
+    /* ============================ modals ============================ */
     .backdrop {
-      align-items: center; backdrop-filter: blur(3px); background: rgba(14, 32, 24, .48);
-      display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 100;
+      align-items: center; background: rgba(14, 32, 24, .45); backdrop-filter: blur(4px);
+      bottom: 0; display: flex; justify-content: center; left: 0; padding: 20px;
+      position: fixed; right: 0; top: 0; z-index: 50;
     }
     .modal {
       background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--sh-lg);
-      display: flex; flex-direction: column; max-height: 88vh; max-width: 720px; overflow: hidden; width: 100%;
+      max-height: 90vh; max-width: 600px; overflow-y: auto; width: 100%;
     }
-    .modal-head { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: 12px; padding: 16px 20px; }
-    .modal-head h2 { color: var(--ink-900); font-family: var(--font-heading, Georgia, serif); font-size: 17px; font-weight: 700; }
-    .modal-head .status { margin-left: 4px; }
-    .close {
-      background: none; border: 0; border-radius: var(--r-sm); color: var(--ink-500);
-      cursor: pointer; font-size: 17px; height: 30px; margin-left: auto; width: 30px;
+    .modal-lg { max-width: 840px; }
+    .modal-head {
+      align-items: center; border-bottom: 1px solid var(--line-soft); display: flex;
+      justify-content: space-between; padding: 16px 20px; position: sticky; top: 0; background: var(--surface); z-index: 2;
     }
-    .close:hover { background: var(--canvas); color: var(--ink-900); }
-    .modal-body { overflow-y: auto; padding: 20px; }
-    .detail-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
-    .detail-panel { background: var(--raised); border: 1px solid var(--line-soft); border-radius: var(--r-md); padding: 15px 16px; }
-    .detail-title {
-      color: var(--ink-500); font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
-      margin-bottom: 10px; text-transform: uppercase;
+    .modal-head h2 { color: var(--ink-900); font-family: var(--font-heading, Georgia, serif); font-size: 17px; font-weight: 700; margin: 0; }
+    .modal-head .close { background: none; border: 0; color: var(--ink-400); cursor: pointer; font-size: 22px; line-height: 1; }
+    .modal-body { padding: 20px; }
+    .modal-actions { border-top: 1px solid var(--line-soft); display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; padding-top: 16px; }
+
+    /* ============================ form fields ============================ */
+    .field-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .field-group label { color: var(--ink-700); font-size: 12px; font-weight: 650; }
+    .dash-input, .dash-textarea, .dash-select {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+      box-sizing: border-box; color: var(--ink-900); font: inherit; font-size: 13.5px;
+      line-height: 1.4; outline: none; padding: 10px 14px; width: 100%;
     }
-    .info-line { display: flex; font-size: 13px; gap: 12px; justify-content: space-between; padding: 5px 0; }
-    .info-line span:first-child { color: var(--ink-500); }
-    .info-line span:last-child { color: var(--ink-900); font-weight: 600; text-align: right; }
-    .note { color: var(--ink-500); font-size: 12.5px; line-height: 1.6; }
-    .product-detail { margin-top: 18px; }
-    .product-line { align-items: center; display: flex; gap: 13px; padding: 11px 0; }
-    .product-line img { height: 54px; width: 54px; }
-    .product-line h3 { color: var(--ink-900); font-size: 13.5px; font-weight: 650; }
-    .product-line p { color: var(--ink-500); font-size: 12.5px; margin-top: 2px; }
-    .subtotal {
-      align-items: center; border-top: 1px solid var(--line); display: flex;
-      justify-content: space-between; margin-top: 12px; padding-top: 12px;
+    .dash-input, .dash-select {
+      height: 44px;
+      min-height: 44px;
     }
-    .subtotal strong { color: var(--ink-900); font-size: 17px; font-weight: 700; }
-    .modal-actions {
-      border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 9px;
-      justify-content: flex-end; padding: 15px 20px;
+    .dash-select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 16px;
+      padding-right: 40px !important;
+      cursor: pointer;
     }
+    .dash-select::-ms-expand { display: none; }
+    .dash-input:focus, .dash-textarea:focus, .dash-select:focus {
+      border-color: var(--brand-600); box-shadow: 0 0 0 3px var(--brand-50);
+    }
+    .dash-textarea { line-height: 1.5; min-height: 90px; resize: vertical; }
+    .two-cols { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+
+    /* ============================ dashboard home ============================ */
+    .dashboard-grid { align-items: start; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 320px; margin-top: 18px; }
+    .quick-actions { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); margin-top: 16px; }
+    .quick-action {
+      align-items: center; background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--r-lg); box-shadow: var(--sh-sm); color: var(--ink-900); cursor: pointer;
+      display: flex; flex-direction: column; font: inherit; font-size: 12px; font-weight: 650;
+      gap: 8px; padding: 14px 10px; text-align: center; transition: all .16s ease;
+    }
+    .quick-action:hover { border-color: var(--brand-600); box-shadow: var(--sh-md); transform: translateY(-2px); }
+    .quick-action kc-icon {
+      align-items: center; background: var(--brand-50); border-radius: 9px; color: var(--brand-700);
+      display: flex; height: 34px; justify-content: center; width: 34px;
+    }
+    .stock-item {
+      align-items: center; border-top: 1px solid var(--line-soft); display: grid; gap: 12px;
+      grid-template-columns: 44px minmax(0, 1fr); padding: 10px 0;
+    }
+    .stock-item img { aspect-ratio: 1; border-radius: var(--r-sm); object-fit: cover; width: 44px; }
+    .small-green {
+      background: var(--brand-700); border: 0; border-radius: var(--r-sm); color: #fff;
+      cursor: pointer; font-size: 11px; font-weight: 650; margin-top: 4px; padding: 4px 10px;
+    }
+
+    /* ============================ campaigns & ads ============================ */
+    .campaigns-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-top: 14px; }
+    .campaign-card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+      box-shadow: var(--sh-sm); display: flex; flex-direction: column; justify-content: space-between; padding: 16px;
+    }
+    .campaign-rate { background: #eef7f2; border-radius: var(--r-pill); color: var(--brand-700); font-size: 11px; font-weight: 700; padding: 3px 8px; }
+
+    /* ============================ support thread ============================ */
+    .thread-messages { display: flex; flex-direction: column; gap: 12px; max-height: 340px; overflow-y: auto; padding: 10px 0; }
+    .msg-bubble { border-radius: var(--r-md); max-width: 80%; padding: 10px 14px; font-size: 13px; line-height: 1.45; }
+    .msg-bubble.seller { align-self: flex-end; background: var(--brand-700); color: #fff; }
+    .msg-bubble.support { align-self: flex-start; background: var(--canvas); border: 1px solid var(--line); color: var(--ink-900); }
+    .msg-meta { font-size: 10.5px; opacity: .75; margin-top: 4px; }
 
     /* ============================ responsive ============================ */
-    @media (max-width: 1180px) {
-      .dashboard-grid, .add-layout, .sales-grid, .profile-grid, .rating-row { grid-template-columns: minmax(0, 1fr); }
+    @media (max-width: 1260px) {
+      .pos-checkout-grid { grid-template-columns: 1fr 1fr; }
+      .pos-summary-panel { grid-column: span 2; min-height: auto; }
     }
     @media (max-width: 960px) {
-      :host { --sidebar-w: 68px; }
-      .logo { font-size: 0; padding: 0 0 0 20px; }
-      .logo::first-letter { font-size: 21px; }
-      .portal-label, .store-switch, .portal-version { display: none; }
-      .nav button { justify-content: center; padding: 11px 0; }
-      .nav button span, .logout span { display: none; }
-      .logout { justify-content: center; }
+      :host { --sidebar-w: 70px; }
+      .sidebar-head { padding: 0 10px 10px; text-align: center; }
+      .logo { font-size: 14px; }
+      .portal-label, .store-control, .nav-group-title, .nav-item span, .logout span { display: none; }
+      .nav-item { justify-content: center; padding: 10px 0; }
       .seller-mini { display: none; }
+      .pos-checkout-grid { grid-template-columns: 1fr; }
+      .pos-summary-panel { grid-column: span 1; }
     }
     @media (max-width: 720px) {
-      .page { padding: 20px 16px 56px; }
-      .topbar { padding: 0 16px; }
-      .two-cols, .detail-grid { grid-template-columns: 1fr; }
-      .sticky-save { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+      .page { padding: 16px 14px 48px; }
+      .topbar { padding: 0 14px; }
+      .two-cols { grid-template-columns: 1fr; }
+      table { min-width: 650px; }
       .table-card { overflow-x: auto; }
-      table { min-width: 720px; }
     }
 
-    /* a card header that sits inside a table-card needs the card's padding */
-    .table-card > .payout-head {
-      align-items: center; border-bottom: 1px solid var(--line-soft); margin-bottom: 0;
-      padding: 15px 18px;
-    }
-    .table-card > .payout-head h2 {
-      color: var(--ink-900); font-family: var(--font-heading, Georgia, serif);
-      font-size: 15.5px; font-weight: 700; letter-spacing: -.01em;
-    }
-
-    /* the supporting line under a metric - sentence case, not another label */
-    .metric-note { color: var(--ink-500); font-size: 12px; margin-top: 2px; }
-    .metric.warn .metric-note { color: var(--warn); font-weight: 650; }
-
-    /* a bare field-control used directly as a filter needs to share the row,
-       not claim the full width the way it does inside a labelled .field */
-    .filters > .field-control,
-    .product-filters > .field-control { flex: 1 1 200px; width: auto; }
-    .product-filters > .field-control:first-child { flex: 2 1 260px; }
-    .filter-toggle { flex: none; padding: 0 13px; height: 38px; }
-
-    /* card headings carry a leading icon - keep it on the baseline, not above */
-    .form-card > h2, .how-card > h2, .tip-card > h2,
-    .settings-card > h2, .danger-card > h2, .goal-widget > h2 {
-      align-items: center; display: flex; gap: 9px;
-    }
-    .form-card > h2 kc-icon, .how-card > h2 kc-icon, .tip-card > h2 kc-icon,
-    .settings-card > h2 kc-icon { color: var(--ink-400); flex: none; }
-    .tip-card > h2 .sparkle { color: var(--warn); }
-
-    /* name / count / action stack instead of colliding on one line */
-    .stock-item > div {
-      align-items: flex-start; display: flex; flex-direction: column; gap: 3px; min-width: 0; width: 100%;
-    }
-    .stock-item span { display: block; }
-    .small-green { align-self: flex-start; }
-
-    /* four fixed actions - keep them in a balanced block, never 3 + 1 */
-    .quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    @media (min-width: 1500px) { .quick-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-
-    /* the theme buttons mark themselves with .selected and expose --swatch */
-    .theme-choice { align-items: center; flex-direction: row; gap: 9px; }
-    .theme-choice.selected { border-color: var(--brand-700); box-shadow: 0 0 0 3px var(--brand-50); }
-    .theme-choice i {
-      background: var(--swatch, var(--brand-700)); border: 1px solid rgba(0, 0, 0, .08);
-      border-radius: 50%; flex: none; height: 18px; width: 18px;
-    }
-    .theme-options { grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); }
-
-    /* an empty state that is itself the card needs the card surface */
-    .empty-state.card-empty {
-      background: var(--surface); border: 1px solid var(--line);
-      border-radius: var(--r-lg); box-shadow: var(--sh-sm);
-    }
-
-    /* card headings need air before the first field */
-    .settings-card > h2, .danger-card > h2, .how-card > h2, .goal-widget > h2 { margin-bottom: 13px; }
-    .danger-card > h2 + p { margin-top: -8px; margin-bottom: 4px; }
-
-    /* ============ store switcher (lives on the dark sidebar) ============ */
-    .store-control { display: flex; flex-direction: column; gap: 6px; margin: 20px 14px 4px; }
-    .store-control label {
-      color: #7fae95; font-size: 10px; font-weight: 700;
-      letter-spacing: .12em; text-transform: uppercase;
-    }
-    .store-control select {
-      background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16);
-      border-radius: var(--r-md); color: #fff; font-size: 12.5px; font-weight: 600; padding: 8px 10px;
-    }
-    .store-control select option { background: var(--brand-900); color: #fff; }
-    .store-control select:focus { border-color: var(--brand-600); box-shadow: 0 0 0 3px rgba(31, 125, 85, .35); }
-    .new-store {
-      background: none; border: 0; color: #8dc3a6; cursor: pointer; font: inherit;
-      font-size: 11.5px; font-weight: 700; padding: 2px 0; text-align: left;
-    }
-    .new-store:hover { color: #fff; }
-
-    /* ============ misc shared ============ */
-    .view-all {
-      background: none; border: 0; color: var(--brand-700); cursor: pointer;
-      font: inherit; font-size: 12.5px; font-weight: 700; text-decoration: none;
-    }
-    .view-all:hover { text-decoration: underline; }
-    .sort { color: var(--ink-500); font-size: 12.5px; font-weight: 600; }
-
-    /* .money is used both as a big payout figure and as a table cell - keep them apart */
-    td.money { color: var(--ink-900); font-size: 13px; font-weight: 650; }
-
-    /* ============ store profile sections ============ */
-    .profile-section-title { margin-bottom: 12px; }
-    .profile-section-title strong { color: var(--ink-900); display: block; font-size: 14px; font-weight: 700; }
-    .profile-section-title span { color: var(--ink-500); display: block; font-size: 12.5px; line-height: 1.55; margin-top: 3px; }
-    .profile-message {
-      background: var(--ok-bg); border: 1px solid #c6e3d3; border-radius: var(--r-md);
-      color: var(--ok); font-size: 12.5px; font-weight: 600; padding: 10px 13px;
-    }
-    .public-contact {
-      align-items: flex-start; border: 1px solid var(--line); border-radius: var(--r-md);
-      cursor: pointer; display: flex; gap: 11px; padding: 13px 14px;
-      transition: border-color .15s ease, background .15s ease;
-    }
-    .public-contact:hover { background: var(--brand-50); border-color: var(--brand-600); }
-    .public-contact input { accent-color: var(--brand-700); flex: none; margin-top: 2px; }
-    .public-contact span { color: var(--ink-500); font-size: 12px; line-height: 1.55; }
-    .public-contact strong { color: var(--ink-900); font-size: 13px; font-weight: 650; }
-
-    /* ============ theme picker ============ */
-    .theme-options { display: grid; gap: 11px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-    .theme-choice {
-      background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r-md);
-      cursor: pointer; display: flex; flex-direction: column; gap: 7px; padding: 13px 14px;
-      text-align: left; transition: border-color .16s ease, box-shadow .16s ease;
-    }
-    .theme-choice:hover { border-color: var(--brand-600); }
-    .theme-choice.active { border-color: var(--brand-700); box-shadow: 0 0 0 3px var(--brand-50); }
-    .theme-choice strong { color: var(--ink-900); font-size: 13px; font-weight: 650; }
-    .theme-choice span { color: var(--ink-500); font-size: 11.5px; line-height: 1.5; }
-
-    /* ============ featured product picker ============ */
-    .featured-picker { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
-    .featured-option {
-      align-items: center; background: var(--surface); border: 1.5px solid var(--line);
-      border-radius: var(--r-md); cursor: pointer; display: flex; gap: 10px; padding: 10px 12px;
-      transition: border-color .16s ease, background .16s ease;
-    }
-    .featured-option:hover { background: var(--brand-50); border-color: var(--brand-600); }
-    .featured-option.active { border-color: var(--brand-700); box-shadow: 0 0 0 3px var(--brand-50); }
-    .featured-option input { accent-color: var(--brand-700); flex: none; }
-    .featured-option img { border-radius: var(--r-sm); height: 34px; object-fit: cover; width: 34px; }
-    .featured-option span {
-      color: var(--ink-900); font-size: 12.5px; font-weight: 600; overflow: hidden;
-      text-overflow: ellipsis; white-space: nowrap;
-    }
-
-    /* ============ payout ============ */
-    .payout-card {
-      background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
-      box-shadow: var(--sh-sm); padding: 19px 20px 20px;
-    }
-
-    /* image placeholders read as intentional, never as a broken file */
     img[src=''], img:not([src]) { visibility: hidden; }
   `],
   template: `
     <div class="portal">
       <aside class="sidebar">
-        <h1 class="logo">KhmerCraft</h1>
-        <p class="portal-label">Seller Portal</p>
-        <div class="store-control">
-          <label for="active-store">Working in</label>
-          <select id="active-store" [ngModel]="myStoreId()" (ngModelChange)="switchStore($event)">
-            @for (store of stores(); track store.id || store._id) {
-              <option [value]="store.id || store._id">{{ store.storeName }}</option>
-            }
-          </select>
-          <button class="new-store" type="button" (click)="createAnotherStore()">+ Create another store</button>
+        <div class="sidebar-head">
+          <h1 class="logo">KhmerCraft</h1>
+          <p class="portal-label">Seller Portal</p>
+          <div class="store-control">
+            <label for="active-store">Working in</label>
+            <select id="active-store" [ngModel]="myStoreId()" (ngModelChange)="switchStore($event)">
+              @for (store of stores(); track store.id || store._id) {
+                <option [value]="store.id || store._id">{{ store.storeName }}</option>
+              }
+            </select>
+            <button class="new-store" type="button" (click)="createAnotherStore()">+ Create another store</button>
+          </div>
         </div>
-        <nav class="nav">
-          @for (item of navItems; track item.view) {
-            <button
-              type="button"
-              [class.active]="view() === item.view"
-              (click)="view.set(item.view)"
-            >
-              <kc-icon [name]="item.icon" [size]="18" />
-              {{ item.label }}
+
+        <nav class="sidebar-nav-scroll">
+          <!-- OVERVIEW -->
+          <div class="nav-group">
+            <span class="nav-group-title">Overview</span>
+            <button type="button" class="nav-item" [class.active]="view() === 'dashboard'" (click)="setView('dashboard')">
+              <kc-icon name="grid" [size]="16" />
+              <span>Dashboard</span>
             </button>
-          }
+          </div>
+
+          <!-- CATALOG -->
+          <div class="nav-group">
+            <span class="nav-group-title">Catalog</span>
+            <button type="button" class="nav-item" [class.active]="view() === 'products' || view() === 'add'" (click)="setView('products')">
+              <kc-icon name="box" [size]="16" />
+              <span>Products</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'store-categories'" (click)="setView('store-categories')">
+              <kc-icon name="grid" [size]="16" />
+              <span>Categories</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'inventory'" (click)="setView('inventory')">
+              <kc-icon name="package" [size]="16" />
+              <span>Inventory</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'warehouses'" (click)="setView('warehouses')">
+              <kc-icon name="store" [size]="16" />
+              <span>Stock Locations</span>
+            </button>
+          </div>
+
+          <!-- SALES -->
+          <div class="nav-group">
+            <span class="nav-group-title">Sales</span>
+            <button type="button" class="nav-item" [class.active]="view() === 'orders'" (click)="setView('orders')">
+              <kc-icon name="cart" [size]="16" />
+              <span>Orders</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'pos'" (click)="setView('pos')">
+              <kc-icon name="clipboard" [size]="16" />
+              <span>POS</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'customers'" (click)="setView('customers')">
+              <kc-icon name="user" [size]="16" />
+              <span>Customers</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'reviews'" (click)="setView('reviews')">
+              <kc-icon name="review" [size]="16" />
+              <span>Reviews</span>
+            </button>
+          </div>
+
+          <!-- MARKETING -->
+          <div class="nav-group">
+            <span class="nav-group-title">Marketing</span>
+            <button type="button" class="nav-item" [class.active]="view() === 'promotions'" (click)="setView('promotions')">
+              <kc-icon name="percent" [size]="16" />
+              <span>Promotions</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'advertisements'" (click)="setView('advertisements')">
+              <kc-icon name="sparkles" [size]="16" />
+              <span>Advertisements</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'storefront'" (click)="setView('storefront')">
+              <kc-icon name="globe" [size]="16" />
+              <span>Storefront</span>
+            </button>
+          </div>
+
+          <!-- FINANCE -->
+          <div class="nav-group">
+            <span class="nav-group-title">Finance</span>
+            <button type="button" class="nav-item" [class.active]="view() === 'sales'" (click)="setView('sales')">
+              <kc-icon name="wallet" [size]="16" />
+              <span>Sales &amp; Payouts</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'payments'" (click)="setView('payments')">
+              <kc-icon name="check" [size]="16" />
+              <span>Payments</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'transactions'" (click)="setView('transactions')">
+              <kc-icon name="file" [size]="16" />
+              <span>Transactions</span>
+            </button>
+          </div>
+
+          <!-- INSIGHTS -->
+          <div class="nav-group">
+            <span class="nav-group-title">Insights</span>
+            <button type="button" class="nav-item" [class.active]="view() === 'analytics'" (click)="setView('analytics')">
+              <kc-icon name="chart" [size]="16" />
+              <span>Analytics</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'reports'" (click)="setView('reports')">
+              <kc-icon name="download" [size]="16" />
+              <span>Reports</span>
+            </button>
+          </div>
+
+          <!-- SUPPORT -->
+          <div class="nav-group">
+            <span class="nav-group-title">Support</span>
+            <button type="button" class="nav-item" [class.active]="view() === 'support'" (click)="setView('support')">
+              <kc-icon name="info" [size]="16" />
+              <span>Support Cases</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'notifications'" (click)="setView('notifications')">
+              <kc-icon name="bell" [size]="16" />
+              <span>Notifications</span>
+            </button>
+          </div>
+
+          <!-- STORE -->
+          <div class="nav-group">
+            <span class="nav-group-title">Store</span>
+            <button type="button" class="nav-item" [class.active]="view() === 'profile'" (click)="setView('profile')">
+              <kc-icon name="store" [size]="16" />
+              <span>Store Profile</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'settings'" (click)="setView('settings')">
+              <kc-icon name="settings" [size]="16" />
+              <span>Settings</span>
+            </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'billing'" (click)="setView('billing')">
+              <kc-icon name="lock" [size]="16" />
+              <span>Plan &amp; Billing</span>
+            </button>
+          </div>
         </nav>
-        <!-- A route, not a dashboard view: billing is its own page so the
-             payment QR can be linked to and returned to directly. -->
-        <a class="side-link" routerLink="/seller/billing">
-          <kc-icon name="wallet" [size]="17" />
-          Plan &amp; billing
-        </a>
+
         <button type="button" class="logout" (click)="logout()">
-          <kc-icon name="logout" [size]="17" />
-          Logout
+          <kc-icon name="logout" [size]="15" />
+          <span>Logout</span>
         </button>
       </aside>
 
       <section class="content">
         <header class="topbar">
           <div class="search">
-            <kc-icon name="search" [size]="18" />
+            <kc-icon name="search" [size]="17" />
             <input 
               [placeholder]="view() === 'reviews' ? 'Search reviews...' : (view() === 'products' ? 'Search products...' : 'Search orders, ID, or customers...')"
               [ngModel]="globalSearchQuery()" 
@@ -866,32 +745,43 @@ interface DashboardMetric {
             />
           </div>
           <div class="top-actions">
-            <a class="view-store" [href]="activeStorefrontUrl()">
+            <a class="view-store" [href]="activeStorefrontUrl()" target="_blank">
               View Store
-              <kc-icon name="external" [size]="15" />
+              <kc-icon name="external" [size]="14" />
             </a>
-            <kc-icon name="bell" [size]="18" style="color:#146242" />
+            <button type="button" class="icon-btn" (click)="setView('notifications')" title="Notifications">
+              <kc-icon name="bell" [size]="18" style="color:#146242" />
+            </button>
             <div class="seller-mini">
               <div>
                 <strong>{{ storeProfile().storeName || 'Your Store' }}</strong>
-                <span>Premium Seller</span>
+                <span>{{ currentPlanBadge() }} Seller</span>
               </div>
-              <div class="avatar" style="background: #146242; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;">
+              <div class="avatar">
                 {{ (storeProfile().storeName || 'Y').substring(0, 1).toUpperCase() }}
               </div>
             </div>
           </div>
         </header>
 
+        <!-- ======================= 1. DASHBOARD ======================= -->
         @if (view() === 'dashboard') {
           <main class="page">
-            <h1>Seller Dashboard</h1>
-            <p class="muted">Manage your store, products, orders, and sales.</p>
+            <div class="page-header">
+              <div>
+                <h1>Seller Dashboard</h1>
+                <p class="muted">Operational overview of your orders, sales, catalog, and store health.</p>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary" type="button" (click)="startNewProduct()"><kc-icon name="plus" [size]="14" /> Add Product</button>
+                <button class="btn btn-ghost" type="button" (click)="setView('pos')"><kc-icon name="clipboard" [size]="14" /> Open POS</button>
+              </div>
+            </div>
 
             <section class="metrics">
               @for (metric of dashboardMetrics(); track metric.label) {
                 <article class="metric" [class.warn]="metric.warn" [class.gold]="metric.gold">
-                  <div class="metric-icon"><kc-icon [name]="metric.icon" [size]="20" /></div>
+                  <div class="metric-icon"><kc-icon [name]="metric.icon" [size]="18" /></div>
                   <span class="metric-label">{{ metric.label }}</span>
                   <strong>{{ metric.value }}</strong>
                   @if (metric.note) { <span class="metric-note">{{ metric.note }}</span> }
@@ -900,569 +790,152 @@ interface DashboardMetric {
             </section>
 
             <section class="dashboard-grid">
-              <div class="dash-main">
+              <div style="display:flex;flex-direction:column;gap:18px;">
                 <article class="table-card">
                   <div class="payout-head">
                     <h2>Recent Orders</h2>
-                    <button class="view-all" type="button" (click)="view.set('orders')">View All</button>
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="setView('orders')">View All</button>
                   </div>
                   @if (dashboardOrders().length) {
-                  <table>
-                    <thead>
-                      <tr><th>Order ID</th><th>Buyer</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th></tr>
-                    </thead>
-                    <tbody>
-                      @for (order of dashboardOrders(); track order.id) {
-                        <tr>
-                          <td class="order-id">{{ order.id }}</td>
-                          <td>{{ order.buyer }}</td>
-                          <td>{{ order.product }}</td>
-                          <td>{{ order.qty }}</td>
-                          <td><strong>{{ order.total }}</strong></td>
-                          <td><span class="status" [class.pending]="order.status === 'PENDING'" [class.shipped]="order.status === 'SHIPPED'" [class.delivered]="order.status === 'DELIVERED'">{{ order.status }}</span></td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
+                    <table>
+                      <thead>
+                        <tr><th>Order ID</th><th>Buyer</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th></tr>
+                      </thead>
+                      <tbody>
+                        @for (order of dashboardOrders(); track order.id) {
+                          <tr style="cursor:pointer" (click)="openOrder(order)">
+                            <td class="order-id">{{ order.id }}</td>
+                            <td>{{ order.buyer }}</td>
+                            <td>{{ order.product }}</td>
+                            <td>{{ order.qty }}</td>
+                            <td><strong>{{ order.total }}</strong></td>
+                            <td><span class="status" [class.pending]="order.status === 'PENDING'" [class.shipped]="order.status === 'SHIPPED'" [class.delivered]="order.status === 'DELIVERED'">{{ order.status }}</span></td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
                   } @else {
                     <div class="empty-state">
                       <kc-icon name="package" [size]="22" />
                       <h3>No orders yet</h3>
-                      <p>When a buyer checks out, the order lands here for you to accept.</p>
+                      <p>When a buyer checks out on the marketplace or POS, the order lands here for fulfillment.</p>
                     </div>
                   }
                 </article>
 
                 <div class="quick-actions">
-                  <button class="quick-action" type="button" (click)="view.set('add')"><kc-icon name="plus-square" [size]="24" /> Add New<br />Product</button>
-                  <button class="quick-action" type="button" (click)="view.set('orders')"><kc-icon name="box" [size]="24" /> View Orders</button>
-                  <button class="quick-action" type="button" (click)="view.set('profile')"><kc-icon name="edit" [size]="24" /> Edit Store<br />Profile</button>
-                  <button class="quick-action" type="button" (click)="view.set('sales')"><kc-icon name="wallet" [size]="24" /> Sales / Payout</button>
+                  <button class="quick-action" type="button" (click)="startNewProduct()"><kc-icon name="plus-square" [size]="20" /> Add Product</button>
+                  <button class="quick-action" type="button" (click)="setView('orders')"><kc-icon name="cart" [size]="20" /> Manage Orders</button>
+                  <button class="quick-action" type="button" (click)="setView('pos')"><kc-icon name="clipboard" [size]="20" /> In-Store POS</button>
+                  <button class="quick-action" type="button" (click)="setView('promotions')"><kc-icon name="percent" [size]="20" /> Promotions</button>
+                  <button class="quick-action" type="button" (click)="setView('advertisements')"><kc-icon name="sparkles" [size]="20" /> Request Ads</button>
                 </div>
               </div>
 
-              <aside>
-                <article class="low-stock-card">
-                  <h2>Low Stock Alert @if (lowStock().length > 0) { <span class="critical">{{ lowStock().length }} Critical</span> }</h2>
-                  @for (item of lowStock(); track item.id) {
-                    <div class="stock-item">
-                      <img [src]="img(item.image)" [alt]="item.name" (error)="imgFallback($event)" />
-                      <div>
-                        <strong>{{ item.name }}</strong>
-                        <span>{{ item.stock }} left in stock</span>
-                        <button class="small-green" type="button" (click)="editProduct(item)">Update Stock</button>
+              <aside style="display:flex;flex-direction:column;gap:16px;">
+                <article class="info-card" style="padding:16px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h2 style="font-size:15px;margin:0;">Low Stock Alerts</h2>
+                    @if (lowStock().length > 0) {
+                      <span class="status cancelled">{{ lowStock().length }} Critical</span>
+                    }
+                  </div>
+                  @if (lowStock().length > 0) {
+                    @for (item of lowStock(); track item.id) {
+                      <div class="stock-item">
+                        <img [src]="img(item.image)" [alt]="item.name" (error)="imgFallback($event)" />
+                        <div>
+                          <strong>{{ item.name }}</strong>
+                          <span style="color:var(--danger);font-size:12px;font-weight:600;">{{ item.stock }} left in stock</span>
+                          <button class="small-green" type="button" (click)="editProduct(item)">Update Stock</button>
+                        </div>
                       </div>
-                    </div>
+                    }
+                  } @else {
+                    <p class="muted" style="margin:0;font-size:12.5px;">All product inventory levels are healthy.</p>
                   }
-                  @if (lowStock().length === 0) {
-                    <p class="muted" style="font-size: 13px; margin: 10px 0;">All products have healthy stock levels.</p>
-                  }
-                  <button class="btn btn-ghost" type="button" style="width:100%;margin-top:10px">View All Inventory</button>
                 </article>
 
-                <article class="goal-widget">
-                  <h2>Order Fulfillment Goal</h2>
-                  <strong>{{ orders().length > 0 ? '100%' : '0%' }}</strong>
-                  <div class="progress-line"><span [style.width]="orders().length > 0 ? '100%' : '0%'" style="background:#f2c13d"></span></div>
-                  @if (orders().length > 0) {
-                    <em>You are on track. Keep the momentum going.</em>
+                <article class="info-card" style="padding:16px;">
+                  <h2 style="font-size:15px;margin:0 0 10px;">Recent Activity</h2>
+                  @if (notifications().length > 0) {
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                      @for (n of notifications().slice(0, 4); track n.id) {
+                        <div style="font-size:12px;border-bottom:1px solid var(--line-soft);padding-bottom:6px;">
+                          <strong>{{ n.title }}</strong>
+                          <p style="margin:2px 0 0;color:var(--ink-500)">{{ n.message }}</p>
+                        </div>
+                      }
+                    </div>
                   } @else {
-                    <em>No orders yet. Share your store link to get the first one.</em>
+                    <p class="muted" style="margin:0;font-size:12.5px;">No new alerts.</p>
                   }
                 </article>
               </aside>
             </section>
           </main>
-        } @else if (view() === 'products') {
+        }
+
+        <!-- ======================= 2. PRODUCTS ======================= -->
+        @else if (view() === 'products') {
           <main class="page">
-            <div class="products-head">
+            <div class="page-header">
               <div>
                 <h1>Products</h1>
-                <p class="muted">Add, edit, deactivate, or remove your product listings.</p>
+                <p class="muted">Manage and publish handcrafted items in your store catalogue.</p>
               </div>
-              <button class="btn btn-primary" type="button" (click)="view.set('add')"><kc-icon name="plus" [size]="15" /> Add Product</button>
+              <button class="btn btn-primary" type="button" (click)="startNewProduct()"><kc-icon name="plus" [size]="15" /> Add Product</button>
             </div>
 
-            <section class="product-filters">
-              <div class="field-control"><kc-icon name="search" [size]="15" /> <input placeholder="Search by name or SKU" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" /></div>
-              <div class="field-control">All Categories</div>
-              <div class="field-control">Status: All</div>
-              <button class="btn btn-ghost filter-toggle" type="button" aria-label="More filters"><kc-icon name="filter" [size]="16" /></button>
-            </section>
+            <div class="filter-bar">
+              <div class="filter-input">
+                <kc-icon name="search" [size]="15" />
+                <input placeholder="Search products by title or SKU..." [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
+              </div>
+            </div>
 
-            <section class="table-card">
+            <article class="table-card">
               <table>
                 <thead>
-                  <tr><th>Image</th><th>Product Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
+                  <tr><th>Image</th><th>Product Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th style="text-align:right">Actions</th></tr>
                 </thead>
                 <tbody>
                   @for (product of filteredProducts(); track product.id) {
                     <tr>
-                      <td><img class="product-thumb" [src]="img(product.image)" [alt]="product.name" (error)="imgFallback($event)" /></td>
-                      <td class="product-name"><strong>{{ product.name }}</strong>@if (product.sku) { <span>SKU {{ product.sku }}</span> }</td>
-                      <td><span class="pill blue">{{ product.category }}</span></td>
-                      <td class="money">{{ product.price | currency: 'USD' }}</td>
-                      <td [style.color]="product.stock === 0 ? '#c73030' : '#26302c'">{{ product.stock }}</td>
-                      <td><span class="pill" [class.green]="product.status === 'ACTIVE'" [class.yellow]="product.status === 'LOW STOCK'" [class.red]="product.status === 'OUT OF STOCK'">{{ product.status }}</span></td>
-                      <td>
-                        <div class="row-actions">
-                          <button class="icon-btn" type="button" (click)="editProduct(product)"><kc-icon name="edit" [size]="15" /></button>
-                          <button class="icon-btn" type="button" (click)="toggleProductStatus(product)"><kc-icon [name]="product.status === 'ACTIVE' ? 'eye-off' : 'eye'" [size]="15" /></button>
-                          <button class="icon-btn" type="button" (click)="deleteProduct(product.id)"><kc-icon name="trash" [size]="15" /></button>
-                        </div>
+                      <td style="width:60px;">
+                        <img [src]="img(product.image)" [alt]="product.name" (error)="imgFallback($event)" style="width:40px;height:40px;border-radius:6px;object-fit:cover;" />
                       </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-              <div class="table-foot">
-                <span>Showing 1 to {{ products().length }} of {{ products().length }} products</span>
-              </div>
-            </section>
-
-            <section class="product-insights">
-              <article class="tip-card">
-                <div class="sparkle"><kc-icon name="sparkles" [size]="24" /></div>
-                <div>
-                  <h2>Product Optimization Tip</h2>
-                  @if (lowStock().length > 0) {
-                    <p>Your "{{ lowStock()[0].name }}" listing has high traffic but low stock. Restocking soon could prevent you from missing out on potential sales.</p>
-                  } @else {
-                    <p>Your inventory is looking healthy. Consider adding new products to expand your catalog and reach more buyers.</p>
-                  }
-                </div>
-              </article>
-              <article class="inventory-card">
-                <h2>Inventory Health <span style="float:right">{{ products().length }}</span></h2>
-                <div class="progress-line"><span [style.width]="products().length > 0 ? '100%' : '0%'"></span></div>
-                <p>{{ products().length > 0 ? '100%' : '0%' }} of your inventory is currently active and visible to customers.</p>
-              </article>
-            </section>
-          </main>
-        } @else if (view() === 'add') {
-          <main class="page">
-            <h1>Add New Product</h1>
-            <p class="muted" style="max-width:690px">Create a new product listing for buyers to discover. Provide detailed information to increase your visibility in the KhmerCraft marketplace.</p>
-
-            <section class="add-layout">
-              <div class="add-main">
-                <article class="form-card">
-                  <h2><kc-icon name="info" [size]="18" style="color:#146242" /> Basic Info</h2>
-                  <form class="dash-form">
-                    <label>Product Name <span class="required">*</span><input class="dash-input" placeholder="e.g., Handwoven Silk Krama" [ngModel]="newProduct().name" (ngModelChange)="newProduct.set({...newProduct(), name: $event})" name="name" /></label>
-                    <div class="two-cols">
-                      <label>Category <span class="required">*</span>
-                        <select class="dash-input" [ngModel]="newProduct().category" (ngModelChange)="newProduct.set({...newProduct(), category: $event})" name="category">
-                          <option value="">Select Category</option>
-                          <option value="Handmade Crafts">Handmade Crafts</option>
-                          <option value="Pottery">Pottery</option>
-                          <option value="Textiles">Textiles</option>
-                          <option value="Food & Drink">Food & Drink</option>
-                        </select>
-                      </label>
-                      <label>Material<input class="dash-input" placeholder="e.g., 100% Raw Silk" [ngModel]="newProduct().material" (ngModelChange)="newProduct.set({...newProduct(), material: $event})" name="material" /></label>
-                    </div>
-                    <label>Description <span class="required">*</span><textarea class="dash-textarea" placeholder="Tell the story of your product..." [ngModel]="newProduct().description" (ngModelChange)="newProduct.set({...newProduct(), description: $event})" name="desc"></textarea></label>
-                  </form>
-                </article>
-
-                <article class="form-card">
-                  <h2><kc-icon name="wallet" [size]="18" style="color:#146242" /> Pricing & Stock</h2>
-                  <div class="two-cols" style="grid-template-columns:1fr 1fr 1fr">
-                    <label>Price (USD) <span class="required">*</span><input class="dash-input" type="number" placeholder="$ 0.00" [ngModel]="newProduct().price" (ngModelChange)="newProduct.set({...newProduct(), price: $event})" name="price" /></label>
-                    <label>Stock Quantity <span class="required">*</span><input class="dash-input" type="number" placeholder="1" [ngModel]="newProduct().stock" (ngModelChange)="newProduct.set({...newProduct(), stock: $event})" name="stock" /></label>
-                    @if (warehouses().length) {
-                      <label>Stock Location
-                        <select class="dash-input" [ngModel]="newProduct().warehouseId" (ngModelChange)="newProduct.set({...newProduct(), warehouseId: $event})" name="warehouseId">
-                          @for (w of warehouses(); track w.id) {
-                            <option [value]="w.id">{{ w.name }}@if (w.isDefault) { (default) }</option>
-                          }
-                        </select>
-                      </label>
-                    }
-                    <label>Location
-                      <select class="dash-input" [ngModel]="newProduct().location" (ngModelChange)="newProduct.set({...newProduct(), location: $event})" name="loc">
-                        <option value="Phnom Penh">Phnom Penh</option>
-                        <option value="Siem Reap">Siem Reap</option>
-                        <option value="Battambang">Battambang</option>
-                      </select>
-                    </label>
-                  </div>
-                </article>
-
-                <article class="form-card">
-                  <h2><kc-icon name="image" [size]="18" style="color:#146242" /> Product Images</h2>
-                  <div class="upload-drop" (click)="fileInput.click()" style="cursor: pointer; position: relative;">
-                    <input type="file" #fileInput hidden accept="image/*" multiple (change)="onFileSelected($event)">
-                    @if (newProduct().image) {
-                      <img [src]="newProduct().image" style="max-height: 120px; object-fit: contain; margin-bottom: 12px; border-radius: 4px;" />
-                    }
-                    <kc-icon name="upload-cloud" [size]="32" />
-                    <span>{{ newProduct().image ? 'Click to add more photos' : 'Click to upload or drag and drop' }}</span>
-                    <small>PNG, JPG or WEBP. The first photo is the one buyers see in the shop.</small>
-                  </div>
-
-                  @if (gallery().length) {
-                    <div class="shot-grid">
-                      @for (shot of gallery(); track $index) {
-                        <figure class="shot-thumb" [class.is-main]="$index === 0">
-                          <img [src]="shot" alt="" />
-                          @if ($index === 0) { <figcaption>Main</figcaption> }
-                          @else { <button type="button" class="mk-main" (click)="makeMainImage($index)">Make main</button> }
-                          <button type="button" class="rm" (click)="removeImage($index)" aria-label="Remove photo">×</button>
-                        </figure>
-                      }
-                    </div>
-                  }
-                </article>
-
-                <article class="form-card">
-                  <h2><kc-icon name="tag" [size]="18" style="color:#146242" /> Options <small class="opt">optional</small></h2>
-                  <p class="hint">
-                    Colours, sizes or styles a buyer picks between. Each one needs its own photo —
-                    that is what changes on the product page when they choose it.
-                  </p>
-
-                  @for (v of variants(); track $index) {
-                    <div class="variant-row">
-                      <img [src]="v.image" alt="" />
-                      <input class="dash-input" placeholder="Black" [ngModel]="v.label"
-                             (ngModelChange)="setVariantLabel($index, $event)" [name]="'variantLabel' + $index" />
-                      <button type="button" class="rm-variant" (click)="removeVariant($index)" aria-label="Remove option">×</button>
-                    </div>
-                  }
-
-                  <div class="variant-add">
-                    <input type="file" #variantInput hidden accept="image/*" (change)="onVariantSelected($event)">
-                    <button type="button" class="add-tile" (click)="variantInput.click()">+ Add option</button>
-                  </div>
-                </article>
-
-                <article class="publish-card">
-                  <div><strong>Publish Immediately</strong><span>Make this product visible to buyers right away.</span></div>
-                  <span class="switch"></span>
-                </article>
-              </div>
-
-              <aside class="add-side">
-                <span class="preview-label">Live Preview</span>
-                <article class="product-preview">
-                  <img [src]="newProduct().image || 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=520&q=85'" alt="Product preview" />
-                  <div class="preview-body">
-                    <small style="text-transform: uppercase;">{{ newProduct().category || 'Category' }}</small>
-                    <h3>{{ newProduct().name || 'Product Name Preview' }}</h3>
-                    <p>Store: {{ storeProfile().storeName || 'Your Store' }}</p>
-                    <div class="preview-price"><strong>$<span>{{ newProduct().price || '0.00' }}</span> <span style="display:block;color:#6e7974;font-size:11px">Free Delivery</span></strong><span class="pill green">In Stock</span></div>
-                  </div>
-                </article>
-                <article class="pro-tip">
-                  <kc-icon name="lightbulb" [size]="22" />
-                  <p style="margin:0;font-size:12px;font-weight:800;line-height:1.45">Pro Tip<br /><span style="font-weight:650">Artisans who upload 3+ photos and detailed descriptions see 45% more sales.</span></p>
-                </article>
-              </aside>
-            </section>
-
-            <div class="sticky-save">
-              <span class="autosave"><kc-icon name="clock" [size]="14" /> Autosaved 2 minutes ago</span>
-              <div class="actions">
-                <button class="btn btn-ghost" type="button">Cancel</button>
-                <button class="btn btn-ghost" type="button">Save as Draft</button>
-                <button class="btn btn-primary" type="button" (click)="submitAddProduct()">Save Product</button>
-              </div>
-            </div>
-          </main>
-        } @else if (view() === 'orders') {
-          <main class="page">
-            <div class="orders-head">
-              <div>
-                <h1>Orders</h1>
-                <p class="muted">View buyer orders and update delivery status.</p>
-              </div>
-              <div class="actions">
-                <button class="btn btn-ghost" type="button"><kc-icon name="download" [size]="15" /> Export List</button>
-                <button class="btn btn-primary" type="button"><kc-icon name="plus" [size]="15" /> Manual Order</button>
-              </div>
-            </div>
-
-            <section class="metrics">
-              @for (metric of metrics(); track metric.label) {
-                <article class="metric" [class.warn]="metric.warn" [class.gold]="metric.gold">
-                  <div class="metric-icon"><kc-icon [name]="metric.icon" [size]="20" /></div>
-                  <span class="metric-label">{{ metric.label }}</span>
-                  <strong>{{ metric.value }}</strong>
-                </article>
-              }
-            </section>
-
-            <section class="filters">
-              <div class="field">
-                <label>Search Keywords</label>
-                <div class="field-control"><kc-icon name="search" [size]="15" /> <input class="dash-input" style="border:none;padding:0;height:auto;flex:1;background:transparent" placeholder="Order ID or Customer Name" [ngModel]="orderSearchQuery()" (ngModelChange)="orderSearchQuery.set($event)" /></div>
-              </div>
-              <div class="field">
-                <label>Status Filter</label>
-                <div class="field-control">All Statuses</div>
-              </div>
-              <div class="field">
-                <label>Date Range</label>
-                <div class="field-control">Last 7 Days</div>
-              </div>
-              <button class="reset" type="button">Reset Filters</button>
-            </section>
-
-            <section class="table-card">
-              @if (filteredOrders().length) {
-              <table>
-                <thead>
-                  <tr>
-                    <th>Order ID</th>
-                    <th>Buyer</th>
-                    <th>Product</th>
-                    <th>Qty</th>
-                    <th>Total</th>
-                    <th>Address</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (order of filteredOrders(); track order.id) {
-                    <tr>
-                      <td><span class="order-id" (click)="openOrder(order)">{{ order.id }}</span></td>
                       <td>
-                        <div class="buyer">
-                          <span class="initial" [style.background]="order.color">{{ order.initials }}</span>
-                          {{ order.buyer }}
-                        </div>
+                        <strong>{{ product.name }}</strong>
+                        @if (product.material) { <div style="color:var(--ink-400);font-size:11px">{{ product.material }}</div> }
                       </td>
-                      <td>{{ order.product }}</td>
-                      <td>{{ order.qty }}</td>
-                      <td><strong>{{ order.total }}</strong></td>
-                      <td>{{ order.address }}</td>
-                      <td>{{ order.date }}</td>
+                      <td>{{ product.category || 'General' }}</td>
+                      <td><strong>\${{ product.price }}</strong></td>
                       <td>
-                        <span
-                          class="status"
-                          [class.pending]="order.statusClass === 'pending'"
-                          [class.shipped]="order.statusClass === 'shipped'"
-                          [class.delivered]="order.statusClass === 'delivered'"
-                        >
-                          {{ order.status }}
+                        <span class="status" [class.in-stock]="product.stock > 5" [class.low-stock]="product.stock > 0 && product.stock <= 5" [class.cancelled]="product.stock === 0">
+                          {{ product.stock }} units
                         </span>
                       </td>
+                      <td>
+                        <span class="status" [class.delivered]="product.status === 'ACTIVE'" [class.cancelled]="product.status !== 'ACTIVE'">
+                          {{ product.status }}
+                        </span>
+                      </td>
+                      <td style="text-align:right;">
+                        <button class="icon-btn" type="button" (click)="editProduct(product)" title="Edit"><kc-icon name="edit" [size]="14" /></button>
+                        <button class="icon-btn" type="button" (click)="toggleProductStatus(product)" [title]="product.status === 'ACTIVE' ? 'Archive' : 'Activate'"><kc-icon [name]="product.status === 'ACTIVE' ? 'eye-off' : 'eye'" [size]="14" /></button>
+                        <button class="icon-btn" type="button" (click)="deleteProduct(product.id)" title="Delete"><kc-icon name="trash" [size]="14" /></button>
+                      </td>
                     </tr>
                   }
                 </tbody>
               </table>
-                <div class="table-foot">
-                  <span>Showing 1 to {{ filteredOrders().length }} of {{ filteredOrders().length }} orders</span>
-                  <div class="pagination"><span>&lt;</span><span class="current">1</span><span>&gt;</span></div>
-                </div>
-              } @else {
-                <div class="empty-state">
-                  <kc-icon name="box" [size]="22" />
-                  <h3>No orders found</h3>
-                  <p>Nothing matches these filters yet. Clear them, or share your store link to bring in the first order.</p>
-                </div>
-              }
-            </section>
+            </article>
           </main>
-        } @else if (view() === 'reviews') {
-          <main class="page reviews-layout">
-            <h1 style="color:#146242">Reviews</h1>
-            <p class="muted">See buyer ratings and comments for your products.</p>
+        }
 
-            <section class="rating-row">
-              <article class="rating-card average">
-                <span>Average Rating</span>
-                <strong>{{ (reviewsStats().averageRating || 0).toFixed(1) }}</strong> <span style="display:inline;color:#6b756f;letter-spacing:0;text-transform:none">/ 5.0</span>
-                <div class="stars-large">*****</div>
-                <p class="muted" style="font-size:11px;margin-top:7px">Based on {{ reviewsStats().totalReviews || 0 }} total reviews</p>
-              </article>
-
-              <article class="rating-card dist">
-                <h2>Rating Distribution</h2>
-                @for (bar of bars(); track bar.label) {
-                  <div class="bar-row">
-                    <span>{{ bar.label }}</span>
-                    <div class="track"><div class="fill" [class.low]="bar.low" [style.width]="bar.width"></div></div>
-                    <span>{{ bar.count }}</span>
-                  </div>
-                }
-              </article>
-            </section>
-
-            <div class="review-tabs">
-              <div class="chips">
-                <button class="chip active" type="button">All ratings</button>
-                <button class="chip" type="button">5 stars</button>
-                <button class="chip" type="button">4 stars</button>
-                <button class="chip" type="button">3 stars</button>
-              </div>
-              <span class="sort">Newest First</span>
-            </div>
-
-            <section class="review-list">
-              @if (!filteredReviews().length) {
-                <div class="empty-state card-empty">
-                  <kc-icon name="review" [size]="22" />
-                  <h3>No reviews yet</h3>
-                  <p>Once buyers receive their orders they can rate them, and those ratings show up here.</p>
-                </div>
-              }
-              @for (review of filteredReviews(); track review.id || review.name) {
-                <article class="review-card">
-                  <div class="review-top">
-                    <div class="review-person">
-                      <span class="initial" [style.background]="review.color">{{ review.initial }}</span>
-                      <div>
-                        <h3>{{ review.name }}</h3>
-                        <p>Purchased: <span style="color:#146242">{{ review.product }}</span></p>
-                      </div>
-                    </div>
-                    <span class="date">{{ review.date }}</span>
-                  </div>
-                  <div class="review-stars">*****</div>
-                  <p class="review-text">{{ review.text }}</p>
-                  @if (review.image) {
-                    <img class="review-img" [src]="review.image" alt="Review product" />
-                  }
-                  @if (review.response) {
-                    <div class="response"><strong>Your response:</strong>{{ review.response }}</div>
-                  }
-                  <div class="review-actions">
-                    <a href="#">Reply to buyer</a>
-                    <span>Flag as inappropriate</span>
-                  </div>
-                </article>
-              }
-            </section>
-          </main>
-        } @else if (view() === 'profile') {
-          <main class="page">
-            <h1>Store Profile</h1>
-            <p class="muted">Update how your store appears to buyers.</p>
-
-            <section class="profile-grid">
-              <div>
-                <article class="seller-card">
-                  @if (storeProfile().bannerUrl) {
-                    <img class="banner" [src]="storeProfile().bannerUrl" alt="Store banner" />
-                  } @else {
-                    <div class="banner" style="background: #e4ded3; height: 120px; display: flex; align-items: center; justify-content: center; color: #7a8580;">No banner uploaded</div>
-                  }
-                  <div class="seller-card-body">
-                    @if (storeProfile().logoUrl) {
-                      <img class="store-logo-preview" [src]="storeProfile().logoUrl" alt="Store logo" />
-                    } @else {
-                      <div class="store-logo-preview" style="background: #fff; border: 1px solid #e4ded3; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: #146242;">
-                        {{ (storeProfile().storeName || 'S').substring(0, 1).toUpperCase() }}
-                      </div>
-                    }
-                    <h2>{{ storeProfile().storeName || 'Store Name' }}</h2>
-                    <div class="store-rating"><span>{{ storeProfile().location || 'Location' }}</span></div>
-                    <p><strong>{{ storeProfile().storeTagline || 'Add a short buyer-facing tagline.' }}</strong><br />{{ storeProfile().storeDescription || 'No description provided.' }}</p>
-                    <a class="visit" [href]="activeStorefrontUrl()"><kc-icon name="eye" [size]="15" /> View Store</a>
-                  </div>
-                </article>
-
-                <article class="completion-card">
-                  <div class="completion-head"><span>Profile Completion</span><span style="color:#146242">{{ profileCompletion() }}%</span></div>
-                  <div class="progress-line"><span [style.width.%]="profileCompletion()"></span></div>
-                  <div class="check-list">
-                    <span>
-                      <kc-icon [name]="storeProfile().storeName && storeProfile().location ? 'check' : 'circle'" [size]="16" [style.color]="storeProfile().storeName && storeProfile().location ? '#146242' : '#ccc'" /> 
-                      Basic Info
-                    </span>
-                    <span>
-                      <kc-icon [name]="storeProfile().storeDescription ? 'check' : 'circle'" [size]="16" [style.color]="storeProfile().storeDescription ? '#146242' : '#ccc'" /> 
-                      Store Description
-                    </span>
-                    <span>
-                      <kc-icon [name]="storeProfile().phoneNumber ? 'check' : 'circle'" [size]="16" [style.color]="storeProfile().phoneNumber ? '#146242' : '#ccc'" /> 
-                      Contact Number
-                    </span>
-                  </div>
-                </article>
-              </div>
-
-              <article class="profile-form">
-                <div class="upload-row">
-                  <div>
-                    <label style="font-size:11px;font-weight:900">Store Logo</label>
-                    <div class="upload-box" style="height: 140px; cursor: pointer;" (click)="logoInput.click()">
-                      <kc-icon name="file" [size]="20" style="color: #146242" />
-                      <strong>Replace Logo</strong>
-                      <span>SVG, PNG, JPG (Max. 5MB)</span>
-                      <input #logoInput type="file" accept="image/*" style="display: none" (change)="onProfileImageSelected($event, 'logoUrl')" />
-                    </div>
-                  </div>
-                  <div>
-                    <label style="font-size:11px;font-weight:900">Store Banner</label>
-                    <div class="upload-box" style="height: 140px; cursor: pointer;" (click)="bannerInput.click()">
-                      <kc-icon name="image" [size]="20" style="color: #146242" />
-                      <strong>Upload New Banner</strong>
-                      <span>Recommended 1200x400px (Max. 5MB)</span>
-                      <input #bannerInput type="file" accept="image/*" style="display: none" (change)="onProfileImageSelected($event, 'bannerUrl')" />
-                    </div>
-                  </div>
-                </div>
-
-                <form class="dash-form">
-                  <label>Store Name<input class="dash-input" [ngModel]="storeProfile().storeName" (ngModelChange)="storeProfile.set({...storeProfile(), storeName: $event})" name="storeName" /></label>
-                  <label>Store Tagline
-                    <input class="dash-input" maxlength="160" [ngModel]="storeProfile().storeTagline" (ngModelChange)="storeProfile.set({...storeProfile(), storeTagline: $event})" name="storeTagline" placeholder="A clear one-line reason to shop here" />
-                  </label>
-                  <label>Description
-                    <textarea class="dash-textarea" [ngModel]="storeProfile().storeDescription" (ngModelChange)="storeProfile.set({...storeProfile(), storeDescription: $event})" name="storeDesc"></textarea>
-                  </label>
-                  <label>Announcement
-                    <input class="dash-input" maxlength="120" [ngModel]="storeProfile().announcement" (ngModelChange)="storeProfile.set({...storeProfile(), announcement: $event})" name="announcement" placeholder="Example: Free Phnom Penh delivery this weekend" />
-                  </label>
-                  <div class="profile-section-title"><strong>Storefront theme</strong><span>Choose one tested color system. KhmerCraft keeps typography and shopping controls consistent.</span></div>
-                  <div class="theme-options">
-                    @for (theme of storefrontThemes; track theme.value) {
-                      <button type="button" class="theme-choice" [class.selected]="storeProfile().theme === theme.value" [style.--swatch]="theme.color" (click)="storeProfile.set({...storeProfile(), theme: theme.value})"><i></i>{{ theme.label }}</button>
-                    }
-                  </div>
-                  <div class="two-cols">
-                    <label>Location
-                      <div style="position: relative; display: flex;">
-                        <input class="dash-input" style="padding-right: 36px; width: 100%" [ngModel]="storeProfile().location" (ngModelChange)="storeProfile.set({...storeProfile(), location: $event})" name="location" placeholder="City, Country" />
-                        <button type="button" (click)="detectLocation()" [disabled]="isDetectingLocation()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #146242; padding: 0; display: flex; align-items: center;" title="Auto-detect Location">
-                          <kc-icon [name]="isDetectingLocation() ? 'loader' : 'map-pin'" [size]="18" />
-                        </button>
-                      </div>
-                    </label>
-                    <label>Phone Number<input class="dash-input" [ngModel]="storeProfile().phoneNumber" (ngModelChange)="storeProfile.set({...storeProfile(), phoneNumber: $event})" name="phone" /></label>
-                  </div>
-                  <label class="public-contact"><input type="checkbox" [ngModel]="storeProfile().showContact" (ngModelChange)="storeProfile.set({...storeProfile(), showContact: $event})" name="showContact" /><span><strong>Show the store phone number publicly</strong><br />Buyers will see it in the About section. Leave this off if orders should stay inside KhmerCraft.</span></label>
-                  <div class="profile-section-title"><strong>Featured products</strong><span>Select up to 6 products to place above the full store catalogue.</span></div>
-                  @if (products().length) {
-                    <div class="featured-picker">
-                      @for (product of products(); track product.id) {
-                        <label class="featured-option" [class.selected]="isFeaturedProduct(product.id)"><input type="checkbox" [checked]="isFeaturedProduct(product.id)" (change)="toggleFeaturedProduct(product.id)" /><span>{{ product.name }}</span></label>
-                      }
-                    </div>
-                  } @else { <p class="muted">Add products first, then return here to feature your strongest listings.</p> }
-                  <div class="form-actions">
-                    @if (profileMessage()) { <span class="profile-message">{{ profileMessage() }}</span> }
-                    <button class="btn btn-ghost" type="button" (click)="resetStoreProfile()">Cancel</button>
-                    <button class="btn btn-primary" type="button" [disabled]="savingProfile()" (click)="saveStoreProfile()">{{ savingProfile() ? 'Saving…' : 'Publish storefront changes' }}</button>
-                  </div>
-                </form>
-              </article>
-            </section>
-          </main>
-        } @else if (view() === 'warehouses') {
-          <main class="page">
-            @if (myStoreId(); as storeId) {
-              <app-warehouses-manager [storeId]="storeId" />
-            } @else {
-              <p class="muted">Select a store first.</p>
-            }
-          </main>
-        } @else if (view() === 'store-categories') {
+        <!-- ======================= 3. CATEGORIES ======================= -->
+        @else if (view() === 'store-categories') {
           <main class="page">
             @if (myStoreId(); as storeId) {
               <app-store-categories-manager [storeId]="storeId" />
@@ -1470,233 +943,2767 @@ interface DashboardMetric {
               <p class="muted">Select a store first.</p>
             }
           </main>
-        } @else if (view() === 'sales') {
+        }
+
+        <!-- ======================= 4. INVENTORY ======================= -->
+        @else if (view() === 'inventory') {
           <main class="page">
-            <h1>Sales / Payout</h1>
-            <p class="muted">Track your sales, commission, and seller earnings.</p>
+            <div class="page-header">
+              <div>
+                <h1>Inventory Management</h1>
+                <p class="muted">Live stock tracking, alert levels, and direct inline quantity adjustments.</p>
+              </div>
+            </div>
 
-            <section class="metrics" style="margin-top:28px">
-              @for (metric of payoutMetrics(); track metric.label) {
-                <article class="metric" [class.warn]="metric.warn" [class.gold]="metric.gold">
-                  <div class="metric-icon"><kc-icon [name]="metric.icon" [size]="20" /></div>
-                  <span class="metric-label">{{ metric.note }}</span>
-                  <span class="metric-label" style="text-transform:uppercase;margin-top:12px">{{ metric.label }}</span>
-                  <strong>{{ metric.value }}</strong>
-                </article>
-              }
-            </section>
+            <div class="filter-bar">
+              <div class="tab-pills">
+                <button type="button" class="tab-pill" [class.active]="inventoryFilter() === 'ALL'" (click)="inventoryFilter.set('ALL')">All Stock ({{ products().length }})</button>
+                <button type="button" class="tab-pill" [class.active]="inventoryFilter() === 'LOW'" (click)="inventoryFilter.set('LOW')">Low Stock (<= 5)</button>
+                <button type="button" class="tab-pill" [class.active]="inventoryFilter() === 'OUT'" (click)="inventoryFilter.set('OUT')">Out of Stock</button>
+              </div>
+            </div>
 
-            <section class="sales-grid">
-              <article class="payout-card sales-main">
-                <div class="payout-head">
-                  <h2>Payout History</h2>
-                  <div class="payout-actions">
-                    <button class="btn btn-ghost" type="button"><kc-icon name="filter" [size]="14" /> Filter</button>
-                    <button class="btn btn-ghost" type="button"><kc-icon name="download" [size]="14" /> Export</button>
+            <article class="table-card">
+              <table>
+                <thead>
+                  <tr><th>Product</th><th>Category</th><th>Price</th><th>Stock Status</th><th>Current Units</th><th style="text-align:right">Update Stock</th></tr>
+                </thead>
+                <tbody>
+                  @for (p of filteredInventory(); track p.id) {
+                    <tr>
+                      <td>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                          <img [src]="img(p.image)" [alt]="p.name" (error)="imgFallback($event)" style="width:36px;height:36px;border-radius:6px;object-fit:cover;" />
+                          <strong>{{ p.name }}</strong>
+                        </div>
+                      </td>
+                      <td>{{ p.category || 'Craft' }}</td>
+                      <td>\${{ p.price }}</td>
+                      <td>
+                        <span class="status" [class.in-stock]="p.stock > 5" [class.low-stock]="p.stock > 0 && p.stock <= 5" [class.cancelled]="p.stock === 0">
+                          {{ p.stock === 0 ? 'Out of Stock' : (p.stock <= 5 ? 'Low Stock' : 'In Stock') }}
+                        </span>
+                      </td>
+                      <td><strong style="font-size:14px;">{{ p.stock }}</strong></td>
+                      <td style="text-align:right;">
+                        <div style="display:inline-flex;align-items:center;gap:6px;">
+                          <button class="btn btn-ghost btn-sm" type="button" (click)="adjustStockInline(p, -1)" [disabled]="p.stock <= 0">-1</button>
+                          <button class="btn btn-ghost btn-sm" type="button" (click)="adjustStockInline(p, 1)">+1</button>
+                          <button class="btn btn-ghost btn-sm" type="button" (click)="adjustStockInline(p, 10)">+10</button>
+                          <button class="btn btn-primary btn-sm" type="button" (click)="editProduct(p)">Edit</button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 5. WAREHOUSES / STOCK LOCATIONS ======================= -->
+        @else if (view() === 'warehouses') {
+          <main class="page">
+            @if (myStoreId(); as storeId) {
+              <app-warehouses-manager [storeId]="storeId" />
+            } @else {
+              <p class="muted">Select a store first.</p>
+            }
+          </main>
+        }
+
+        <!-- ======================= 6. ORDERS ======================= -->
+        @else if (view() === 'orders') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Orders</h1>
+                <p class="muted">Track customer orders, payments, and fulfillment across marketplace &amp; in-store.</p>
+              </div>
+            </div>
+
+            <div class="filter-bar">
+              <div class="filter-input">
+                <kc-icon name="search" [size]="15" />
+                <input placeholder="Search orders by ID or customer..." [ngModel]="globalSearchQuery()" (ngModelChange)="globalSearchQuery.set($event)" />
+              </div>
+              <div class="tab-pills">
+                <button type="button" class="tab-pill" [class.active]="orderStatusFilter() === 'ALL'" (click)="orderStatusFilter.set('ALL')">All</button>
+                <button type="button" class="tab-pill" [class.active]="orderStatusFilter() === 'PENDING'" (click)="orderStatusFilter.set('PENDING')">Pending</button>
+                <button type="button" class="tab-pill" [class.active]="orderStatusFilter() === 'CONFIRMED'" (click)="orderStatusFilter.set('CONFIRMED')">Confirmed</button>
+                <button type="button" class="tab-pill" [class.active]="orderStatusFilter() === 'SHIPPED'" (click)="orderStatusFilter.set('SHIPPED')">Shipped</button>
+                <button type="button" class="tab-pill" [class.active]="orderStatusFilter() === 'DELIVERED'" (click)="orderStatusFilter.set('DELIVERED')">Delivered</button>
+              </div>
+            </div>
+
+            <article class="table-card">
+              <table>
+                <thead>
+                  <tr><th>Order ID</th><th>Buyer</th><th>Date</th><th>Method</th><th>Items</th><th>Total</th><th>Status</th><th style="text-align:right">Action</th></tr>
+                </thead>
+                <tbody>
+                  @for (order of filteredOrders(); track order.id) {
+                    <tr style="cursor:pointer;" (click)="openOrder(order)">
+                      <td class="order-id">{{ order.id }}</td>
+                      <td>{{ order.buyer }}</td>
+                      <td>{{ order.date }}</td>
+                      <td><span class="pill">{{ order.paymentMethod }}</span></td>
+                      <td>{{ order.items.length }} item(s)</td>
+                      <td><strong>{{ order.total }}</strong></td>
+                      <td>
+                        <span class="status" [class.pending]="order.status === 'PENDING'" [class.confirmed]="order.status === 'CONFIRMED'" [class.shipped]="order.status === 'SHIPPED'" [class.delivered]="order.status === 'DELIVERED'" [style.background]="order.status === 'CONFIRMED' ? '#dbeafe' : undefined" [style.color]="order.status === 'CONFIRMED' ? '#1e40af' : undefined">
+                          {{ order.status }}
+                        </span>
+                      </td>
+                      <td style="text-align:right;">
+                        <div style="display:inline-flex;gap:6px;justify-content:flex-end;align-items:center;">
+                          @if (order.status === 'PENDING') {
+                            <button 
+                              class="btn btn-primary btn-sm" 
+                              style="background:#059669;border-color:#059669;padding:4px 9px;font-size:11.5px;font-weight:600;" 
+                              type="button" 
+                              (click)="quickConfirmOrder(order, $event)"
+                              title="Confirm this order from buyer"
+                            >
+                              ✓ Confirm Order
+                            </button>
+                          } @else if (order.status === 'CONFIRMED') {
+                            <button 
+                              class="btn btn-primary btn-sm" 
+                              style="background:#2563eb;border-color:#2563eb;padding:4px 9px;font-size:11.5px;font-weight:600;" 
+                              type="button" 
+                              (click)="quickShipOrder(order, $event)"
+                              title="Pack and Ship items"
+                            >
+                              📦 Mark Shipped
+                            </button>
+                          }
+                          <button class="btn btn-ghost btn-sm" type="button" (click)="openOrder(order); $event.stopPropagation()">View Details</button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 7. POS (POINT OF SALE) ======================= -->
+        @else if (view() === 'pos') {
+          <main class="page">
+            <!-- POS TOP BAR -->
+            <div class="pos-top-bar">
+              <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                <div class="pos-meta-item">
+                  <span class="pos-meta-label">Store</span>
+                  <span class="pos-meta-val">{{ storeProfile().storeName || 'Active Store' }}</span>
+                </div>
+                <div class="pos-meta-item">
+                  <span class="pos-meta-label">Register</span>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <select class="dash-select" style="padding:2px 8px;font-size:12px;height:26px;width:auto;" [ngModel]="activeRegisterId()" (ngModelChange)="switchRegister($event)">
+                      @for (reg of posRegisters(); track reg.id || reg._id) {
+                        <option [value]="reg.id || reg._id">{{ reg.name }} ({{ reg.registerNumber }})</option>
+                      }
+                    </select>
+                    <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:12px;" type="button" title="Add Register" (click)="newRegisterModalOpen.set(true)">+</button>
                   </div>
                 </div>
-                @if (payouts().length) {
+                <div class="pos-meta-item">
+                  <span class="pos-meta-label">Cashier</span>
+                  <span class="pos-meta-val">{{ user()?.name || 'Staff' }}</span>
+                </div>
+                <div class="pos-meta-item">
+                  <span class="pos-meta-label">Shift Status</span>
+                  <span class="shift-status-pill" [class.open]="posShift()" [class.closed]="!posShift()">
+                    {{ posShift() ? 'Shift Active (Open)' : 'Shift Closed' }}
+                  </span>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:8px;align-items:center;">
+                @if (posShift(); as shift) {
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="openCashMovementModal()">
+                    <kc-icon name="wallet" [size]="14" /> Cash In / Out
+                  </button>
+                  <button class="btn btn-danger btn-sm" type="button" (click)="openCloseShiftModal()">
+                    <kc-icon name="lock" [size]="14" /> End Shift
+                  </button>
+                } @else {
+                  <button class="btn btn-primary btn-sm" type="button" (click)="posShiftModalOpen.set(true)">
+                    <kc-icon name="plus" [size]="14" /> Open Register Shift
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- POS SUB-NAVIGATION (11 AREAS) -->
+            <nav class="pos-subnav">
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'checkout'" (click)="setPosSubArea('checkout')">
+                <kc-icon name="cart" [size]="13" /> Checkout
+              </button>
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'orders'" (click)="setPosSubArea('orders')">
+                <kc-icon name="clipboard" [size]="13" /> Orders ({{ posOrders().length }})
+              </button>
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'products'" (click)="setPosSubArea('products')">
+                <kc-icon name="box" [size]="13" /> Products
+              </button>
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'customers'" (click)="setPosSubArea('customers')">
+                <kc-icon name="users" [size]="13" /> Customers
+              </button>
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'registers'" (click)="setPosSubArea('registers')">
+                <kc-icon name="store" [size]="13" /> Registers
+              </button>
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'shifts'" (click)="setPosSubArea('shifts')">
+                <kc-icon name="clock" [size]="13" /> Shifts
+              </button>
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'payments'" (click)="setPosSubArea('payments')">
+                <kc-icon name="credit-card" [size]="13" /> Payments
+              </button>
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'returns'" (click)="setPosSubArea('returns')">
+                <kc-icon name="arrow-left" [size]="13" /> Returns / Refunds
+              </button>
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'discounts'" (click)="setPosSubArea('discounts')">
+                <kc-icon name="tag" [size]="13" /> Discounts
+              </button>
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'reports'" (click)="setPosSubArea('reports')">
+                <kc-icon name="bar-chart" [size]="13" /> Reports
+              </button>
+              <button type="button" class="pos-subnav-btn" [class.active]="posSubArea() === 'settings'" (click)="setPosSubArea('settings')">
+                <kc-icon name="settings" [size]="13" /> Settings
+              </button>
+            </nav>
+
+            <!-- A. POS CHECKOUT (3-COLUMN LAYOUT) -->
+            @if (posSubArea() === 'checkout') {
+              <div class="pos-checkout-grid">
+                <!-- 1. LEFT: Product Catalog & Search -->
+                <div class="pos-catalog-panel">
+                  <div class="filter-bar" style="margin-top:0;margin-bottom:10px;">
+                    <div class="filter-input" style="width:100%;">
+                      <kc-icon name="search" [size]="14" />
+                      <input placeholder="Search product name or SKU..." [ngModel]="posSearch()" (ngModelChange)="posSearch.set($event)" />
+                    </div>
+                  </div>
+
+                  <!-- Category filter chips -->
+                  <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;">
+                    <button type="button" class="tab-pill" [class.active]="posCategoryFilter() === 'ALL'" (click)="posCategoryFilter.set('ALL')">All</button>
+                    <button type="button" class="tab-pill" [class.active]="posCategoryFilter() === 'Silk & Textiles'" (click)="posCategoryFilter.set('Silk & Textiles')">Silk</button>
+                    <button type="button" class="tab-pill" [class.active]="posCategoryFilter() === 'Silver & Metalware'" (click)="posCategoryFilter.set('Silver & Metalware')">Silver</button>
+                    <button type="button" class="tab-pill" [class.active]="posCategoryFilter() === 'Ceramics & Pottery'" (click)="posCategoryFilter.set('Ceramics & Pottery')">Ceramics</button>
+                    <button type="button" class="tab-pill" [class.active]="posCategoryFilter() === 'Wood & Stone Carvings'" (click)="posCategoryFilter.set('Wood & Stone Carvings')">Wood</button>
+                    <button type="button" class="tab-pill" [class.active]="posCategoryFilter() === 'Kampot Pepper & Spices'" (click)="posCategoryFilter.set('Kampot Pepper & Spices')">Spices</button>
+                    <button type="button" class="tab-pill" [class.active]="posCategoryFilter() === 'Natural Wellness & Spa'" (click)="posCategoryFilter.set('Natural Wellness & Spa')">Wellness</button>
+                  </div>
+
+                  <div class="pos-product-grid">
+                    @for (p of posFilteredProducts(); track p.id) {
+                      <div class="pos-tile" (click)="addToPosCart(p)">
+                        <img [src]="img(p.image)" [alt]="p.name" (error)="imgFallback($event)" />
+                        <strong>{{ p.name }}</strong>
+                        <div class="pos-tile-price">\${{ p.price }}</div>
+                        <div class="pos-tile-stock" [style.color]="p.stock <= 3 ? 'var(--danger)' : 'var(--ink-400)'">
+                          {{ p.stock > 0 ? (p.stock + ' in stock') : 'Out of Stock' }}
+                        </div>
+                      </div>
+                    } @empty {
+                      <div class="empty-state" style="grid-column:1/-1;padding:40px 0;">
+                        <kc-icon name="box" [size]="24" />
+                        <p>No products match your search or filter.</p>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- 2. CENTER: Cart & Customer -->
+                <div class="pos-cart-panel">
+                  <!-- Customer Banner -->
+                  <div class="pos-customer-banner">
+                    @if (posAssignedCustomer(); as cust) {
+                      <div style="min-width:0;flex:1;">
+                        <span style="font-size:10px;text-transform:uppercase;color:var(--brand-700);font-weight:700;display:block;">Customer</span>
+                        <strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">{{ cust.name }} {{ cust.phone ? '(' + cust.phone + ')' : '' }}</strong>
+                      </div>
+                      <button class="btn btn-ghost btn-sm" type="button" (click)="removeAssignedCustomer()" title="Remove customer">✕</button>
+                    } @else {
+                      <div>
+                        <span style="color:var(--ink-500);font-size:11.5px;">Customer: <strong>Walk-in</strong></span>
+                      </div>
+                      <div style="display:flex;gap:4px;">
+                        <button class="btn btn-ghost btn-sm" type="button" style="padding:2px 8px;font-size:11px;" (click)="quickCustomerModalOpen.set(true)">+ Quick Add</button>
+                        <button class="btn btn-ghost btn-sm" type="button" style="padding:2px 8px;font-size:11px;" (click)="setPosSubArea('customers')">Select</button>
+                      </div>
+                    }
+                  </div>
+
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+                    <h3 style="font-size:14px;margin:0;">Active Cart ({{ posCart().length }})</h3>
+                    <div style="display:flex;gap:6px;">
+                      <button class="btn btn-ghost btn-sm" type="button" (click)="clearPosCart()" [disabled]="posCart().length === 0">Clear</button>
+                    </div>
+                  </div>
+
+                  <!-- Cart Lines -->
+                  <div class="pos-cart-lines">
+                    @for (item of posCart(); track item.product.id; let idx = $index) {
+                      <div class="pos-cart-row">
+                        <div style="min-width:0;flex:1;">
+                          <strong style="display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ item.product.name }}</strong>
+                          <span style="font-size:11px;color:var(--brand-700);">\${{ item.price.toFixed(2) }} ea</span>
+                        </div>
+                        <div class="qty-controls">
+                          <button type="button" class="qty-btn" (click)="updatePosCartQty(idx, -1)">-</button>
+                          <span style="font-weight:700;font-size:12px;min-width:18px;text-align:center;">{{ item.quantity }}</span>
+                          <button type="button" class="qty-btn" (click)="updatePosCartQty(idx, 1)">+</button>
+                          <span style="font-weight:700;font-size:12px;min-width:48px;text-align:right;">\${{ (item.price * item.quantity).toFixed(2) }}</span>
+                          <button class="icon-btn" type="button" (click)="removeFromPosCart(idx)" title="Remove item"><kc-icon name="trash" [size]="12" /></button>
+                        </div>
+                      </div>
+                    } @empty {
+                      <div class="empty-state" style="padding:60px 0;">
+                        <kc-icon name="cart" [size]="24" />
+                        <p>No items in cart yet. Select products on the left to start checkout.</p>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- 3. RIGHT: Summary & Tender -->
+                <div class="pos-summary-panel">
+                  <h3 style="font-size:14px;margin:0 0 10px;">Order Summary</h3>
+                  
+                  <div class="pos-summary-line">
+                    <span>Subtotal</span>
+                    <strong>\${{ posSubtotal().toFixed(2) }}</strong>
+                  </div>
+                  <div class="pos-summary-line">
+                    <span>Discount ($)</span>
+                    <input class="dash-input" style="width:75px;padding:3px 6px;height:24px;text-align:right" type="number" [ngModel]="posDiscount()" (ngModelChange)="posDiscount.set(+$event)" placeholder="0.00" />
+                  </div>
+                  <div class="pos-summary-line">
+                    <span>Tax Rate</span>
+                    <select class="dash-select" style="width:85px;padding:2px 6px;height:24px" [ngModel]="posTaxRate()" (ngModelChange)="posTaxRate.set(+$event)">
+                      <option [value]="0">0% (None)</option>
+                      <option [value]="10">10% (VAT)</option>
+                    </select>
+                  </div>
+                  @if (posTaxRate() > 0) {
+                    <div class="pos-summary-line">
+                      <span>Tax Amount</span>
+                      <span>\${{ posTaxAmount().toFixed(2) }}</span>
+                    </div>
+                  }
+
+                  <div class="total-display-card">
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.85;">Total Due</div>
+                    <div class="total-display-val">\${{ posTotal().toFixed(2) }}</div>
+                  </div>
+
+                  <!-- Payment Method Toggle -->
+                  <div style="margin:10px 0 6px;">
+                    <label style="font-size:11.5px;font-weight:700;color:var(--ink-700);display:block;margin-bottom:4px;">Payment Method</label>
+                    <div style="display:flex;gap:6px;">
+                      <button type="button" class="tab-pill" style="flex:1;" [class.active]="posPaymentMethod() === 'CASH'" (click)="setPosPaymentMethod('CASH')">Cash Tender</button>
+                      <button type="button" class="tab-pill" style="flex:1;" [class.active]="posPaymentMethod() === 'KHQR'" (click)="setPosPaymentMethod('KHQR')">Bakong KHQR</button>
+                    </div>
+                  </div>
+
+                  <!-- Cash Tender Section -->
+                  @if (posPaymentMethod() === 'CASH') {
+                    <div style="margin-top:6px;">
+                      <label style="font-size:11px;color:var(--ink-500);display:block;margin-bottom:3px;">Quick Tender Presets</label>
+                      <div class="cash-presets">
+                        <button type="button" class="cash-preset-btn" (click)="setCashPreset('EXACT')">Exact (\${{ posTotal().toFixed(2) }})</button>
+                        <button type="button" class="cash-preset-btn" (click)="setCashPreset(5)">$5</button>
+                        <button type="button" class="cash-preset-btn" (click)="setCashPreset(10)">$10</button>
+                        <button type="button" class="cash-preset-btn" (click)="setCashPreset(20)">$20</button>
+                        <button type="button" class="cash-preset-btn" (click)="setCashPreset(50)">$50</button>
+                        <button type="button" class="cash-preset-btn" (click)="setCashPreset(100)">$100</button>
+                      </div>
+
+                      <label style="font-size:11px;color:var(--ink-500);display:block;margin-top:8px;margin-bottom:3px;">Cash Received ($)</label>
+                      <input class="dash-input" type="number" [ngModel]="posCashReceived()" (ngModelChange)="posCashReceived.set(+$event)" placeholder="0.00" />
+                      
+                      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:13px;font-weight:700;color:var(--brand-700);background:var(--brand-50);padding:6px 10px;border-radius:var(--r-sm);">
+                        <span>Change Due:</span>
+                        <span>\${{ posChange().toFixed(2) }}</span>
+                      </div>
+                    </div>
+                  } @else {
+                    <!-- Bakong KHQR Section -->
+                    <div style="background:#fff;border:1px solid #fecdd3;border-radius:var(--r-md);padding:12px;margin-top:8px;box-shadow:0 1px 3px rgba(225,29,72,0.08);">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                          <span style="background:#e11d48;color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:4px;letter-spacing:0.5px;">BAKONG</span>
+                          <span style="font-size:12.5px;font-weight:700;color:#881337;">Dynamic KHQR</span>
+                        </div>
+                        <span style="font-size:11px;font-weight:700;color:#e11d48;">\${{ posTotal().toFixed(2) }} USD</span>
+                      </div>
+
+                      @if (!posKhqrSession()) {
+                        <p style="font-size:11.5px;color:var(--ink-600);margin:0 0 10px;line-height:1.4;">
+                          Generate a dynamic Bakong QR code. The customer can scan with ABA Mobile, Bakong, ACLEDA, or any Cambodian banking app.
+                        </p>
+                        <button 
+                          type="button" 
+                          class="btn btn-primary" 
+                          style="width:100%;background:#e11d48;border-color:#e11d48;padding:8px;font-size:12.5px;" 
+                          [disabled]="posCart().length === 0 || generatingKhqr()"
+                          (click)="generatePosKhqr()"
+                        >
+                          @if (generatingKhqr()) {
+                            <kc-icon name="loader" [size]="14" /> Generating KHQR...
+                          } @else {
+                            <kc-icon name="qrcode" [size]="14" /> Generate Bakong QR (\${{ posTotal().toFixed(2) }})
+                          }
+                        </button>
+                      } @else {
+                        <!-- QR Display Active -->
+                        <div style="background:#fff;border:1px solid #fda4af;border-radius:var(--r-sm);padding:10px;text-align:center;">
+                          <div style="position:relative;display:inline-block;margin:0 auto;">
+                            <img 
+                              [src]="posKhqrSession()!.qrImage" 
+                              alt="Bakong KHQR" 
+                              style="width:190px;height:190px;display:block;margin:0 auto;border-radius:4px;image-rendering:pixelated;" 
+                            />
+                            @if (posKhqrPaid()) {
+                              <div style="position:absolute;inset:0;background:rgba(22,101,52,0.92);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;">
+                                <kc-icon name="check-circle" [size]="40" />
+                                <strong style="font-size:14px;margin-top:6px;">PAYMENT RECEIVED!</strong>
+                              </div>
+                            }
+                          </div>
+
+                          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11px;color:var(--ink-500);background:#fff1f2;padding:4px 8px;border-radius:4px;">
+                            <span>Ref: {{ posKhqrSession()!.tranId }}</span>
+                            <span style="font-weight:700;color:#e11d48;">\${{ posKhqrSession()!.amount.toFixed(2) }}</span>
+                          </div>
+
+                          <!-- Live Status Polling Indicator -->
+                          <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11.5px;">
+                            @if (checkingKhqrPayment()) {
+                              <kc-icon name="loader" [size]="13" />
+                              <span style="color:#e11d48;font-weight:600;">Verifying with ABA PayWay...</span>
+                            } @else if (posKhqrPaid()) {
+                              <span style="color:var(--success);font-weight:700;">✓ Verified & Confirmed</span>
+                            } @else {
+                              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e11d48;border-radius:50%;"></span>
+                              <span style="color:var(--ink-700);font-weight:500;">Waiting for customer scan...</span>
+                            }
+                          </div>
+
+                          <!-- Action buttons for Cashier -->
+                          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;">
+                            <button 
+                              type="button" 
+                              class="btn btn-outline btn-sm" 
+                              style="font-size:11px;padding:5px;"
+                              [disabled]="checkingKhqrPayment() || posKhqrPaid()"
+                              (click)="checkPosKhqrPayment(true)"
+                            >
+                              <kc-icon name="refresh" [size]="12" /> Check Status
+                            </button>
+                            <button 
+                              type="button" 
+                              class="btn btn-outline btn-sm" 
+                              style="font-size:11px;padding:5px;"
+                              (click)="showPosCustomerQrModal.set(true)"
+                            >
+                              <kc-icon name="external-link" [size]="12" /> Pop-out Display
+                            </button>
+                          </div>
+
+                          <div style="display:flex;gap:6px;margin-top:6px;">
+                            <button 
+                              type="button" 
+                              class="btn btn-ghost btn-sm" 
+                              style="flex:1;font-size:10.5px;color:var(--ink-500);padding:4px;"
+                              (click)="generatePosKhqr()"
+                            >
+                              <kc-icon name="refresh" [size]="11" /> Refresh QR
+                            </button>
+                            <button 
+                              type="button" 
+                              class="btn btn-ghost btn-sm" 
+                              style="flex:1;font-size:10.5px;color:#1d4ed8;padding:4px;font-weight:600;"
+                              (click)="simulatePosKhqrPayment()"
+                            >
+                              ⚡ Simulate Scan
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (posOrderError()) {
+                    <div style="color:var(--danger);background:var(--danger-bg);font-size:11.5px;margin-top:10px;padding:8px;border-radius:var(--r-sm);">
+                      {{ posOrderError() }}
+                    </div>
+                  }
+
+                  <!-- Primary Checkout Button -->
+                  @if (posPaymentMethod() === 'CASH') {
+                    <button 
+                      class="btn btn-primary" 
+                      type="button" 
+                      style="width:100%;margin-top:14px;padding:11px;font-size:13.5px;" 
+                      [disabled]="posCart().length === 0 || posProcessingOrder()"
+                      (click)="submitPosOrder()"
+                    >
+                      {{ posProcessingOrder() ? 'Processing Sale...' : ('Complete Cash Sale · $' + posTotal().toFixed(2)) }}
+                    </button>
+                  } @else {
+                    @if (!posKhqrSession()) {
+                      <button 
+                        class="btn btn-primary" 
+                        type="button" 
+                        style="width:100%;margin-top:14px;padding:11px;font-size:13.5px;background:#e11d48;border-color:#e11d48;" 
+                        [disabled]="posCart().length === 0 || generatingKhqr()"
+                        (click)="generatePosKhqr()"
+                      >
+                        {{ generatingKhqr() ? 'Generating Bakong QR...' : ('Generate Bakong QR · $' + posTotal().toFixed(2)) }}
+                      </button>
+                    } @else {
+                      <button 
+                        class="btn btn-primary" 
+                        type="button" 
+                        style="width:100%;margin-top:14px;padding:11px;font-size:13.5px;background:#059669;border-color:#059669;" 
+                        [disabled]="posCart().length === 0 || posProcessingOrder() || checkingKhqrPayment()"
+                        (click)="confirmKhqrPaidAndComplete()"
+                      >
+                        {{ posProcessingOrder() ? 'Processing Sale...' : ('Confirm Paid & Complete Sale · $' + posTotal().toFixed(2)) }}
+                      </button>
+                    }
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- B. POS ORDERS LIST -->
+            @else if (posSubArea() === 'orders') {
+              <div class="page-header" style="margin-bottom:12px;">
+                <div>
+                  <h2 style="font-size:16px;margin:0;">POS Order Transactions</h2>
+                  <p class="muted" style="margin:0;">Auditable ledger of in-store sales, tenders, returns, and voided orders.</p>
+                </div>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="loadPosOrders()"><kc-icon name="refresh" [size]="13" /> Refresh</button>
+              </div>
+
+              <article class="table-card">
                 <table>
                   <thead>
-                    <tr><th>Order ID</th><th>Date</th><th>Total</th><th>Commission (10%)</th><th>Earning</th><th>Status</th></tr>
+                    <tr>
+                      <th>Receipt / Order #</th>
+                      <th>Date</th>
+                      <th>Customer</th>
+                      <th>Cashier</th>
+                      <th>Register</th>
+                      <th>Tender</th>
+                      <th>Total</th>
+                      <th>Status</th>
+                      <th>Refunds</th>
+                      <th style="text-align:right;">Actions</th>
+                    </tr>
                   </thead>
                   <tbody>
-                    @for (row of payouts(); track row.id) {
+                    @for (po of posOrders(); track po.id || po._id) {
                       <tr>
-                        <td class="order-id">{{ row.id }}</td>
-                        <td>{{ row.date }}</td>
-                        <td>{{ row.total }}</td>
-                        <td class="commission">{{ row.commission }}</td>
-                        <td><strong>{{ row.earning }}</strong></td>
-                        <td><span class="status" [class.paid]="row.status === 'PAID'" [class.pending]="row.status === 'PENDING'">{{ row.status }}</span></td>
+                        <td class="order-id">{{ po.orderNumber || po.id }}</td>
+                        <td>{{ po.createdAt | date:'short' }}</td>
+                        <td>{{ po.buyerName || 'Walk-in' }}</td>
+                        <td>{{ po.cashierName || 'Staff' }}</td>
+                        <td>{{ po.registerName || 'Main' }}</td>
+                        <td><span class="pill">{{ po.paymentMethod }}</span></td>
+                        <td><strong>\${{ po.totalAmount || po.myTotal }}</strong></td>
+                        <td>
+                          <span class="status" [class.delivered]="!po.isVoided" [class.cancelled]="po.isVoided">
+                            {{ po.isVoided ? 'VOIDED' : (po.orderStatus || 'COMPLETED') }}
+                          </span>
+                        </td>
+                        <td>
+                          <span class="pill" [style.color]="po.refundStatus && po.refundStatus !== 'NONE' ? 'var(--danger)' : 'inherit'">
+                            {{ po.refundStatus || 'NONE' }}
+                          </span>
+                        </td>
+                        <td style="text-align:right;white-space:nowrap;">
+                          <button class="btn btn-ghost btn-sm" type="button" style="padding:3px 7px;font-size:11px;" (click)="viewPosOrderReceipt(po)">Receipt</button>
+                          @if (!po.isVoided && po.refundStatus !== 'FULL') {
+                            <button class="btn btn-ghost btn-sm" type="button" style="padding:3px 7px;font-size:11px;margin-left:4px;" (click)="openRefundModal(po)">Return</button>
+                          }
+                          @if (!po.isVoided) {
+                            <button class="btn btn-danger btn-sm" type="button" style="padding:3px 7px;font-size:11px;margin-left:4px;" (click)="openVoidModal(po)">Void</button>
+                          }
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="10" style="text-align:center;padding:36px;color:var(--ink-400);">No POS sales completed yet.</td>
                       </tr>
                     }
                   </tbody>
                 </table>
-                  <div class="table-foot">
-                    <span>Showing {{ payouts().length }} of {{ payouts().length }} transactions</span>
-                    <div class="pagination"><span>&lt;</span><span class="current">1</span><span>&gt;</span></div>
-                  </div>
-                } @else {
-                  <div class="empty-state">
-                    <kc-icon name="wallet" [size]="22" />
-                    <h3>No payouts yet</h3>
-                    <p>Earnings appear here once an order is delivered and clears the 7-day return window.</p>
+              </article>
+            }
+
+            <!-- C. PRODUCTS INVENTORY -->
+            @else if (posSubArea() === 'products') {
+              <div class="page-header" style="margin-bottom:12px;">
+                <div>
+                  <h2 style="font-size:16px;margin:0;">In-Store Catalog Lookup</h2>
+                  <p class="muted" style="margin:0;">Canonical product listings, live inventory availability, and pricing.</p>
+                </div>
+              </div>
+
+              <div class="filter-bar" style="margin-top:0;">
+                <div class="filter-input">
+                  <kc-icon name="search" [size]="14" />
+                  <input placeholder="Search products or SKU..." [ngModel]="posSearch()" (ngModelChange)="posSearch.set($event)" />
+                </div>
+              </div>
+
+              <article class="table-card">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>SKU</th>
+                      <th>Category</th>
+                      <th>Unit Price</th>
+                      <th>Available Stock</th>
+                      <th>Status</th>
+                      <th style="text-align:right;">POS Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (p of posFilteredProducts(); track p.id) {
+                      <tr>
+                        <td>
+                          <div style="display:flex;align-items:center;gap:10px;">
+                            <img [src]="img(p.image)" [alt]="p.name" style="width:36px;height:36px;border-radius:4px;object-fit:cover;" (error)="imgFallback($event)" />
+                            <strong>{{ p.name }}</strong>
+                          </div>
+                        </td>
+                        <td><code>{{ p.sku || 'N/A' }}</code></td>
+                        <td>{{ p.category }}</td>
+                        <td><strong>\${{ p.price.toFixed(2) }}</strong></td>
+                        <td>
+                          <span style="font-weight:700;" [style.color]="p.stock <= 3 ? 'var(--danger)' : 'var(--ok)'">
+                            {{ p.stock }} units
+                          </span>
+                        </td>
+                        <td>
+                          <span class="status" [class.delivered]="p.stock > 0" [class.cancelled]="p.stock === 0">
+                            {{ p.stock > 0 ? 'IN STOCK' : 'OUT OF STOCK' }}
+                          </span>
+                        </td>
+                        <td style="text-align:right;">
+                          <button class="btn btn-primary btn-sm" type="button" [disabled]="p.stock <= 0" (click)="addToPosCart(p); setPosSubArea('checkout')">+ Add to Cart</button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="7" style="text-align:center;padding:36px;color:var(--ink-400);">No products found in catalog.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </article>
+            }
+
+            <!-- D. CUSTOMERS DIRECTORY -->
+            @else if (posSubArea() === 'customers') {
+              <div class="page-header" style="margin-bottom:12px;">
+                <div>
+                  <h2 style="font-size:16px;margin:0;">Store Customer Directory</h2>
+                  <p class="muted" style="margin:0;">Customers who have purchased or interacted with your store. Strictly isolated.</p>
+                </div>
+                <button class="btn btn-primary btn-sm" type="button" (click)="quickCustomerModalOpen.set(true)">
+                  <kc-icon name="plus" [size]="14" /> + New Customer
+                </button>
+              </div>
+
+              <div class="filter-bar" style="margin-top:0;">
+                <div class="filter-input">
+                  <kc-icon name="search" [size]="14" />
+                  <input placeholder="Search customer name, phone, email..." [ngModel]="customerSearch()" (ngModelChange)="customerSearch.set($event)" />
+                </div>
+              </div>
+
+              <article class="table-card">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Customer Name</th>
+                      <th>Phone</th>
+                      <th>Email</th>
+                      <th>Orders Count</th>
+                      <th>Total Spent</th>
+                      <th>Last Order</th>
+                      <th style="text-align:right;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (cust of filteredCustomers(); track cust.id) {
+                      <tr>
+                        <td><strong>{{ cust.name }}</strong></td>
+                        <td>{{ cust.phone || 'N/A' }}</td>
+                        <td>{{ cust.email }}</td>
+                        <td>{{ cust.ordersCount }}</td>
+                        <td><strong style="color:var(--brand-700)">\${{ cust.totalSpent.toFixed(2) }}</strong></td>
+                        <td>{{ cust.lastOrderDate | date:'mediumDate' }}</td>
+                        <td style="text-align:right;">
+                          <button class="btn btn-primary btn-sm" type="button" (click)="assignCustomerToCart(cust)">Assign to Cart</button>
+                          <button class="btn btn-ghost btn-sm" type="button" style="margin-left:4px;" (click)="openCustomerDetail(cust)">Profile</button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="7" style="text-align:center;padding:36px;color:var(--ink-400);">No customers recorded yet.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </article>
+            }
+
+            <!-- E. REGISTERS MANAGEMENT -->
+            @else if (posSubArea() === 'registers') {
+              <div class="page-header" style="margin-bottom:12px;">
+                <div>
+                  <h2 style="font-size:16px;margin:0;">Physical POS Registers</h2>
+                  <p class="muted" style="margin:0;">Manage cashier terminals and active checkout stations.</p>
+                </div>
+                <button class="btn btn-primary btn-sm" type="button" (click)="newRegisterModalOpen.set(true)">
+                  <kc-icon name="plus" [size]="14" /> + Add Register
+                </button>
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:14px;">
+                @for (reg of posRegisters(); track reg.id || reg._id) {
+                  <div class="card" style="padding:16px;display:flex;flex-direction:column;justify-content:space-between;" [style.borderColor]="(reg.id || reg._id) === activeRegisterId() ? 'var(--brand-700)' : 'var(--line)'">
+                    <div>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span class="pill" style="font-size:10.5px;">{{ reg.registerNumber || 'REG-01' }}</span>
+                        @if ((reg.id || reg._id) === activeRegisterId()) {
+                          <span class="shift-status-pill open" style="font-size:10.5px;">Current Terminal</span>
+                        }
+                      </div>
+                      <h3 style="margin:0 0 4px;font-size:15px;">{{ reg.name }}</h3>
+                      <p style="font-size:12px;color:var(--ink-500);margin:0 0 10px;">Location: {{ reg.location || 'Main Counter' }}</p>
+                      <div style="font-size:12px;background:var(--canvas);padding:8px;border-radius:var(--r-sm);">
+                        <div>Status: <strong>{{ reg.status || 'ACTIVE' }}</strong></div>
+                        <div>Active Shift: <strong>{{ reg.currentShiftId ? 'In Progress' : 'None' }}</strong></div>
+                      </div>
+                    </div>
+                    <div style="margin-top:14px;">
+                      @if ((reg.id || reg._id) !== activeRegisterId()) {
+                        <button class="btn btn-primary btn-sm" type="button" style="width:100%;" (click)="switchRegister(reg.id || reg._id)">Set as Active Terminal</button>
+                      } @else {
+                        <button class="btn btn-ghost btn-sm" type="button" style="width:100%;" disabled>Active</button>
+                      }
+                    </div>
                   </div>
                 }
+              </div>
+            }
+
+            <!-- F. SHIFTS & RECONCILIATION -->
+            @else if (posSubArea() === 'shifts') {
+              <div class="page-header" style="margin-bottom:12px;">
+                <div>
+                  <h2 style="font-size:16px;margin:0;">Register Shifts &amp; Cash Reconciliation</h2>
+                  <p class="muted" style="margin:0;">Audit cash drawer movements, starting floats, and end-of-shift cash reconciliation.</p>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  @if (posShift(); as s) {
+                    <button class="btn btn-ghost btn-sm" type="button" (click)="openCashMovementModal()"><kc-icon name="wallet" [size]="14" /> Cash In / Out</button>
+                    <button class="btn btn-danger btn-sm" type="button" (click)="openCloseShiftModal()"><kc-icon name="lock" [size]="14" /> End Shift</button>
+                  } @else {
+                    <button class="btn btn-primary btn-sm" type="button" (click)="posShiftModalOpen.set(true)"><kc-icon name="plus" [size]="14" /> Open Shift</button>
+                  }
+                </div>
+              </div>
+
+              <!-- Current Shift Card -->
+              @if (posShift(); as s) {
+                <div class="card" style="padding:16px;margin-bottom:16px;background:var(--surface);">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--line-soft);padding-bottom:10px;">
+                    <div>
+                      <span class="shift-status-pill open" style="margin-right:8px;">Active Shift</span>
+                      <strong style="font-size:14px;">Cashier: {{ s.cashierName || user()?.name }}</strong>
+                      <span style="font-size:12px;color:var(--ink-500);margin-left:10px;">Opened: {{ s.openedAt | date:'medium' }}</span>
+                    </div>
+                    <div>Register: <strong>{{ s.registerName || activeRegister()?.name || 'Main' }}</strong></div>
+                  </div>
+
+                  <div class="dash-metrics" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));margin-bottom:14px;">
+                    <div class="metric-card">
+                      <span class="metric-label">Starting Float</span>
+                      <span class="metric-val">\${{ s.startingCash.toFixed(2) }}</span>
+                    </div>
+                    <div class="metric-card">
+                      <span class="metric-label">Cash Sales</span>
+                      <span class="metric-val">\${{ s.cashSales.toFixed(2) }}</span>
+                    </div>
+                    <div class="metric-card">
+                      <span class="metric-label">KHQR Sales</span>
+                      <span class="metric-val">\${{ s.khqrSales.toFixed(2) }}</span>
+                    </div>
+                    <div class="metric-card">
+                      <span class="metric-label">Total Sales</span>
+                      <span class="metric-val" style="color:var(--brand-700)">\${{ s.totalSales.toFixed(2) }}</span>
+                    </div>
+                    <div class="metric-card">
+                      <span class="metric-label">Cash In / Out</span>
+                      <span class="metric-val">+\${{ s.cashIn }} / -\${{ s.cashOut }}</span>
+                    </div>
+                    <div class="metric-card" style="border-color:var(--brand-600);background:var(--brand-50);">
+                      <span class="metric-label" style="color:var(--brand-700)">Expected Drawer</span>
+                      <span class="metric-val" style="color:var(--brand-800)">\${{ s.expectedCash.toFixed(2) }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Cash Movements Audit Log -->
+                  <h4 style="font-size:13px;margin:12px 0 6px;">Cash Drawer Movements During Shift</h4>
+                  <table style="margin-bottom:0;">
+                    <thead>
+                      <tr><th>Time</th><th>Movement Type</th><th>Amount</th><th>Reason / Note</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (m of s.cashMovements; track m.createdAt || $index) {
+                        <tr>
+                          <td>{{ m.createdAt | date:'shortTime' }}</td>
+                          <td><span class="pill" [class.delivered]="m.type === 'IN'" [class.cancelled]="m.type === 'OUT'">{{ m.type }}</span></td>
+                          <td><strong>\${{ m.amount.toFixed(2) }}</strong></td>
+                          <td>{{ m.reason || 'N/A' }}</td>
+                        </tr>
+                      } @empty {
+                        <tr><td colspan="4" style="text-align:center;color:var(--ink-400);padding:14px;">No cash adjustments recorded in this shift.</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <div class="empty-state" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:30px;margin-bottom:16px;">
+                  <kc-icon name="lock" [size]="28" />
+                  <h3 style="margin:8px 0 4px;">Register Shift is Closed</h3>
+                  <p>Open a new shift to begin recording sales, cash float movements, and register balance.</p>
+                  <button class="btn btn-primary" type="button" style="margin-top:12px;" (click)="posShiftModalOpen.set(true)">+ Open Register Shift</button>
+                </div>
+              }
+
+              <!-- Past Shifts History -->
+              <h3 style="font-size:15px;margin:18px 0 10px;">Closed Shift History</h3>
+              <article class="table-card">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Shift ID</th>
+                      <th>Opened</th>
+                      <th>Closed</th>
+                      <th>Cashier</th>
+                      <th>Float</th>
+                      <th>Total Sales</th>
+                      <th>Expected</th>
+                      <th>Actual Cash</th>
+                      <th>Variance</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (sh of posShiftsList(); track sh.id || sh._id) {
+                      <tr>
+                        <td><code>{{ (sh.id || sh._id).slice(-6) }}</code></td>
+                        <td>{{ sh.openedAt | date:'short' }}</td>
+                        <td>{{ sh.closedAt ? (sh.closedAt | date:'short') : 'Open' }}</td>
+                        <td>{{ sh.cashierName || 'Staff' }}</td>
+                        <td>\${{ sh.startingCash }}</td>
+                        <td><strong>\${{ sh.totalSales }}</strong></td>
+                        <td>\${{ sh.expectedCash }}</td>
+                        <td>\${{ sh.actualCash || sh.expectedCash }}</td>
+                        <td>
+                          <span style="font-weight:700;" [style.color]="(sh.variance || 0) < 0 ? 'var(--danger)' : 'var(--ok)'">
+                            \${{ (sh.variance || 0).toFixed(2) }}
+                          </span>
+                        </td>
+                        <td>{{ sh.notes || '-' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--ink-400);">No past shifts recorded yet.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </article>
+            }
+
+            <!-- G. PAYMENTS TENDER BREAKDOWN -->
+            @else if (posSubArea() === 'payments') {
+              <div class="page-header" style="margin-bottom:12px;">
+                <div>
+                  <h2 style="font-size:16px;margin:0;">POS Payment Tender Rails</h2>
+                  <p class="muted" style="margin:0;">Breakdown of Cash vs Bakong KHQR volumes and transactions.</p>
+                </div>
+              </div>
+
+              <div class="dash-metrics" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">
+                <div class="metric-card" style="border-left:4px solid var(--ok);">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="metric-label">Cash Tenders</span>
+                    <kc-icon name="wallet" [size]="20" />
+                  </div>
+                  <span class="metric-val" style="margin-top:8px;">\${{ (posReportsData()?.cashVolume || 0).toFixed(2) }}</span>
+                  <p style="font-size:11.5px;color:var(--ink-500);margin:4px 0 0;">Physical currency in cash drawer</p>
+                </div>
+                <div class="metric-card" style="border-left:4px solid var(--info);">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="metric-label">Bakong KHQR Tenders</span>
+                    <kc-icon name="credit-card" [size]="20" />
+                  </div>
+                  <span class="metric-val" style="margin-top:8px;">\${{ (posReportsData()?.khqrVolume || 0).toFixed(2) }}</span>
+                  <p style="font-size:11.5px;color:var(--ink-500);margin:4px 0 0;">National Bank of Cambodia digital rails</p>
+                </div>
+              </div>
+
+              <h3 style="font-size:15px;margin:16px 0 10px;">Recent POS Transactions</h3>
+              <article class="table-card">
+                <table>
+                  <thead>
+                    <tr><th>Receipt #</th><th>Date</th><th>Tender Rail</th><th>Amount</th><th>Status</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (po of posOrders(); track po.id || po._id) {
+                      <tr>
+                        <td class="order-id">{{ po.orderNumber || po.id }}</td>
+                        <td>{{ po.createdAt | date:'medium' }}</td>
+                        <td><span class="pill">{{ po.paymentMethod }}</span></td>
+                        <td><strong>\${{ po.totalAmount || po.myTotal }}</strong></td>
+                        <td><span class="status delivered">{{ po.orderStatus || 'COMPLETED' }}</span></td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--ink-400);">No transactions yet.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </article>
+            }
+
+            <!-- H. RETURNS / REFUNDS -->
+            @else if (posSubArea() === 'returns') {
+              <div class="page-header" style="margin-bottom:12px;">
+                <div>
+                  <h2 style="font-size:16px;margin:0;">In-Store Returns &amp; Refunds</h2>
+                  <p class="muted" style="margin:0;">Customer returns audit log and inventory restocking status.</p>
+                </div>
+                <button class="btn btn-ghost btn-sm" type="button" (click)="loadPosRefundsList()"><kc-icon name="refresh" [size]="13" /> Refresh</button>
+              </div>
+
+              <div class="dash-metrics" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">
+                <div class="metric-card">
+                  <span class="metric-label">Total Refunded Amount</span>
+                  <span class="metric-val" style="color:var(--danger)">-\${{ (posReportsData()?.totalRefunds || 0).toFixed(2) }}</span>
+                </div>
+                <div class="metric-card">
+                  <span class="metric-label">Processed Returns</span>
+                  <span class="metric-val">{{ posReportsData()?.refundsCount || posRefundsList().length }}</span>
+                </div>
+              </div>
+
+              <article class="table-card">
+                <table>
+                  <thead>
+                    <tr><th>Refund #</th><th>Original Order #</th><th>Method</th><th>Items Restocked</th><th>Amount</th><th>Reason</th><th>Date</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (ref of posRefundsList(); track ref.id || ref._id) {
+                      <tr>
+                        <td><code>{{ ref.refundNumber || (ref.id || ref._id).slice(-6) }}</code></td>
+                        <td class="order-id">{{ ref.orderNumber || ref.orderId }}</td>
+                        <td><span class="pill">{{ ref.refundMethod }}</span></td>
+                        <td>{{ ref.items?.length || 1 }} line(s)</td>
+                        <td><strong style="color:var(--danger)">-\${{ ref.totalRefundAmount?.toFixed(2) }}</strong></td>
+                        <td>{{ ref.reason }}</td>
+                        <td>{{ ref.createdAt | date:'short' }}</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--ink-400);">No return records found.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </article>
+            }
+
+            <!-- I. DISCOUNTS & PROMOTIONS -->
+            @else if (posSubArea() === 'discounts') {
+              <div class="page-header" style="margin-bottom:12px;">
+                <div>
+                  <h2 style="font-size:16px;margin:0;">In-Store Promotions &amp; Discounts</h2>
+                  <p class="muted" style="margin:0;">Active promotional discounts applicable at POS checkout.</p>
+                </div>
+                <button class="btn btn-primary btn-sm" type="button" (click)="showCreateDiscountModal.set(true)">
+                  <kc-icon name="plus" [size]="14" /> + New Discount
+                </button>
+              </div>
+
+              <article class="table-card">
+                <table>
+                  <thead>
+                    <tr><th>Promotion Name</th><th>Discount</th><th>Applies To</th><th>Period</th><th>Status</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (p of filteredDiscounts(); track p.id) {
+                      <tr>
+                        <td><strong>{{ p.name }}</strong></td>
+                        <td><span class="pill" style="color:var(--brand-700)">{{ p.type === 'PERCENTAGE' ? (p.value + '% OFF') : ('$' + p.value + ' OFF') }}</span></td>
+                        <td>{{ p.appliesTo || 'ALL' }}</td>
+                        <td>{{ p.startDate | date:'mediumDate' }} - {{ p.endDate | date:'mediumDate' }}</td>
+                        <td><span class="status delivered">{{ p.status || 'ACTIVE' }}</span></td>
+                        <td>
+                          <button class="btn btn-danger btn-sm" type="button" (click)="deleteDiscount(p.id)">Delete</button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--ink-400);">No promotions created yet.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </article>
+            }
+
+            <!-- J. REPORTS & Z-REPORT -->
+            @else if (posSubArea() === 'reports') {
+              <div class="page-header" style="margin-bottom:12px;">
+                <div>
+                  <h2 style="font-size:16px;margin:0;">POS Daily Z-Report &amp; Analytics</h2>
+                  <p class="muted" style="margin:0;">End-of-day sales auditing, register variance, and top performing products.</p>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="loadPosReports()"><kc-icon name="refresh" [size]="13" /> Refresh</button>
+                  <button class="btn btn-primary btn-sm" type="button" (click)="exportPosReportCsv()"><kc-icon name="download" [size]="14" /> Export CSV</button>
+                </div>
+              </div>
+
+              @if (posReportsData(); as rep) {
+                <div class="dash-metrics" style="grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));margin-bottom:16px;">
+                  <div class="metric-card">
+                    <span class="metric-label">Gross Sales</span>
+                    <span class="metric-val">\${{ rep.grossSales.toFixed(2) }}</span>
+                  </div>
+                  <div class="metric-card">
+                    <span class="metric-label">Total Refunds</span>
+                    <span class="metric-val" style="color:var(--danger)">-\${{ rep.totalRefunds.toFixed(2) }}</span>
+                  </div>
+                  <div class="metric-card" style="border-color:var(--brand-600);background:var(--brand-50);">
+                    <span class="metric-label" style="color:var(--brand-700)">Net Sales</span>
+                    <span class="metric-val" style="color:var(--brand-800)">\${{ rep.netSales.toFixed(2) }}</span>
+                  </div>
+                  <div class="metric-card">
+                    <span class="metric-label">Cash Tender</span>
+                    <span class="metric-val">\${{ rep.cashVolume.toFixed(2) }}</span>
+                  </div>
+                  <div class="metric-card">
+                    <span class="metric-label">KHQR Tender</span>
+                    <span class="metric-val">\${{ rep.khqrVolume.toFixed(2) }}</span>
+                  </div>
+                  <div class="metric-card">
+                    <span class="metric-label">Transactions</span>
+                    <span class="metric-val">{{ rep.totalOrders }}</span>
+                  </div>
+                </div>
+
+                <div class="two-cols" style="margin-top:16px;">
+                  <div class="card" style="padding:16px;">
+                    <h3 style="font-size:14.5px;margin:0 0 10px;">Top Selling In-Store Items</h3>
+                    <table>
+                      <thead>
+                        <tr><th>Product</th><th>Units</th><th>Revenue</th></tr>
+                      </thead>
+                      <tbody>
+                        @for (prod of rep.topProducts; track prod.name) {
+                          <tr>
+                            <td><strong>{{ prod.name }}</strong></td>
+                            <td>{{ prod.units }} units</td>
+                            <td><strong>\${{ prod.revenue.toFixed(2) }}</strong></td>
+                          </tr>
+                        } @empty {
+                          <tr><td colspan="3" style="text-align:center;color:var(--ink-400);padding:20px;">No sales data available.</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="card" style="padding:16px;">
+                    <h3 style="font-size:14.5px;margin:0 0 10px;">Z-Report Audit Summary</h3>
+                    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">
+                      <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line-soft);padding-bottom:6px;">
+                        <span class="muted">Store Name</span><strong>{{ storeProfile().storeName }}</strong>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line-soft);padding-bottom:6px;">
+                        <span class="muted">Terminal Register</span><strong>{{ activeRegister()?.name || 'All Terminals' }}</strong>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line-soft);padding-bottom:6px;">
+                        <span class="muted">Total Discounts Given</span><strong>\${{ (rep.totalDiscounts || 0).toFixed(2) }}</strong>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line-soft);padding-bottom:6px;">
+                        <span class="muted">Total Tax Collected</span><strong>\${{ (rep.totalTax || 0).toFixed(2) }}</strong>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;padding-top:4px;">
+                        <span class="muted">Audit Compliance</span><strong style="color:var(--ok)">✓ Fully Balanced</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              } @else {
+                <div class="empty-state" style="padding:40px 0;">
+                  <kc-icon name="bar-chart" [size]="28" />
+                  <p>Loading POS analytical reports...</p>
+                </div>
+              }
+            }
+
+            <!-- K. SETTINGS -->
+            @else if (posSubArea() === 'settings') {
+              <div class="page-header" style="margin-bottom:12px;">
+                <div>
+                  <h2 style="font-size:16px;margin:0;">POS Hardware &amp; Terminal Settings</h2>
+                  <p class="muted" style="margin:0;">Receipt messages, default tax rates, and allowed tenders.</p>
+                </div>
+              </div>
+
+              @if (posSettingsSaved()) {
+                <div style="background:var(--ok-bg);color:var(--ok);padding:10px 14px;border-radius:var(--r-md);margin-bottom:14px;font-weight:600;font-size:13px;">
+                  ✓ POS settings updated successfully.
+                </div>
+              }
+
+              <div class="card" style="padding:20px;max-width:680px;">
+                <div class="field-group">
+                  <label>Default Assigned Register</label>
+                  <select class="dash-select" [ngModel]="activeRegisterId()" (ngModelChange)="switchRegister($event)">
+                    @for (r of posRegisters(); track r.id || r._id) {
+                      <option [value]="r.id || r._id">{{ r.name }} ({{ r.registerNumber }})</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="field-group">
+                  <label>Default In-Store Tax Rate</label>
+                  <select class="dash-select" [ngModel]="posSettings().defaultTax" (ngModelChange)="posSettings.set({...posSettings(), defaultTax: +$event})">
+                    <option [value]="0">0% (Tax Exempt / Handcrafted Goods)</option>
+                    <option [value]="10">10% (Cambodian VAT Standard)</option>
+                  </select>
+                </div>
+
+                <div class="field-group">
+                  <label>Printed Receipt Header Slogan</label>
+                  <input class="dash-input" [ngModel]="posSettings().receiptHeader" (ngModelChange)="posSettings.set({...posSettings(), receiptHeader: $event})" />
+                  <small class="muted">Prints at the top of customer sales receipts.</small>
+                </div>
+
+                <div class="field-group">
+                  <label>Printed Receipt Footer Policy</label>
+                  <textarea class="dash-textarea" [ngModel]="posSettings().receiptFooter" (ngModelChange)="posSettings.set({...posSettings(), receiptFooter: $event})"></textarea>
+                  <small class="muted">Prints at the bottom of customer sales receipts (return/exchange terms).</small>
+                </div>
+
+                <div class="field-group">
+                  <label>Allowed Payment Tenders</label>
+                  <div style="display:flex;gap:16px;margin-top:6px;">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                      <input type="checkbox" [checked]="posSettings().acceptCash" (change)="posSettings.set({...posSettings(), acceptCash: !posSettings().acceptCash})" />
+                      <span>Cash In Drawer</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                      <input type="checkbox" [checked]="posSettings().acceptKhqr" (change)="posSettings.set({...posSettings(), acceptKhqr: !posSettings().acceptKhqr})" />
+                      <span>Bakong Dynamic KHQR</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div style="margin-top:20px;">
+                  <button class="btn btn-primary" type="button" (click)="savePosSettings()">Save POS Settings</button>
+                </div>
+              </div>
+            }
+          </main>
+        }
+
+        <!-- ======================= 8. CUSTOMERS ======================= -->
+        @else if (view() === 'customers') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Customers</h1>
+                <p class="muted">Clients who have purchased items from your store. Isolated strictly to your storefront.</p>
+              </div>
+            </div>
+
+            <div class="filter-bar">
+              <div class="filter-input">
+                <kc-icon name="search" [size]="15" />
+                <input placeholder="Search customers by name, email, or phone..." [ngModel]="customerSearch()" (ngModelChange)="customerSearch.set($event)" />
+              </div>
+              <div class="tab-pills">
+                <button type="button" class="tab-pill" [class.active]="customerStatusFilter() === 'ALL'" (click)="customerStatusFilter.set('ALL')">All Customers</button>
+                <button type="button" class="tab-pill" [class.active]="customerStatusFilter() === 'ACTIVE'" (click)="customerStatusFilter.set('ACTIVE')">Active Buyers</button>
+              </div>
+            </div>
+
+            <article class="table-card">
+              <table>
+                <thead>
+                  <tr><th>Customer Name</th><th>Email</th><th>Phone</th><th>Orders</th><th>Total Spent</th><th>Last Order</th><th>Status</th><th style="text-align:right">Action</th></tr>
+                </thead>
+                <tbody>
+                  @for (c of filteredCustomers(); track c.id) {
+                    <tr style="cursor:pointer;" (click)="openCustomerDetail(c)">
+                      <td><strong>{{ c.name }}</strong></td>
+                      <td>{{ c.email }}</td>
+                      <td>{{ c.phone || 'N/A' }}</td>
+                      <td>{{ c.ordersCount }} order(s)</td>
+                      <td><strong>\${{ c.totalSpent.toFixed(2) }}</strong></td>
+                      <td>{{ c.lastOrderDate | date:'mediumDate' }}</td>
+                      <td><span class="status" [class.delivered]="c.status === 'ACTIVE'" [class.pending]="c.status !== 'ACTIVE'">{{ c.status }}</span></td>
+                      <td style="text-align:right;">
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="openCustomerDetail(c); $event.stopPropagation()">View CRM</button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 9. REVIEWS ======================= -->
+        @else if (view() === 'reviews') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Customer Reviews</h1>
+                <p class="muted">Buyer feedback and artisan craftsmanship ratings.</p>
+              </div>
+            </div>
+
+            <article class="table-card">
+              <table>
+                <thead>
+                  <tr><th>Buyer</th><th>Product</th><th>Rating</th><th>Review</th><th>Date</th></tr>
+                </thead>
+                <tbody>
+                  @for (r of filteredReviews(); track r.id || r._id) {
+                    <tr>
+                      <td><strong>{{ r.name || r.userName }}</strong></td>
+                      <td>{{ r.product || 'Artisan Goods' }}</td>
+                      <td><strong style="color:var(--warn)">★ {{ r.rating }} / 5</strong></td>
+                      <td>{{ r.text || r.comment }}</td>
+                      <td>{{ r.date || (r.createdAt | date:'mediumDate') }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 10. PROMOTIONS ======================= -->
+        @else if (view() === 'promotions') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Store Discounts &amp; Promotions</h1>
+                <p class="muted">Manage coupon codes, percentage discounts, and seasonal markdown campaigns.</p>
+              </div>
+              <button class="btn btn-primary" type="button" (click)="showCreateDiscountModal.set(true)">
+                <kc-icon name="plus" [size]="14" /> Create Promotion
+              </button>
+            </div>
+
+            <div class="filter-bar">
+              <div class="tab-pills">
+                <button type="button" class="tab-pill" [class.active]="discountTab() === 'ACTIVE'" (click)="discountTab.set('ACTIVE')">Active</button>
+                <button type="button" class="tab-pill" [class.active]="discountTab() === 'SCHEDULED'" (click)="discountTab.set('SCHEDULED')">Scheduled</button>
+                <button type="button" class="tab-pill" [class.active]="discountTab() === 'EXPIRED'" (click)="discountTab.set('EXPIRED')">Expired</button>
+                <button type="button" class="tab-pill" [class.active]="discountTab() === 'ALL'" (click)="discountTab.set('ALL')">All</button>
+              </div>
+            </div>
+
+            <article class="table-card">
+              <table>
+                <thead>
+                  <tr><th>Promotion Name</th><th>Coupon Code</th><th>Discount</th><th>Applies To</th><th>Start Date</th><th>End Date</th><th>Status</th><th>Used</th><th style="text-align:right">Action</th></tr>
+                </thead>
+                <tbody>
+                  @for (d of filteredDiscounts(); track d.id || d._id) {
+                    <tr>
+                      <td><strong>{{ d.name }}</strong></td>
+                      <td><code>{{ d.code }}</code></td>
+                      <td><strong>{{ d.type === 'PERCENTAGE' ? (d.value + '%') : ('$' + d.value) }}</strong></td>
+                      <td>{{ d.appliesTo === 'ALL' ? 'All Products' : 'Selected Products' }}</td>
+                      <td>{{ d.startDate | date:'mediumDate' }}</td>
+                      <td>{{ d.endDate | date:'mediumDate' }}</td>
+                      <td><span class="status" [class.delivered]="d.status === 'ACTIVE'" [class.pending]="d.status === 'SCHEDULED'" [class.cancelled]="d.status === 'EXPIRED'">{{ d.status }}</span></td>
+                      <td>{{ d.usageCount || 0 }} times</td>
+                      <td style="text-align:right;">
+                        <button class="icon-btn" type="button" (click)="deleteDiscount(d.id || d._id)" title="Delete"><kc-icon name="trash" [size]="14" /></button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 11. ADVERTISEMENTS ======================= -->
+        @else if (view() === 'advertisements') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Marketplace Advertisements</h1>
+                <p class="muted">Purchase premium promotional placements on the KhmerCraft Homepage Carousel &amp; Brand Spotlight.</p>
+              </div>
+              <button class="btn btn-primary" type="button" (click)="openApplyPromoModal()">
+                <kc-icon name="plus" [size]="14" /> Request Advertisement
+              </button>
+            </div>
+
+            <!-- Active Campaigns Banner -->
+            <section style="margin-bottom:24px;">
+              <h2 style="font-size:16px;margin:0 0 10px;">Available Placements &amp; Events</h2>
+              <div class="campaigns-grid">
+                @for (c of promoCampaigns(); track c._id || c.id) {
+                  <article class="campaign-card">
+                    <div>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span class="pill">{{ c.kicker || 'SPONSORED' }}</span>
+                        <span class="campaign-rate" style="font-weight:700;color:var(--ok);">
+                          {{ c.isFree ? ((c.freeDays || 7) + ' Days Free (1 Week)') : ('$' + (c.dailyRate || 3) + '/day') }}
+                        </span>
+                      </div>
+                      <h3 style="font-size:15px;margin:0 0 4px;">{{ c.title }}</h3>
+                      <p style="font-size:12px;color:var(--ink-500);margin:0 0 8px;">{{ c.description }}</p>
+                      @if (c.isFree) {
+                        <div style="font-size:11px;color:var(--ink-400);margin-bottom:12px;">
+                          1st week ({{ c.freeDays || 7 }} days) is 100% Free · Extra days: \${{ c.dailyRate || 3 }}/day
+                        </div>
+                      }
+                    </div>
+                    <button class="btn btn-primary btn-sm" type="button" (click)="openApplyPromoModal(c._id || c.id)">Apply for this Slot</button>
+                  </article>
+                }
+              </div>
+            </section>
+
+            <!-- My Advertisements Table -->
+            <article class="table-card">
+              <div class="payout-head">
+                <h2>My Advertisement Requests</h2>
+              </div>
+              <table>
+                <thead>
+                  <tr><th>Placement / Title</th><th>Destination</th><th>Duration</th><th>Daily Rate</th><th>Total</th><th>Status</th><th style="text-align:right">Action</th></tr>
+                </thead>
+                <tbody>
+                  @for (slide of myPromoSlides(); track slide._id || slide.id) {
+                    <tr>
+                      <td>
+                        <strong>{{ slide.title }}</strong>
+                        <div style="font-size:11px;color:var(--ink-400)">{{ slide.subtitle }}</div>
+                      </td>
+                      <td>{{ slide.targetType === 'PRODUCT' ? 'Specific Product' : 'Storefront' }}</td>
+                      <td>
+                        <strong>{{ slide.days }} days</strong>
+                        <div style="font-size:11px;color:var(--ink-400)">
+                          {{ slide.totalPrice === 0 ? '100% Free' : ((slide.days - (slide.freeDays || 7)) + ' extra days') }}
+                        </div>
+                      </td>
+                      <td>\${{ slide.dailyRate }}/day</td>
+                      <td>
+                        <strong [style.color]="slide.totalPrice === 0 ? 'var(--ok)' : undefined">
+                          {{ slide.totalPrice === 0 ? 'FREE ($0)' : ('$' + slide.totalPrice) }}
+                        </strong>
+                      </td>
+                      <td>
+                        <span class="status"
+                          [class.draft]="slide.status === 'DRAFT'"
+                          [class.delivered]="(slide.status === 'APPROVED' && (slide.isPaid || slide.totalPrice === 0)) || slide.status === 'LIVE'"
+                          [class.pending]="slide.status === 'PENDING_APPROVAL' || (slide.status === 'APPROVED' && !slide.isPaid && slide.totalPrice > 0)"
+                          [class.cancelled]="slide.status === 'REJECTED'">
+                          {{ slide.status === 'DRAFT' ? 'Draft' : slide.status === 'PENDING_APPROVAL' ? 'Pending Review' : (slide.status === 'APPROVED' && !slide.isPaid && slide.totalPrice > 0) ? 'Payment Pending' : (slide.status === 'APPROVED') ? 'Approved & Scheduled' : slide.status }}
+                        </span>
+                      </td>
+                      <td style="text-align:right;">
+                        <div style="display:inline-flex;gap:6px;justify-content:flex-end;">
+                          @if (slide.status === 'DRAFT') {
+                            <button class="btn btn-outline btn-sm" type="button" (click)="editPromoSlide(slide)">Edit</button>
+                            <button class="btn btn-primary btn-sm" type="button" (click)="submitDraftPromo(slide)">Submit</button>
+                            <button class="btn btn-danger btn-sm" type="button" (click)="deletePromoSlide(slide)">Delete</button>
+                          } @else if (slide.status === 'APPROVED' && !slide.isPaid && slide.totalPrice > 0) {
+                            <button class="btn btn-primary btn-sm" type="button" (click)="openKhqrPaymentModal(slide)">Pay via KHQR</button>
+                          } @else if (slide.totalPrice === 0 && slide.status === 'APPROVED') {
+                            <span class="status delivered" style="font-size:11px;">Free Ad Active</span>
+                          } @else {
+                            <span style="font-size:12px;color:var(--ink-400)">-</span>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 12. STOREFRONT ======================= -->
+        @else if (view() === 'storefront') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Storefront &amp; Domain</h1>
+                <p class="muted">Manage your public storefront profile, theme, and branding settings.</p>
+              </div>
+              <a class="btn btn-primary" [href]="activeStorefrontUrl()" target="_blank">
+                <kc-icon name="external" [size]="14" /> View Live Storefront
+              </a>
+            </div>
+
+            <section class="two-cols" style="margin-top:16px;">
+              <article class="form-card" style="padding:18px;">
+                <h2 style="font-size:15px;margin:0 0 14px;">Storefront Status &amp; Domain</h2>
+                <div class="field-group">
+                  <label>Deployment Status</label>
+                  <div><span class="status delivered">Active &amp; Published</span></div>
+                </div>
+                <div class="field-group">
+                  <label>Marketplace Domain</label>
+                  <input class="dash-input" [value]="'https://khmercraft.com' + activeStorefrontUrl()" readonly style="background:var(--canvas)" />
+                </div>
+                <div class="field-group" style="margin-top:12px;">
+                  <label>Standalone Custom Domain</label>
+                  <div style="background:var(--canvas);border:1px dashed var(--line);padding:14px;border-radius:var(--r-md);font-size:12.5px;color:var(--ink-500)">
+                    <strong style="display:block;color:var(--ink-900);margin-bottom:4px;">No Standalone Website Required</strong>
+                    Your store is fully operational and actively selling directly on the KhmerCraft Marketplace and in-store via POS. Custom domains can be configured on the Professional Plan.
+                  </div>
+                </div>
               </article>
 
-              <aside>
-                <article class="how-card">
-                  <h2>How it works</h2>
-                  <p>KhmerCraft empowers artisans with a simple, flat-fee commission structure to keep our community sustainable.</p>
-                  <div class="calc-row"><span>Sale Price</span><strong>$100.00</strong></div>
-                  <div class="calc-row"><span>Commission <small style="background:#e6ad69;color:#17382a;border-radius:999px;padding:2px 5px">10%</small></span><strong>-$10.00</strong></div>
-                  <div class="earning">Your Earning $90.00</div>
-                  <div class="info-note"><kc-icon name="info" [size]="15" /> Payouts are processed every Friday for delivered orders that have passed the 7-day return window.</div>
-                </article>
-                <article class="goal-card">
-                  <h3>Next Payout Goal <strong>$1,000 threshold</strong></h3>
-                  <div class="progress-line" style="margin:13px 0 9px"><span [style.width]="'0%'"></span></div>
-                  <p class="muted" style="font-size:11px">{{ payoutMetrics()[0]?.value || '$0.00' }} reached</p>
-                  <button class="btn btn-primary" type="button" style="width:100%;margin-top:16px">Set Automatic Payout</button>
-                </article>
-              </aside>
+              <article class="form-card" style="padding:18px;">
+                <h2 style="font-size:15px;margin:0 0 14px;">Store Branding &amp; Bio</h2>
+                <div class="field-group">
+                  <label>Store Tagline</label>
+                  <input class="dash-input" placeholder="e.g. Master silk weavers of Takeo" [ngModel]="storeProfile().storeTagline" (ngModelChange)="storeProfile.set({...storeProfile(), storeTagline: $event})" />
+                </div>
+                <div class="field-group">
+                  <label>Store Story &amp; Description</label>
+                  <textarea class="dash-textarea" placeholder="Tell buyers about your heritage crafts..." [ngModel]="storeProfile().storeDescription" (ngModelChange)="storeProfile.set({...storeProfile(), storeDescription: $event})"></textarea>
+                </div>
+                <div class="field-group">
+                  <label>Announcement Banner</label>
+                  <input class="dash-input" placeholder="e.g. Free shipping on orders over $50" [ngModel]="storeProfile().announcement" (ngModelChange)="storeProfile.set({...storeProfile(), announcement: $event})" />
+                </div>
+                <button class="btn btn-primary" type="button" (click)="saveStoreProfile()" [disabled]="savingProfile()">
+                  {{ savingProfile() ? 'Saving...' : 'Save Storefront Settings' }}
+                </button>
+              </article>
             </section>
           </main>
-        } @else if (view() === 'settings') {
+        }
+
+        <!-- ======================= 13. FINANCE / SALES & PAYOUTS ======================= -->
+        @else if (view() === 'sales') {
           <main class="page">
-            <h1>Settings</h1>
-            <p class="muted">Manage your account and security.</p>
-
-            <section class="settings-grid">
+            <div class="page-header">
               <div>
-                <article class="settings-card">
-                  <h2><kc-icon name="user" [size]="18" style="color:#146242" /> Account Info</h2>
-                  <form class="settings-form">
-                    <div class="two-cols">
-                      <label>Full Name<input class="dash-input" [value]="user()?.name" disabled style="background: #f5f7fb; cursor: not-allowed;" /></label>
-                      <label>Email Address<input class="dash-input" [value]="user()?.email" disabled style="background: #f5f7fb; cursor: not-allowed;" /></label>
-                    </div>
-                    <label>Phone Number<input class="dash-input" [ngModel]="storeProfile().phoneNumber" (ngModelChange)="storeProfile.set({...storeProfile(), phoneNumber: $event})" name="settingsPhone" /></label>
-                    <div class="form-actions"><button class="btn btn-primary" type="button" (click)="saveStoreProfile()">Save Changes</button></div>
-                  </form>
-                </article>
-
-                <article class="settings-card" style="margin-top:24px">
-                  <h2><kc-icon name="lock" [size]="18" style="color:#146242" /> Security</h2>
-                  <form class="settings-form">
-                    <label>Current Password<input class="dash-input" type="password" [ngModel]="currentPassword()" (ngModelChange)="currentPassword.set($event)" name="currentPassword" /></label>
-                    <div class="two-cols">
-                      <label>New Password<input class="dash-input" type="password" [ngModel]="newPassword()" (ngModelChange)="newPassword.set($event)" name="newPassword" /></label>
-                      <label>Confirm New Password<input class="dash-input" type="password" [ngModel]="confirmNewPassword()" (ngModelChange)="confirmNewPassword.set($event)" name="confirmNewPassword" /></label>
-                    </div>
-                    <div><button class="btn btn-ghost" type="button" (click)="updatePassword()">Update Password</button></div>
-                  </form>
-                </article>
+                <h1>Sales &amp; Payouts</h1>
+                <p class="muted">Gross revenue, platform fees, seller earnings, and payout schedule.</p>
               </div>
+            </div>
 
-              <div>
-                <article class="settings-card">
-                  <h2><kc-icon name="bell" [size]="18" style="color:#146242" /> Notifications</h2>
-                  <div class="toggle-row">
-                    <div><strong>Orders</strong><span>Notify when a new order is placed</span></div>
-                    <span class="switch"></span>
-                  </div>
-                  <div class="toggle-row">
-                    <div><strong>Low Stock</strong><span>Alert when items are under 5 units</span></div>
-                    <span class="switch"></span>
-                  </div>
+            <section class="metrics">
+              @for (metric of payoutMetrics(); track metric.label) {
+                <article class="metric" [class.warn]="metric.warn" [class.gold]="metric.gold">
+                  <div class="metric-icon"><kc-icon [name]="metric.icon" [size]="18" /></div>
+                  <span class="metric-label">{{ metric.label }}</span>
+                  <strong>{{ metric.value }}</strong>
+                  @if (metric.note) { <span class="metric-note">{{ metric.note }}</span> }
                 </article>
-
-                <article class="danger-card" style="margin-top:24px">
-                  <h2><kc-icon name="alert" [size]="18" /> Danger Zone</h2>
-                  <p>Irreversible actions for your seller account. Please proceed with caution.</p>
-                  <div class="danger-action">
-                    <div><strong style="color:#26302c">Sign out of all devices</strong><span>Secure your account session</span></div>
-                    <button class="danger-link" type="button">Logout</button>
-                  </div>
-                  <div class="danger-action">
-                    <div><strong>Deactivate Account</strong><span>Stop selling and hide your store</span></div>
-                    <button class="danger-btn" type="button">Deactivate</button>
-                  </div>
-                </article>
-              </div>
+              }
             </section>
 
-            <p class="portal-version">KhmerCraft Seller Portal v2.4.0 · Secured by TLS 1.3</p>
+            <article class="table-card">
+              <div class="payout-head">
+                <h2>Payout History &amp; Settlements</h2>
+              </div>
+              <table>
+                <thead>
+                  <tr><th>Order ID</th><th>Date</th><th>Gross Total</th><th>Commission (10%)</th><th>Net Earning</th><th>Payout Status</th></tr>
+                </thead>
+                <tbody>
+                  @for (row of payouts(); track row.id) {
+                    <tr>
+                      <td class="order-id">{{ row.id }}</td>
+                      <td>{{ row.date }}</td>
+                      <td>{{ row.total }}</td>
+                      <td style="color:var(--warn)">{{ row.commission }}</td>
+                      <td><strong>{{ row.earning }}</strong></td>
+                      <td><span class="status delivered">{{ row.status }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
           </main>
-        } @else {
+        }
+
+        <!-- ======================= 14. PAYMENTS ======================= -->
+        @else if (view() === 'payments') {
           <main class="page">
-            <h1>{{ currentTitle() }}</h1>
-            <p class="muted">This seller dashboard section is ready for your next workflow.</p>
-            <section class="placeholder">
-              <h2>{{ currentTitle() }}</h2>
-              <p class="muted">Use the sidebar to view the designed Orders and Reviews screens.</p>
+            <div class="page-header">
+              <div>
+                <h1>Payments Breakdown</h1>
+                <p class="muted">Settlement volume and transactions categorized by payment rail.</p>
+              </div>
+            </div>
+
+            <section class="metrics">
+              <article class="metric">
+                <div class="metric-icon"><kc-icon name="check" [size]="18" /></div>
+                <span class="metric-label">ABA KHQR Volume</span>
+                <strong>\${{ financeData().paymentsByMethod?.KHQR?.volume?.toFixed(2) || '0.00' }}</strong>
+                <span class="metric-note">{{ financeData().paymentsByMethod?.KHQR?.count || 0 }} transactions</span>
+              </article>
+              <article class="metric">
+                <div class="metric-icon"><kc-icon name="wallet" [size]="18" /></div>
+                <span class="metric-label">Cash on Delivery (COD)</span>
+                <strong>\${{ financeData().paymentsByMethod?.COD?.volume?.toFixed(2) || '0.00' }}</strong>
+                <span class="metric-note">{{ financeData().paymentsByMethod?.COD?.count || 0 }} transactions</span>
+              </article>
+              <article class="metric">
+                <div class="metric-icon"><kc-icon name="clipboard" [size]="18" /></div>
+                <span class="metric-label">POS Register Cash</span>
+                <strong>\${{ financeData().paymentsByMethod?.POS_CASH?.volume?.toFixed(2) || '0.00' }}</strong>
+                <span class="metric-note">{{ financeData().paymentsByMethod?.POS_CASH?.count || 0 }} transactions</span>
+              </article>
             </section>
+          </main>
+        }
+
+        <!-- ======================= 15. TRANSACTIONS ======================= -->
+        @else if (view() === 'transactions') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Financial Transactions Ledger</h1>
+                <p class="muted">Complete chronological record of all orders, commissions, and settlements.</p>
+              </div>
+            </div>
+
+            <article class="table-card">
+              <table>
+                <thead>
+                  <tr><th>Date</th><th>Transaction ID</th><th>Channel</th><th>Method</th><th>Gross</th><th>Platform Fee</th><th>Net Amount</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  @for (t of financeData().transactions || []; track t.id) {
+                    <tr>
+                      <td>{{ t.date | date:'short' }}</td>
+                      <td class="order-id">{{ t.id }}</td>
+                      <td><span class="pill">{{ t.channel }}</span></td>
+                      <td>{{ t.method }}</td>
+                      <td>\${{ t.amount.toFixed(2) }}</td>
+                      <td style="color:var(--warn)">-\${{ t.fee.toFixed(2) }}</td>
+                      <td><strong>\${{ t.net.toFixed(2) }}</strong></td>
+                      <td><span class="status delivered">{{ t.status }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 16. ANALYTICS ======================= -->
+        @else if (view() === 'analytics') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Analytics &amp; Performance</h1>
+                <p class="muted">Real metrics on sales, average order value, conversion, and top handcrafted items.</p>
+              </div>
+              <div class="tab-pills">
+                <button type="button" class="tab-pill" [class.active]="analyticsPeriod() === 'today'" (click)="setAnalyticsPeriod('today')">Today</button>
+                <button type="button" class="tab-pill" [class.active]="analyticsPeriod() === '7d'" (click)="setAnalyticsPeriod('7d')">7 Days</button>
+                <button type="button" class="tab-pill" [class.active]="analyticsPeriod() === '30d'" (click)="setAnalyticsPeriod('30d')">30 Days</button>
+                <button type="button" class="tab-pill" [class.active]="analyticsPeriod() === 'all'" (click)="setAnalyticsPeriod('all')">All Time</button>
+              </div>
+            </div>
+
+            <section class="metrics">
+              <article class="metric">
+                <span class="metric-label">Total Revenue</span>
+                <strong>\${{ analyticsData().totalSales?.toFixed(2) || '0.00' }}</strong>
+                <span class="metric-note">{{ analyticsData().ordersCount || 0 }} total orders</span>
+              </article>
+              <article class="metric">
+                <span class="metric-label">Average Order Value</span>
+                <strong>\${{ analyticsData().aov?.toFixed(2) || '0.00' }}</strong>
+                <span class="metric-note">Per checkout</span>
+              </article>
+              <article class="metric">
+                <span class="metric-label">Marketplace Revenue</span>
+                <strong>\${{ analyticsData().channels?.marketplace?.toFixed(2) || '0.00' }}</strong>
+                <span class="metric-note">Online store</span>
+              </article>
+              <article class="metric">
+                <span class="metric-label">POS In-Store Revenue</span>
+                <strong>\${{ analyticsData().channels?.pos?.toFixed(2) || '0.00' }}</strong>
+                <span class="metric-note">Physical counter</span>
+              </article>
+            </section>
+
+            <article class="table-card" style="margin-top:20px;">
+              <div class="payout-head">
+                <h2>Top Performing Products</h2>
+              </div>
+              <table>
+                <thead>
+                  <tr><th>Product Name</th><th>Units Sold</th><th>Total Revenue Generated</th></tr>
+                </thead>
+                <tbody>
+                  @for (tp of analyticsData().topProducts || []; track tp.name) {
+                    <tr>
+                      <td><strong>{{ tp.name }}</strong></td>
+                      <td>{{ tp.soldCount }} units</td>
+                      <td><strong>\${{ tp.revenue.toFixed(2) }}</strong></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 17. REPORTS ======================= -->
+        @else if (view() === 'reports') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Business Reports &amp; Exports</h1>
+                <p class="muted">Generate and export downloadable CSV spreadsheets for accounting and bookkeeping.</p>
+              </div>
+              <button class="btn btn-primary" type="button" (click)="exportReportCSV()">
+                <kc-icon name="download" [size]="14" /> Export CSV Spreadsheet
+              </button>
+            </div>
+
+            <div class="filter-bar">
+              <div class="field-group" style="margin:0;min-width:180px;">
+                <label style="font-size:10.5px;">Report Type</label>
+                <select class="filter-select" [ngModel]="reportType()" (ngModelChange)="reportType.set($event)">
+                  <option value="sales">Sales &amp; Revenue Report</option>
+                  <option value="orders">Orders Report</option>
+                  <option value="products">Product Catalog Report</option>
+                  <option value="inventory">Inventory Stock Report</option>
+                  <option value="pos">POS Sales Report</option>
+                  <option value="customers">Customer CRM Report</option>
+                </select>
+              </div>
+            </div>
+
+            <article class="table-card">
+              <div class="payout-head">
+                <h2>Report Preview ({{ reportType().toUpperCase() }})</h2>
+              </div>
+              <table>
+                <thead>
+                  <tr><th>Record #</th><th>Name / Description</th><th>Metric A</th><th>Metric B</th><th>Status / Date</th></tr>
+                </thead>
+                <tbody>
+                  @for (row of reportPreviewData(); track row.col1; let idx = $index) {
+                    <tr>
+                      <td>{{ idx + 1 }}</td>
+                      <td><strong>{{ row.col1 }}</strong></td>
+                      <td>{{ row.col2 }}</td>
+                      <td>{{ row.col3 }}</td>
+                      <td>{{ row.col4 }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 18. SUPPORT CASES ======================= -->
+        @else if (view() === 'support') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Artisan Support Cases</h1>
+                <p class="muted">Direct line to KhmerCraft Merchant Support for order disputes, moderation, or technical queries.</p>
+              </div>
+              <button class="btn btn-primary" type="button" (click)="showCreateCaseModal.set(true)">
+                <kc-icon name="plus" [size]="14" /> New Support Case
+              </button>
+            </div>
+
+            <article class="table-card">
+              <table>
+                <thead>
+                  <tr><th>Case Number</th><th>Category</th><th>Subject</th><th>Priority</th><th>Status</th><th>Updated</th><th style="text-align:right">Action</th></tr>
+                </thead>
+                <tbody>
+                  @for (sc of supportCases(); track sc.id || sc._id) {
+                    <tr style="cursor:pointer;" (click)="openCaseDetail(sc)">
+                      <td class="order-id">{{ sc.caseNumber }}</td>
+                      <td><span class="pill">{{ sc.category }}</span></td>
+                      <td><strong>{{ sc.subject }}</strong></td>
+                      <td>{{ sc.priority }}</td>
+                      <td><span class="status" [class.delivered]="sc.status === 'RESOLVED'" [class.pending]="sc.status === 'OPEN' || sc.status === 'IN_PROGRESS'">{{ sc.status }}</span></td>
+                      <td>{{ sc.updatedAt | date:'mediumDate' }}</td>
+                      <td style="text-align:right;">
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="openCaseDetail(sc); $event.stopPropagation()">View Thread</button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 19. NOTIFICATIONS ======================= -->
+        @else if (view() === 'notifications') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Store Notifications</h1>
+                <p class="muted">System updates regarding seller approvals, order events, and campaign reviews.</p>
+              </div>
+            </div>
+
+            <article class="table-card">
+              <table>
+                <thead>
+                  <tr><th>Type</th><th>Notification</th><th>Date</th></tr>
+                </thead>
+                <tbody>
+                  @for (n of notifications(); track n.id) {
+                    <tr>
+                      <td style="width:120px;"><span class="pill">{{ n.type }}</span></td>
+                      <td>
+                        <strong>{{ n.title }}</strong>
+                        <p style="margin:2px 0 0;color:var(--ink-500)">{{ n.message }}</p>
+                      </td>
+                      <td style="width:160px;color:var(--ink-400)">{{ n.createdAt | date:'short' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </article>
+          </main>
+        }
+
+        <!-- ======================= 20. PROFILE ======================= -->
+        @else if (view() === 'profile') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Store Profile</h1>
+                <p class="muted">Public artisan biography, photos, location, and theme appearance.</p>
+              </div>
+              <button class="btn btn-primary" type="button" (click)="saveStoreProfile()" [disabled]="savingProfile()">
+                {{ savingProfile() ? 'Saving...' : 'Save Profile Changes' }}
+              </button>
+            </div>
+
+            <div class="two-cols">
+              <article class="form-card" style="padding:18px;">
+                <h2 style="font-size:15px;margin:0 0 14px;">Store Identity</h2>
+                <div class="field-group">
+                  <label>Store Name</label>
+                  <input class="dash-input" [ngModel]="storeProfile().storeName" (ngModelChange)="storeProfile.set({...storeProfile(), storeName: $event})" />
+                </div>
+                <div class="field-group">
+                  <label>Store Tagline</label>
+                  <input class="dash-input" [ngModel]="storeProfile().storeTagline" (ngModelChange)="storeProfile.set({...storeProfile(), storeTagline: $event})" />
+                </div>
+                <div class="field-group">
+                  <label>Location / Province</label>
+                  <input class="dash-input" [ngModel]="storeProfile().location" (ngModelChange)="storeProfile.set({...storeProfile(), location: $event})" />
+                </div>
+                <div class="field-group">
+                  <label>Phone Number</label>
+                  <input class="dash-input" [ngModel]="storeProfile().phoneNumber" (ngModelChange)="storeProfile.set({...storeProfile(), phoneNumber: $event})" />
+                </div>
+              </article>
+
+              <article class="form-card" style="padding:18px;">
+                <h2 style="font-size:15px;margin:0 0 14px;">Storefront Theme Color</h2>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                  @for (t of storefrontThemes; track t.value) {
+                    <div 
+                      style="border:1px solid var(--line);border-radius:var(--r-md);padding:10px;cursor:pointer;display:flex;align-items:center;gap:8px;"
+                      [style.borderColor]="storeProfile().theme === t.value ? 'var(--brand-700)' : 'var(--line)'"
+                      (click)="storeProfile.set({...storeProfile(), theme: t.value})"
+                    >
+                      <span [style.background]="t.color" style="width:16px;height:16px;border-radius:50%;display:inline-block"></span>
+                      <strong>{{ t.label }}</strong>
+                    </div>
+                  }
+                </div>
+              </article>
+            </div>
+          </main>
+        }
+
+        <!-- ======================= 21. SETTINGS ======================= -->
+        @else if (view() === 'settings') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Account Settings</h1>
+                <p class="muted">Security, password management, and credentials.</p>
+              </div>
+            </div>
+
+            <div class="two-cols">
+              <article class="form-card" style="padding:18px;">
+                <h2 style="font-size:15px;margin:0 0 14px;">User Account</h2>
+                <div class="field-group">
+                  <label>Account Name</label>
+                  <input class="dash-input" [value]="user()?.name" disabled style="background:var(--canvas)" />
+                </div>
+                <div class="field-group">
+                  <label>Email Address</label>
+                  <input class="dash-input" [value]="user()?.email" disabled style="background:var(--canvas)" />
+                </div>
+              </article>
+
+              <article class="form-card" style="padding:18px;">
+                <h2 style="font-size:15px;margin:0 0 14px;">Change Password</h2>
+                <div class="field-group">
+                  <label>Current Password</label>
+                  <input class="dash-input" type="password" [ngModel]="currentPassword()" (ngModelChange)="currentPassword.set($event)" />
+                </div>
+                <div class="field-group">
+                  <label>New Password</label>
+                  <input class="dash-input" type="password" [ngModel]="newPassword()" (ngModelChange)="newPassword.set($event)" />
+                </div>
+                <div class="field-group">
+                  <label>Confirm Password</label>
+                  <input class="dash-input" type="password" [ngModel]="confirmNewPassword()" (ngModelChange)="confirmNewPassword.set($event)" />
+                </div>
+                <button class="btn btn-ghost" type="button" (click)="updatePassword()">Update Password</button>
+              </article>
+            </div>
+          </main>
+        }
+
+        <!-- ======================= 22. PLAN & BILLING ======================= -->
+        @else if (view() === 'billing') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Plan &amp; Billing</h1>
+                <p class="muted">Manage your subscription, tier benefits, and billing receipts.</p>
+              </div>
+            </div>
+            @if (myStoreId(); as storeId) {
+              <app-seller-billing [storeId]="storeId" (planChanged)="loadMyStores(storeId)" />
+            }
           </main>
         }
       </section>
     </div>
 
+    <!-- 1. Order Detail Modal -->
     @if (selectedOrder(); as order) {
       <div class="backdrop" (click)="closeOrder()">
-        <section class="modal" (click)="$event.stopPropagation()">
+        <section class="modal modal-lg" (click)="$event.stopPropagation()">
           <header class="modal-head">
-            <h2>
-              Order Detail - {{ order.id }}
-              <span
-                class="status"
-                [class.pending]="order.statusClass === 'pending'"
-                [class.shipped]="order.statusClass === 'shipped'"
-                [class.delivered]="order.statusClass === 'delivered'"
-              >{{ order.status }}</span>
-            </h2>
+            <h2>Order Details #{{ order.id }}</h2>
             <button type="button" class="close" (click)="closeOrder()">×</button>
           </header>
           <div class="modal-body">
-            <div class="detail-grid">
-              <article>
-                <div class="detail-title"><kc-icon name="user" [size]="14" /> Buyer Info</div>
-                <div class="detail-panel">
-                  <div class="info-line"><span>Name:</span><span>{{ order.buyer }}</span></div>
-                  <div class="info-line"><span>Location:</span><span>{{ order.address }}</span></div>
-                  <div class="info-line"><span>Phone:</span><span>{{ order.phone }}</span></div>
-                  @if (order.note) {
-                    <p class="note">"{{ order.note }}"</p>
-                  }
+            <!-- Action Flow Banner for Seller -->
+            @if (order.status === 'PENDING') {
+              <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:var(--r-md);padding:14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                <div>
+                  <div style="display:flex;align-items:center;gap:6px;color:#065f46;font-weight:700;font-size:13.5px;">
+                    <kc-icon name="bell" [size]="16" />
+                    <span>New Order Placed — Waiting for Your Confirmation</span>
+                  </div>
+                  <p style="font-size:12px;color:#047857;margin:3px 0 0;">
+                    Confirm this order to notify the buyer and begin packing the items listed below.
+                  </p>
                 </div>
-              </article>
-              <article>
-                <div class="detail-title"><kc-icon name="wallet" [size]="14" /> Payment Info</div>
-                <div class="detail-panel">
-                  <div class="info-line"><span>Method:</span><span>{{ order.paymentMethod }}</span></div>
-                  <div class="info-line"><span>Status:</span><span style="color:#146242">{{ order.paymentStatus }}</span></div>
-                  <div class="info-line"><span>Total Amount:</span><span style="color:#146242">{{ order.total }}</span></div>
+                <button 
+                  class="btn btn-primary" 
+                  type="button" 
+                  style="background:#059669;border-color:#059669;padding:8px 18px;font-size:13px;font-weight:700;"
+                  [disabled]="updatingStatus()"
+                  (click)="updateOrderStatusDirect('CONFIRMED')"
+                >
+                  {{ updatingStatus() ? 'Confirming...' : '✓ Confirm Order' }}
+                </button>
+              </div>
+            } @else if (order.status === 'CONFIRMED') {
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--r-md);padding:14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                <div>
+                  <div style="display:flex;align-items:center;gap:6px;color:#1e40af;font-weight:700;font-size:13.5px;">
+                    <kc-icon name="check-circle" [size]="16" />
+                    <span>Order Confirmed — Pack &amp; Prepare For Dispatch</span>
+                  </div>
+                  <p style="font-size:12px;color:#1d4ed8;margin:3px 0 0;">
+                    Buyer has been notified that you confirmed. Pack the purchased items below and mark as shipped when dispatched.
+                  </p>
                 </div>
-              </article>
+                <button 
+                  class="btn btn-primary" 
+                  type="button" 
+                  style="background:#2563eb;border-color:#2563eb;padding:8px 16px;font-size:12.5px;font-weight:600;"
+                  [disabled]="updatingStatus()"
+                  (click)="updateOrderStatusDirect('SHIPPED')"
+                >
+                  {{ updatingStatus() ? 'Dispatching...' : '📦 Mark as Shipped' }}
+                </button>
+              </div>
+            } @else if (order.status === 'SHIPPED') {
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--r-md);padding:14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                <div>
+                  <div style="display:flex;align-items:center;gap:6px;color:#166534;font-weight:700;font-size:13.5px;">
+                    <kc-icon name="truck" [size]="16" />
+                    <span>In Transit to Customer</span>
+                  </div>
+                  <p style="font-size:12px;color:#15803d;margin:3px 0 0;">
+                    Items are en route. Mark as delivered once customer handover is completed.
+                  </p>
+                </div>
+                <button 
+                  class="btn btn-outline" 
+                  type="button" 
+                  style="color:#16a34a;border-color:#16a34a;padding:8px 16px;font-size:12.5px;font-weight:600;"
+                  [disabled]="updatingStatus()"
+                  (click)="updateOrderStatusDirect('DELIVERED')"
+                >
+                  {{ updatingStatus() ? 'Updating...' : '✓ Mark Delivered' }}
+                </button>
+              </div>
+            }
+
+            <div class="two-cols" style="margin-bottom:16px;">
+              <div style="background:var(--canvas);padding:12px;border-radius:var(--r-md)">
+                <strong style="display:block;margin-bottom:4px;">Buyer Information</strong>
+                <div>Name: {{ order.buyer }}</div>
+                <div>Phone: {{ order.phone || 'N/A' }}</div>
+                <div>Address: {{ order.address }}</div>
+                @if (order.note) { <div style="color:var(--warn);margin-top:4px;">Note: "{{ order.note }}"</div> }
+              </div>
+              <div style="background:var(--canvas);padding:12px;border-radius:var(--r-md)">
+                <strong style="display:block;margin-bottom:4px;">Payment &amp; Status</strong>
+                <div>Method: {{ order.paymentMethod }}</div>
+                <div>Status: <span class="status delivered">{{ order.status }}</span></div>
+                <div>Total: <strong>{{ order.total }}</strong></div>
+              </div>
             </div>
 
-            <div class="detail-title"><kc-icon name="package" [size]="14" /> Product Details</div>
-            <section class="product-detail">
-              @for (item of order.items; track item.name) {
-                <div class="product-line">
-                  <img [src]="item.image || 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=160&q=85'" [alt]="item.name" />
-                  <div>
-                    <h3>{{ item.name }}</h3>
-                    <p>Qty: {{ item.qty }} * \${{ item.price.toFixed(2) }} ea</p>
-                  </div>
-                  <div class="subtotal">Subtotal<strong>\${{ item.subtotal.toFixed(2) }}</strong></div>
-                </div>
-              }
-            </section>
+            <h3 style="font-size:14px;margin:12px 0 8px;">Items Bought by Customer ({{ order.items.length }})</h3>
+            <table style="margin-bottom:16px;">
+              <thead>
+                <tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr>
+              </thead>
+              <tbody>
+                @for (item of order.items; track item.name) {
+                  <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.qty }}</td>
+                    <td>\${{ item.price.toFixed(2) }}</td>
+                    <td><strong>\${{ item.subtotal.toFixed(2) }}</strong></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
 
-            <div class="detail-title">Update Order Status</div>
-            @if (statusUpdateError()) {
-              <p class="note" style="color:#b3261e">{{ statusUpdateError() }}</p>
-            }
-            <div class="modal-actions">
-              @if (nextStatusOptions(order.status).length) {
-                <select
-                  [ngModel]="statusChoice()"
-                  (ngModelChange)="statusChoice.set($event)"
-                  [disabled]="updatingStatus()"
-                >
+            <div class="field-group">
+              <label>Update Order Status</label>
+              <div style="display:flex;gap:10px;">
+                <select class="dash-select" [ngModel]="statusChoice()" (ngModelChange)="statusChoice.set($event)">
+                  <option value="">Select new status...</option>
                   @for (opt of nextStatusOptions(order.status); track opt) {
                     <option [value]="opt">{{ opt }}</option>
                   }
                 </select>
-                <button class="btn btn-ghost" type="button" (click)="closeOrder()">Close</button>
-                <button
-                  class="btn btn-primary"
-                  type="button"
-                  [disabled]="updatingStatus() || !statusChoice()"
-                  (click)="submitStatusUpdate()"
-                >{{ updatingStatus() ? 'Updating…' : 'Update Status' }}</button>
-              } @else {
-                <span class="muted">This order is in a final state and cannot be updated.</span>
-                <button class="btn btn-ghost" type="button" (click)="closeOrder()">Close</button>
+                <button class="btn btn-primary" type="button" [disabled]="!statusChoice() || updatingStatus()" (click)="submitStatusUpdate()">
+                  {{ updatingStatus() ? 'Updating...' : 'Save Status' }}
+                </button>
+              </div>
+              @if (statusUpdateError()) { <p style="color:var(--danger);font-size:12px;">{{ statusUpdateError() }}</p> }
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 2. Product Add/Edit Modal -->
+    @if (showProductModal()) {
+      <div class="backdrop" (click)="cancelProductEdit()">
+        <section class="modal modal-lg" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>{{ newProduct().id ? 'Edit Product' : 'Add New Handcrafted Item' }}</h2>
+            <button type="button" class="close" (click)="cancelProductEdit()">×</button>
+          </header>
+          <div class="modal-body">
+            @if (productSaveError()) {
+              <div style="color:var(--danger);background:var(--danger-bg);padding:10px;border-radius:var(--r-md);margin-bottom:12px;">
+                {{ productSaveError() }}
+              </div>
+            }
+            <div class="two-cols">
+              <div class="field-group">
+                <label>Product Title <span style="color:var(--danger)">*</span></label>
+                <input class="dash-input" placeholder="e.g. Silk Krama Scarf" [ngModel]="newProduct().name" (ngModelChange)="newProduct.set({...newProduct(), name: $event})" />
+              </div>
+              <div class="field-group">
+                <label>Category <span style="color:var(--danger)">*</span></label>
+                <select class="dash-select" [ngModel]="newProduct().category" (ngModelChange)="newProduct.set({...newProduct(), category: $event})">
+                  <option value="">Select category...</option>
+                  <option value="Silk & Textiles">Silk &amp; Textiles</option>
+                  <option value="Silver & Metalware">Silver &amp; Metalware</option>
+                  <option value="Ceramics & Pottery">Ceramics &amp; Pottery</option>
+                  <option value="Wood & Stone Carvings">Wood &amp; Stone Carvings</option>
+                  <option value="Kampot Pepper & Spices">Kampot Pepper &amp; Spices</option>
+                  <option value="Natural Wellness & Spa">Natural Wellness &amp; Spa</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="two-cols">
+              <div class="field-group">
+                <label>Price (USD) <span style="color:var(--danger)">*</span></label>
+                <input class="dash-input" type="number" placeholder="0.00" [ngModel]="newProduct().price" (ngModelChange)="newProduct.set({...newProduct(), price: $event})" />
+              </div>
+              <div class="field-group">
+                <label>Initial Stock (Units) <span style="color:var(--danger)">*</span></label>
+                <input class="dash-input" type="number" placeholder="10" [ngModel]="newProduct().stock" (ngModelChange)="newProduct.set({...newProduct(), stock: $event})" />
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label>Description</label>
+              <textarea class="dash-textarea" placeholder="Describe the artisan craft..." [ngModel]="newProduct().description" (ngModelChange)="newProduct.set({...newProduct(), description: $event})"></textarea>
+            </div>
+
+            <div class="field-group">
+              <label>Product Image URL</label>
+              <input class="dash-input" placeholder="https://..." [ngModel]="newProduct().image" (ngModelChange)="newProduct.set({...newProduct(), image: $event})" />
+            </div>
+
+            <div class="modal-actions">
+              <button class="btn btn-ghost" type="button" (click)="cancelProductEdit()">Cancel</button>
+              <button class="btn btn-primary" type="button" [disabled]="savingProduct()" (click)="submitProduct()">
+                {{ savingProduct() ? 'Saving...' : 'Save Product' }}
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 3. POS Open Shift Modal -->
+    @if (posShiftModalOpen()) {
+      <div class="backdrop" (click)="posShiftModalOpen.set(false)">
+        <section class="modal" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>Open POS Register Shift</h2>
+            <button type="button" class="close" (click)="posShiftModalOpen.set(false)">×</button>
+          </header>
+          <div class="modal-body">
+            <div class="field-group">
+              <label>Starting Cash Float ($)</label>
+              <input class="dash-input" type="number" [ngModel]="posStartingFloat()" (ngModelChange)="posStartingFloat.set(+$event)" />
+              <small class="muted">Amount of cash placed in register drawer at the start of shift.</small>
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-ghost" type="button" (click)="posShiftModalOpen.set(false)">Cancel</button>
+              <button class="btn btn-primary" type="button" (click)="openPosShiftSubmit()">Open Shift</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 4. POS Close Shift Modal -->
+    @if (posCloseShiftModalOpen()) {
+      <div class="backdrop" (click)="posCloseShiftModalOpen.set(false)">
+        <section class="modal" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>Close POS Shift</h2>
+            <button type="button" class="close" (click)="posCloseShiftModalOpen.set(false)">×</button>
+          </header>
+          <div class="modal-body">
+            @if (posShift(); as s) {
+              <div style="background:var(--canvas);padding:12px;border-radius:var(--r-md);margin-bottom:14px;font-size:12.5px;">
+                <div>Starting Float: <strong>\${{ s.startingCash }}</strong></div>
+                <div>Cash Sales: <strong>\${{ s.cashSales }}</strong></div>
+                <div>Cash In: <strong>\${{ s.cashIn }}</strong> | Cash Out: <strong>\${{ s.cashOut }}</strong></div>
+                <div style="margin-top:6px;border-top:1px solid var(--line);padding-top:4px;">
+                  Expected Drawer Cash: <strong style="color:var(--brand-700)">\${{ s.expectedCash }}</strong>
+                </div>
+              </div>
+            }
+            <div class="field-group">
+              <label>Actual Counted Cash ($)</label>
+              <input class="dash-input" type="number" [ngModel]="posActualCash()" (ngModelChange)="posActualCash.set(+$event)" />
+              <div style="font-size:12px;margin-top:6px;font-weight:600;" [style.color]="posCashVariance() < 0 ? 'var(--danger)' : (posCashVariance() > 0 ? 'var(--warn)' : 'var(--ok)')">
+                Drawer Variance: \${{ posCashVariance().toFixed(2) }} ({{ posCashVariance() < 0 ? 'Shortage' : (posCashVariance() > 0 ? 'Overage' : 'Exact Match') }})
+              </div>
+            </div>
+            <div class="field-group">
+              <label>Closing Notes</label>
+              <input class="dash-input" placeholder="e.g. End of day reconciliation" [ngModel]="posShiftNotes()" (ngModelChange)="posShiftNotes.set($event)" />
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-ghost" type="button" (click)="posCloseShiftModalOpen.set(false)">Cancel</button>
+              <button class="btn btn-danger" type="button" (click)="closePosShiftSubmit()">Confirm &amp; Close Shift</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 5. POS Cash In/Out Movement Modal -->
+    @if (posCashMovementModalOpen()) {
+      <div class="backdrop" (click)="posCashMovementModalOpen.set(false)">
+        <section class="modal" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>Register Cash Movement</h2>
+            <button type="button" class="close" (click)="posCashMovementModalOpen.set(false)">×</button>
+          </header>
+          <div class="modal-body">
+            <div class="field-group">
+              <label>Movement Type</label>
+              <div style="display:flex;gap:10px;">
+                <button type="button" class="tab-pill" [class.active]="posCashMovementType() === 'IN'" (click)="posCashMovementType.set('IN')">Cash In (Float Addition)</button>
+                <button type="button" class="tab-pill" [class.active]="posCashMovementType() === 'OUT'" (click)="posCashMovementType.set('OUT')">Cash Out (Drop / Expense)</button>
+              </div>
+            </div>
+            <div class="field-group">
+              <label>Amount ($)</label>
+              <input class="dash-input" type="number" [ngModel]="posCashMovementAmount()" (ngModelChange)="posCashMovementAmount.set(+$event)" />
+            </div>
+            <div class="field-group">
+              <label>Reason / Note</label>
+              <input class="dash-input" placeholder="e.g. Petty cash replenishment" [ngModel]="posCashMovementReason()" (ngModelChange)="posCashMovementReason.set($event)" />
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-ghost" type="button" (click)="posCashMovementModalOpen.set(false)">Cancel</button>
+              <button class="btn btn-primary" type="button" (click)="recordCashMovementSubmit()">Save Movement</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 6. POS Receipt Modal -->
+    @if (posReceipt(); as r) {
+      <div class="backdrop" (click)="posReceipt.set(null)">
+        <section class="modal" (click)="$event.stopPropagation()" style="max-width:440px;">
+          <header class="modal-head">
+            <h2>POS Sale Receipt</h2>
+            <button type="button" class="close" (click)="posReceipt.set(null)">×</button>
+          </header>
+          <div class="modal-body" style="font-family:monospace;font-size:12.5px;">
+            <div style="text-align:center;border-bottom:1px dashed var(--line);padding-bottom:12px;margin-bottom:12px;">
+              <h3 style="margin:0 0 4px;font-size:16px;">{{ storeProfile().storeName || 'KhmerCraft Store' }}</h3>
+              <p style="margin:0;color:var(--ink-500)">Receipt #: {{ r.orderNumber }}</p>
+              <p style="margin:0;color:var(--ink-500)">{{ r.createdAt | date:'short' }}</p>
+            </div>
+
+            <div style="border-bottom:1px dashed var(--line);padding-bottom:10px;margin-bottom:10px;">
+              @for (item of r.items; track item.name) {
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                  <span>{{ item.qty }}x {{ item.name }}</span>
+                  <span>\${{ (item.price * item.qty).toFixed(2) }}</span>
+                </div>
               }
+            </div>
+
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+              <span>Subtotal:</span><span>\${{ r.subtotal.toFixed(2) }}</span>
+            </div>
+            @if (r.discount > 0) {
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px;color:var(--brand-700)">
+                <span>Discount:</span><span>-\${{ r.discount.toFixed(2) }}</span>
+              </div>
+            }
+            @if (r.tax > 0) {
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                <span>Tax:</span><span>\${{ r.tax.toFixed(2) }}</span>
+              </div>
+            }
+            <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;border-top:1px solid var(--line);padding-top:6px;margin-top:6px;">
+              <span>Total Paid:</span><span>\${{ r.total.toFixed(2) }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px;">
+              <span>Method:</span><span>{{ r.paymentMethod }}</span>
+            </div>
+            @if (r.paymentMethod === 'CASH') {
+              <div style="display:flex;justify-content:space-between;">
+                <span>Cash Received:</span><span>\${{ r.cashReceived.toFixed(2) }}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;color:var(--brand-700);font-weight:bold;">
+                <span>Change:</span><span>\${{ r.change.toFixed(2) }}</span>
+              </div>
+            }
+
+            <div class="modal-actions" style="margin-top:16px;">
+              <button class="btn btn-ghost" type="button" (click)="posReceipt.set(null)">Close</button>
+              <button class="btn btn-primary" type="button" (click)="printReceipt()">Print Receipt</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 6b. POS Return / Refund Modal -->
+    @if (refundModalOpen(); as open) {
+      @if (selectedOrderForRefund(); as order) {
+        <div class="backdrop" (click)="refundModalOpen.set(false)">
+          <section class="modal modal-lg" (click)="$event.stopPropagation()">
+            <header class="modal-head">
+              <h2>Process POS Return / Refund: #{{ order.orderNumber || order.id }}</h2>
+              <button type="button" class="close" (click)="refundModalOpen.set(false)">×</button>
+            </header>
+            <div class="modal-body">
+              @if (refundError()) {
+                <div style="color:var(--danger);background:var(--danger-bg);padding:10px;border-radius:var(--r-md);margin-bottom:12px;">
+                  {{ refundError() }}
+                </div>
+              }
+              <div class="two-cols" style="margin-bottom:16px;">
+                <div style="background:var(--canvas);padding:10px 14px;border-radius:var(--r-md);font-size:12.5px;">
+                  <div>Original Date: <strong>{{ order.createdAt | date:'medium' }}</strong></div>
+                  <div>Tender Paid: <strong>{{ order.paymentMethod }}</strong></div>
+                  <div>Original Total: <strong>\${{ order.totalAmount || order.myTotal }}</strong></div>
+                </div>
+                <div style="background:var(--canvas);padding:10px 14px;border-radius:var(--r-md);font-size:12.5px;">
+                  <div>Cashier: <strong>{{ order.cashierName || user()?.name }}</strong></div>
+                  <div>Register: <strong>{{ order.registerName || activeRegister()?.name || 'Main POS' }}</strong></div>
+                  <div>Refund Total: <strong style="color:var(--danger)">\${{ refundTotalCalculation().toFixed(2) }}</strong></div>
+                </div>
+              </div>
+
+              <h3 style="font-size:13.5px;margin:0 0 8px;">Select Line Items to Return</h3>
+              <table style="margin-bottom:14px;">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th style="width:100px;">Unit Price</th>
+                    <th style="width:140px;">Return Qty</th>
+                    <th style="width:150px;">Restock Inventory</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of refundItemsSelection(); track item.itemId; let idx = $index) {
+                    <tr>
+                      <td><strong>{{ item.name }}</strong></td>
+                      <td>\${{ item.unitPrice.toFixed(2) }}</td>
+                      <td>
+                        <div class="qty-controls">
+                          <button type="button" class="qty-btn" (click)="updateRefundItemQty(idx, -1)" [disabled]="item.qty <= 0">-</button>
+                          <span style="font-weight:700;font-size:12px;min-width:20px;text-align:center;">{{ item.qty }} / {{ item.maxQty }}</span>
+                          <button type="button" class="qty-btn" (click)="updateRefundItemQty(idx, 1)" [disabled]="item.qty >= item.maxQty">+</button>
+                        </div>
+                      </td>
+                      <td>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                          <input type="checkbox" [checked]="item.returnToInventory" (change)="toggleRefundReturnStock(idx)" />
+                          <span>Return to stock</span>
+                        </label>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+
+              <div class="two-cols">
+                <div class="field-group">
+                  <label>Refund Method</label>
+                  <select class="dash-select" [ngModel]="refundMethod()" (ngModelChange)="refundMethod.set($event)">
+                    <option value="POS_CASH">Cash Refund (Drawer Outflow)</option>
+                    <option value="ORIGINAL_PAYMENT">Original Payment Rail (KHQR / Digital)</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label>Return Reason <span style="color:var(--danger)">*</span></label>
+                  <input class="dash-input" placeholder="e.g. Defective item, customer exchanged size" [ngModel]="refundReason()" (ngModelChange)="refundReason.set($event)" />
+                </div>
+              </div>
+
+              <div class="modal-actions">
+                <button class="btn btn-ghost" type="button" (click)="refundModalOpen.set(false)" [disabled]="isRefunding()">Cancel</button>
+                <button class="btn btn-danger" type="button" (click)="submitRefund()" [disabled]="isRefunding() || refundTotalCalculation() <= 0">
+                  {{ isRefunding() ? 'Processing Refund...' : ('Confirm Refund · $' + refundTotalCalculation().toFixed(2)) }}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      }
+    }
+
+    <!-- 6c. POS Void Order Modal -->
+    @if (voidModalOpen(); as open) {
+      @if (selectedOrderForVoid(); as order) {
+        <div class="backdrop" (click)="voidModalOpen.set(false)">
+          <section class="modal" (click)="$event.stopPropagation()">
+            <header class="modal-head">
+              <h2>Void POS Transaction #{{ order.orderNumber || order.id }}</h2>
+              <button type="button" class="close" (click)="voidModalOpen.set(false)">×</button>
+            </header>
+            <div class="modal-body">
+              @if (voidError()) {
+                <div style="color:var(--danger);background:var(--danger-bg);padding:10px;border-radius:var(--r-md);margin-bottom:12px;">
+                  {{ voidError() }}
+                </div>
+              }
+              <div style="background:var(--warn-bg);border:1px solid var(--warn);padding:12px;border-radius:var(--r-md);margin-bottom:14px;font-size:12.5px;color:var(--ink-900);">
+                <strong>Caution: Manager Void Action</strong>
+                <p style="margin:4px 0 0;">
+                  Voiding this order will cancel the sale, reverse the transaction in your active shift, and automatically restore all items back into store inventory.
+                </p>
+              </div>
+
+              <div style="background:var(--canvas);padding:10px 14px;border-radius:var(--r-md);margin-bottom:14px;font-size:12.5px;">
+                <div>Order Number: <strong>{{ order.orderNumber || order.id }}</strong></div>
+                <div>Amount to Reverse: <strong style="color:var(--danger)">\${{ order.totalAmount || order.myTotal }}</strong></div>
+                <div>Payment Method: <strong>{{ order.paymentMethod }}</strong></div>
+              </div>
+
+              <div class="field-group">
+                <label>Void Authorization Reason</label>
+                <input class="dash-input" placeholder="e.g. Cashier scanning error / Customer changed mind before leaving" [ngModel]="voidReasonText()" (ngModelChange)="voidReasonText.set($event)" />
+              </div>
+
+              <div class="modal-actions">
+                <button class="btn btn-ghost" type="button" (click)="voidModalOpen.set(false)" [disabled]="isVoiding()">Cancel</button>
+                <button class="btn btn-danger" type="button" (click)="submitVoid()" [disabled]="isVoiding()">
+                  {{ isVoiding() ? 'Voiding...' : 'Confirm Void Sale' }}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      }
+    }
+
+    <!-- 6d. POS Add Register Modal -->
+    @if (newRegisterModalOpen()) {
+      <div class="backdrop" (click)="newRegisterModalOpen.set(false)">
+        <section class="modal" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>Add Physical POS Register</h2>
+            <button type="button" class="close" (click)="newRegisterModalOpen.set(false)">×</button>
+          </header>
+          <div class="modal-body">
+            <div class="field-group">
+              <label>Register Name <span style="color:var(--danger)">*</span></label>
+              <input class="dash-input" placeholder="e.g. Main Counter 2, Pop-up Booth" [ngModel]="newRegisterName()" (ngModelChange)="newRegisterName.set($event)" />
+            </div>
+            <div class="field-group">
+              <label>Register Number / Code</label>
+              <input class="dash-input" placeholder="e.g. REG-02" [ngModel]="newRegisterNumber()" (ngModelChange)="newRegisterNumber.set($event)" />
+            </div>
+            <div class="field-group">
+              <label>Location / Counter Description</label>
+              <input class="dash-input" placeholder="e.g. Ground Floor Souvenir Corner" [ngModel]="newRegisterLocation()" (ngModelChange)="newRegisterLocation.set($event)" />
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-ghost" type="button" (click)="newRegisterModalOpen.set(false)">Cancel</button>
+              <button class="btn btn-primary" type="button" [disabled]="!newRegisterName().trim()" (click)="createRegisterSubmit()">Create Register</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 6e. POS Quick Customer Modal -->
+    @if (quickCustomerModalOpen()) {
+      <div class="backdrop" (click)="quickCustomerModalOpen.set(false)">
+        <section class="modal" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>Quick Add In-Store Customer</h2>
+            <button type="button" class="close" (click)="quickCustomerModalOpen.set(false)">×</button>
+          </header>
+          <div class="modal-body">
+            <div class="field-group">
+              <label>Customer Full Name <span style="color:var(--danger)">*</span></label>
+              <input class="dash-input" placeholder="e.g. Sokha Chan" [ngModel]="quickCustomerName()" (ngModelChange)="quickCustomerName.set($event)" />
+            </div>
+            <div class="field-group">
+              <label>Phone Number</label>
+              <input class="dash-input" placeholder="e.g. 012 345 678" [ngModel]="quickCustomerPhone()" (ngModelChange)="quickCustomerPhone.set($event)" />
+            </div>
+            <div class="field-group">
+              <label>Email Address</label>
+              <input class="dash-input" type="email" placeholder="e.g. sokha@example.com" [ngModel]="quickCustomerEmail()" (ngModelChange)="quickCustomerEmail.set($event)" />
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-ghost" type="button" (click)="quickCustomerModalOpen.set(false)">Cancel</button>
+              <button class="btn btn-primary" type="button" [disabled]="!quickCustomerName().trim()" (click)="quickAddCustomerSubmit()">Save &amp; Assign to Cart</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 7. Customer Detail CRM Modal -->
+    @if (selectedCustomer(); as cust) {
+      <div class="backdrop" (click)="closeCustomerDetail()">
+        <section class="modal modal-lg" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>Customer Profile: {{ cust.name }}</h2>
+            <button type="button" class="close" (click)="closeCustomerDetail()">×</button>
+          </header>
+          <div class="modal-body">
+            @if (loadingCustomerDetail()) {
+              <p class="muted">Loading customer records...</p>
+            } @else if (customerDetail(); as cd) {
+              <div class="two-cols" style="margin-bottom:16px;">
+                <div style="background:var(--canvas);padding:12px;border-radius:var(--r-md)">
+                  <strong>Contact Info</strong>
+                  <div>Email: {{ cd.email }}</div>
+                  <div>Phone: {{ cd.phone || 'N/A' }}</div>
+                  <div>Status: <span class="status delivered">{{ cd.status }}</span></div>
+                </div>
+                <div style="background:var(--canvas);padding:12px;border-radius:var(--r-md)">
+                  <strong>Store Spending Summary</strong>
+                  <div>Total Orders: <strong>{{ cd.ordersCount }}</strong></div>
+                  <div>Lifetime Spent: <strong style="color:var(--brand-700)">\${{ cd.totalSpent.toFixed(2) }}</strong></div>
+                  <div>Last Order: {{ cd.lastOrderDate | date:'mediumDate' }}</div>
+                </div>
+              </div>
+
+              <h3 style="font-size:14px;margin:12px 0 6px;">Order History with Your Store</h3>
+              <table style="margin-bottom:16px;">
+                <thead>
+                  <tr><th>Order #</th><th>Date</th><th>Amount</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  @for (ord of cd.orders; track ord.id) {
+                    <tr>
+                      <td class="order-id">{{ ord.orderNumber || ord.id }}</td>
+                      <td>{{ ord.createdAt | date:'mediumDate' }}</td>
+                      <td><strong>\${{ ord.totalAmount }}</strong></td>
+                      <td><span class="status delivered">{{ ord.orderStatus }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+
+              <h3 style="font-size:14px;margin:12px 0 6px;">Products Purchased</h3>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                @for (prod of cd.purchasedProducts; track prod.name) {
+                  <span class="pill" style="font-size:11px;">{{ prod.name }} (x{{ prod.totalQuantity }})</span>
+                }
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 8. Create Promotion Modal -->
+    @if (showCreateDiscountModal()) {
+      <div class="backdrop" (click)="showCreateDiscountModal.set(false)">
+        <section class="modal" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>Create Store Promotion</h2>
+            <button type="button" class="close" (click)="showCreateDiscountModal.set(false)">×</button>
+          </header>
+          <div class="modal-body">
+            @if (discountError()) {
+              <div style="color:var(--danger);font-size:12px;margin-bottom:10px;">{{ discountError() }}</div>
+            }
+            <div class="field-group">
+              <label>Promotion Name</label>
+              <input class="dash-input" placeholder="e.g. Khmer New Year 15% Off" [ngModel]="newDiscount().name" (ngModelChange)="newDiscount.set({...newDiscount(), name: $event})" />
+            </div>
+            <div class="two-cols">
+              <div class="field-group">
+                <label>Discount Type</label>
+                <select class="dash-select" [ngModel]="newDiscount().type" (ngModelChange)="newDiscount.set({...newDiscount(), type: $event})">
+                  <option value="PERCENTAGE">Percentage (%)</option>
+                  <option value="FIXED">Fixed Amount ($)</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label>Value</label>
+                <input class="dash-input" type="number" placeholder="15" [ngModel]="newDiscount().value" (ngModelChange)="newDiscount.set({...newDiscount(), value: +$event})" />
+              </div>
+            </div>
+            <div class="two-cols">
+              <div class="field-group">
+                <label>Start Date</label>
+                <input class="dash-input" type="date" [ngModel]="newDiscount().startDate" (ngModelChange)="newDiscount.set({...newDiscount(), startDate: $event})" />
+              </div>
+              <div class="field-group">
+                <label>End Date</label>
+                <input class="dash-input" type="date" [ngModel]="newDiscount().endDate" (ngModelChange)="newDiscount.set({...newDiscount(), endDate: $event})" />
+              </div>
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-ghost" type="button" (click)="showCreateDiscountModal.set(false)">Cancel</button>
+              <button class="btn btn-primary" type="button" [disabled]="creatingDiscount()" (click)="submitCreateDiscount()">
+                {{ creatingDiscount() ? 'Creating...' : 'Create Promotion' }}
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 9. Create Support Case Modal -->
+    @if (showCreateCaseModal()) {
+      <div class="backdrop" (click)="showCreateCaseModal.set(false)">
+        <section class="modal" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>Open Support Case</h2>
+            <button type="button" class="close" (click)="showCreateCaseModal.set(false)">×</button>
+          </header>
+          <div class="modal-body">
+            <div class="field-group">
+              <label>Category</label>
+              <select class="dash-select" [ngModel]="newCase().category" (ngModelChange)="newCase.set({...newCase(), category: $event})">
+                <option value="ORDER_ISSUE">Order / Shipping Issue</option>
+                <option value="PRODUCT_MODERATION">Product Moderation</option>
+                <option value="PAYMENT_PAYOUT">Payment &amp; Payout</option>
+                <option value="POS_TECHNICAL">POS / Technical</option>
+                <option value="GENERAL">General Support</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label>Subject</label>
+              <input class="dash-input" placeholder="Summary of the issue..." [ngModel]="newCase().subject" (ngModelChange)="newCase.set({...newCase(), subject: $event})" />
+            </div>
+            <div class="field-group">
+              <label>Description &amp; Details</label>
+              <textarea class="dash-textarea" placeholder="Please provide specific details..." [ngModel]="newCase().description" (ngModelChange)="newCase.set({...newCase(), description: $event})"></textarea>
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-ghost" type="button" (click)="showCreateCaseModal.set(false)">Cancel</button>
+              <button class="btn btn-primary" type="button" (click)="submitSupportCase()">Submit Case</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 10. Support Case Thread Modal -->
+    @if (selectedCase(); as sc) {
+      <div class="backdrop" (click)="selectedCase.set(null)">
+        <section class="modal modal-lg" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <div>
+              <h2>Case #{{ sc.caseNumber }}: {{ sc.subject }}</h2>
+              <span class="status delivered">{{ sc.status }}</span>
+            </div>
+            <button type="button" class="close" (click)="selectedCase.set(null)">×</button>
+          </header>
+          <div class="modal-body">
+            <div class="thread-messages">
+              <div class="msg-bubble seller">
+                <strong>You (Initial Case):</strong>
+                <p style="margin:4px 0 0;">{{ sc.description }}</p>
+                <div class="msg-meta">{{ sc.createdAt | date:'short' }}</div>
+              </div>
+              @for (msg of sc.messages || []; track msg.createdAt) {
+                <div class="msg-bubble" [class.seller]="msg.senderRole === 'SELLER'" [class.support]="msg.senderRole !== 'SELLER'">
+                  <strong>{{ msg.senderName }}:</strong>
+                  <p style="margin:4px 0 0;">{{ msg.text }}</p>
+                  <div class="msg-meta">{{ msg.createdAt | date:'short' }}</div>
+                </div>
+              }
+            </div>
+
+            <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;">
+              <textarea class="dash-textarea" placeholder="Type reply to support agent..." [ngModel]="replyText()" (ngModelChange)="replyText.set($event)"></textarea>
+              <div class="modal-actions">
+                <button class="btn btn-ghost" type="button" (click)="selectedCase.set(null)">Close</button>
+                <button class="btn btn-primary" type="button" [disabled]="submittingReply() || !replyText()" (click)="submitReplySupportCase()">
+                  {{ submittingReply() ? 'Sending...' : 'Send Reply' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 11. Marketplace Advertisement Modal -->
+    @if (showPromoModal()) {
+      <div class="backdrop" (click)="showPromoModal.set(false)">
+        <section class="modal modal-lg" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>Request Marketplace Advertising Placement</h2>
+            <button type="button" class="close" (click)="showPromoModal.set(false)">×</button>
+          </header>
+          <div class="modal-body">
+            <div class="two-cols">
+              <div class="field-group">
+                <label>Ad Headline / Title <span style="color:var(--danger)">*</span></label>
+                <input class="dash-input" placeholder="e.g. Master Silk Weavers of Cambodia" [ngModel]="promoForm().title" (ngModelChange)="promoForm.set({...promoForm(), title: $event})" />
+              </div>
+              <div class="field-group">
+                <label>Target Destination</label>
+                <select class="dash-select" [ngModel]="promoForm().targetType" (ngModelChange)="promoForm.set({...promoForm(), targetType: $event})">
+                  <option value="STORE">My Storefront</option>
+                  <option value="PRODUCT">Specific Product Listing</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label>Subtitle / Description</label>
+              <input class="dash-input" placeholder="Short teaser text for buyer marketplace carousel" [ngModel]="promoForm().subtitle" (ngModelChange)="promoForm.set({...promoForm(), subtitle: $event})" />
+            </div>
+
+            <div class="field-group">
+              <label>Artwork Image URL (Horizontal 1200x500 recommended)</label>
+              <input class="dash-input" placeholder="https://..." [ngModel]="promoForm().imageUrl" (ngModelChange)="promoForm.set({...promoForm(), imageUrl: $event})" />
+            </div>
+
+            <div class="two-cols">
+              <div class="field-group">
+                <label>Start Date</label>
+                <input class="dash-input" type="date" [ngModel]="promoForm().startDate" (ngModelChange)="promoForm.set({...promoForm(), startDate: $event})" />
+              </div>
+              <div class="field-group">
+                <label>Campaign Duration</label>
+                <select class="dash-select" [ngModel]="promoForm().days" (ngModelChange)="promoForm.set({...promoForm(), days: +$event})">
+                  <option [value]="3">3 Days</option>
+                  <option [value]="7">7 Days (1 Week)</option>
+                  <option [value]="14">14 Days (2 Weeks)</option>
+                  <option [value]="30">30 Days (1 Month)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="background:var(--canvas);padding:14px;border-radius:var(--r-md);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <strong style="font-size:16px;" [style.color]="promoCalculation().isZero ? 'var(--ok)' : 'var(--ink-900)'">
+                    {{ promoCalculation().isZero ? 'FREE ($0.00)' : ('$' + promoCalculation().totalPrice + '.00') }}
+                  </strong>
+                  @if (promoCalculation().freeDays > 0) {
+                    <span class="pill" style="background:#dcfce7;color:#15803d;font-weight:700;">
+                      {{ promoCalculation().freeDays }} Days Free (1 Week)
+                    </span>
+                  }
+                </div>
+                <div style="font-size:12px;color:var(--ink-500);margin-top:3px;">
+                  @if (promoCalculation().billableDays === 0) {
+                    100% Free promotional placement ({{ promoCalculation().days }} days). No payment required.
+                  } @else {
+                    First {{ promoCalculation().freeDays }} days are FREE + {{ promoCalculation().billableDays }} extra days charged at \${{ promoCalculation().dailyRate }}/day.
+                  }
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-outline" type="button" [disabled]="submittingPromo()" (click)="saveDraftPromoSlide()">
+                  Save Draft
+                </button>
+                <button class="btn btn-primary" type="button" [disabled]="submittingPromo()" (click)="submitPromoSlide()">
+                  {{ submittingPromo() ? 'Submitting...' : (editingSlideId() ? 'Update Ad' : (promoCalculation().isZero ? 'Submit Free Request' : ('Submit Request ($' + promoCalculation().totalPrice + ')'))) }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 12. KHQR Payment Modal -->
+    @if (showKhqrModal() && selectedSlideForPayment(); as slide) {
+      <div class="backdrop" (click)="showKhqrModal.set(false)">
+        <section class="modal" (click)="$event.stopPropagation()" style="max-width:400px;text-align:center;">
+          <header class="modal-head">
+            <h2>Bakong KHQR Payment</h2>
+            <button type="button" class="close" (click)="showKhqrModal.set(false)">×</button>
+          </header>
+          <div class="modal-body">
+            <p style="font-size:13px;margin:0 0 10px;">Scan with Bakong or any Cambodian Banking App</p>
+            <div style="background:#fff;border:2px dashed #e02329;border-radius:var(--r-md);padding:14px;display:inline-block;margin-bottom:12px;">
+              <img [src]="slide.khqrQrImage || 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=KHQR_PAYMENT_SIMULATION'" alt="KHQR" style="width:180px;height:180px;" />
+            </div>
+            <div style="font-size:18px;font-weight:bold;color:#b91c1c;margin-bottom:8px;">\${{ slide.totalPrice }}</div>
+            <button class="btn btn-primary" type="button" style="width:100%;" (click)="verifySlidePayment(slide)">
+              I Have Completed Payment
+            </button>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 13. POS Customer-Facing Bakong KHQR Modal -->
+    @if (showPosCustomerQrModal() && posKhqrSession(); as qr) {
+      <div class="backdrop" (click)="showPosCustomerQrModal.set(false)">
+        <section class="modal" (click)="$event.stopPropagation()" style="max-width:390px;text-align:center;padding:0;overflow:hidden;border-radius:18px;">
+          <!-- Bakong Red Header -->
+          <div style="background:#e11d48;color:#fff;padding:16px 20px;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+              <span style="background:#fff;color:#e11d48;font-size:11px;font-weight:900;padding:2px 8px;border-radius:4px;letter-spacing:0.5px;">KHQR</span>
+              <strong style="font-size:15px;letter-spacing:0.5px;">Bakong Dynamic QR</strong>
+            </div>
+            <p style="font-size:12px;opacity:0.9;margin:4px 0 0;">{{ storeProfile().storeName || 'KhmerCraft In-Store POS' }}</p>
+          </div>
+
+          <!-- Body with large QR code -->
+          <div style="padding:22px;background:#fff;">
+            <div style="display:inline-block;padding:12px;background:#fff;border:2px solid #fecdd3;border-radius:12px;box-shadow:0 4px 12px rgba(225,29,72,0.1);">
+              <img 
+                [src]="qr.qrImage" 
+                alt="Bakong KHQR" 
+                style="width:230px;height:230px;display:block;margin:0 auto;image-rendering:pixelated;" 
+              />
+            </div>
+
+            <div style="margin-top:14px;">
+              <span style="font-size:12px;color:var(--ink-500);display:block;text-transform:uppercase;letter-spacing:0.5px;">Total Amount Due</span>
+              <div style="font-size:26px;font-weight:800;color:#e11d48;margin:2px 0;">
+                \${{ qr.amount.toFixed(2) }} <span style="font-size:14px;color:var(--ink-600);font-weight:600;">USD</span>
+              </div>
+              <div style="font-size:11px;color:var(--ink-400);font-family:monospace;">
+                Ref: {{ qr.tranId }}
+              </div>
+            </div>
+
+            <div style="background:var(--canvas);border-radius:8px;padding:10px;margin-top:14px;font-size:11.5px;color:var(--ink-600);line-height:1.4;">
+              Scan to pay with <strong>Bakong, ABA Mobile, ACLEDA, Wing, Canadia</strong>, or any Cambodian Banking app.
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:16px;">
+              <button 
+                type="button" 
+                class="btn btn-outline" 
+                style="flex:1;" 
+                (click)="showPosCustomerQrModal.set(false)"
+              >
+                Close Display
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-primary" 
+                style="flex:1;background:#059669;border-color:#059669;" 
+                (click)="confirmKhqrPaidAndComplete()"
+              >
+                Confirm Paid
+              </button>
             </div>
           </div>
         </section>
@@ -1705,12 +3712,7 @@ interface DashboardMetric {
   `,
 })
 export class SellerDashboardPage implements OnInit {
-  /**
-   * Product images are optional in the catalogue, and an empty src renders as a
-   * broken-file icon. Swap anything falsy for a neutral placeholder so a seller
-   * with no photo yet sees a deliberate blank tile, not a bug.
-   */
-  private readonly imagePlaceholder =
+  protected readonly imagePlaceholder =
     "data:image/svg+xml;utf8," +
     "<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'>" +
     "<rect width='96' height='96' fill='%23f0f4f2'/>" +
@@ -1721,7 +3723,6 @@ export class SellerDashboardPage implements OnInit {
     return src && src.trim() ? src : this.imagePlaceholder;
   }
 
-  /** A URL that 404s still reaches us here; fall back the same way. */
   protected imgFallback(event: Event): void {
     const el = event.target as HTMLImageElement;
     if (el.src !== this.imagePlaceholder) {
@@ -1731,130 +3732,347 @@ export class SellerDashboardPage implements OnInit {
 
   private readonly sellerService = inject(SellerService);
   private readonly commerceApi = inject(CommerceApiService);
+  private readonly catalog = inject(CatalogService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly authService = inject(AuthService);
   protected readonly user = this.authService.user;
 
+  // View state
   protected readonly view = signal<DashboardView>('dashboard');
-  protected readonly selectedOrder = signal<SellerOrder | null>(null);
-  protected readonly statusChoice = signal<OrderStatus | ''>('');
-  protected readonly updatingStatus = signal(false);
-  protected readonly statusUpdateError = signal('');
   protected readonly myStoreId = signal<string | null>(null);
   protected readonly stores = signal<any[]>([]);
   protected readonly activeStore = computed(() =>
     this.stores().find((store) => (store.id ?? store._id) === this.myStoreId()) ?? null,
   );
+  protected readonly currentPlanBadge = computed(() => {
+    const plan = this.activeStore()?.subscriptionPlan ?? 'STARTER';
+    return plan === 'PREMIUM' ? 'Professional' : (plan === 'STANDARD' ? 'Growth' : 'Starter');
+  });
 
+  // Search & Filters
+  protected readonly globalSearchQuery = signal('');
+  protected readonly searchQuery = signal('');
+  protected readonly orderStatusFilter = signal<'ALL' | 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED'>('ALL');
+  protected readonly inventoryFilter = signal<'ALL' | 'LOW' | 'OUT'>('ALL');
+
+  // Dashboard Data
+  protected readonly dashboardMetrics = signal<DashboardMetric[]>([]);
+  protected readonly dashboardOrders = signal<SellerOrder[]>([]);
+  protected readonly orders = signal<SellerOrder[]>([]);
+  protected readonly lowStock = signal<any[]>([]);
+  protected readonly products = signal<any[]>([]);
+  protected readonly payoutMetrics = signal<DashboardMetric[]>([]);
+  protected readonly payouts = signal<any[]>([]);
+  protected readonly notifications = signal<any[]>([]);
+
+  // Products
+  protected readonly filteredProducts = computed(() => {
+    const q = (this.searchQuery() || this.globalSearchQuery()).toLowerCase();
+    if (!q) return this.products();
+    return this.products().filter(p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)));
+  });
+  protected readonly filteredInventory = computed(() => {
+    const list = this.products();
+    const filter = this.inventoryFilter();
+    if (filter === 'LOW') return list.filter(p => p.stock > 0 && p.stock <= 5);
+    if (filter === 'OUT') return list.filter(p => p.stock === 0);
+    return list;
+  });
+  protected readonly showProductModal = signal(false);
+  protected readonly savingProduct = signal(false);
+  protected readonly productSaveError = signal('');
+  protected readonly newProduct = signal<any>({
+    name: '', category: '', material: '', description: '', price: null, stock: null, status: 'ACTIVE', image: ''
+  });
+
+  // Orders
+  protected readonly selectedOrder = signal<SellerOrder | null>(null);
+  protected readonly statusChoice = signal<OrderStatus | ''>('');
+  protected readonly updatingStatus = signal(false);
+  protected readonly statusUpdateError = signal('');
+  protected readonly filteredOrders = computed(() => {
+    let list = this.orders();
+    const status = this.orderStatusFilter();
+    if (status !== 'ALL') {
+      list = list.filter(o => o.status === status);
+    }
+    const q = this.globalSearchQuery().toLowerCase();
+    if (q) {
+      list = list.filter(o => o.id.toLowerCase().includes(q) || o.buyer.toLowerCase().includes(q));
+    }
+    return list;
+  });
+
+  // POS Sub-area & State
+  protected readonly posSubArea = signal<PosSubArea>('checkout');
+  protected readonly posRegisters = signal<any[]>([]);
+  protected readonly activeRegisterId = signal<string | null>(null);
+  protected readonly activeRegister = computed(() => {
+    const list = this.posRegisters();
+    return list.find(r => (r.id || r._id) === this.activeRegisterId()) || list[0] || null;
+  });
+
+  protected readonly posShift = signal<any | null>(null);
+  protected readonly posShiftModalOpen = signal(false);
+  protected readonly posStartingFloat = signal<number>(50);
+  protected readonly posCloseShiftModalOpen = signal(false);
+  protected readonly posActualCash = signal<number>(0);
+  protected readonly posShiftNotes = signal('');
+  protected readonly posCashVariance = computed(() => {
+    const expected = this.posShift()?.expectedCash || 0;
+    return this.posActualCash() - expected;
+  });
+
+  protected readonly posCashMovementModalOpen = signal(false);
+  protected readonly posCashMovementType = signal<'IN' | 'OUT'>('IN');
+  protected readonly posCashMovementAmount = signal<number>(0);
+  protected readonly posCashMovementReason = signal('');
+
+  protected readonly posSearch = signal('');
+  protected readonly posCategoryFilter = signal('ALL');
+  protected readonly posCart = signal<Array<{ product: any; price: number; quantity: number }>>([]);
+  protected readonly posAssignedCustomer = signal<{ id?: string; name: string; phone?: string; email?: string } | null>(null);
+  protected readonly posDiscount = signal<number>(0);
+  protected readonly posTaxRate = signal<number>(0);
+  protected readonly posPaymentMethod = signal<'CASH' | 'KHQR'>('CASH');
+  protected readonly posCashReceived = signal<number>(0);
+  protected readonly posProcessingOrder = signal(false);
+  protected readonly posOrderError = signal('');
+  protected readonly posReceipt = signal<any | null>(null);
+  protected readonly posKhqrSession = signal<any | null>(null);
+  protected readonly generatingKhqr = signal(false);
+  protected readonly checkingKhqrPayment = signal(false);
+  protected readonly posKhqrPaid = signal(false);
+  protected readonly showPosCustomerQrModal = signal(false);
+  private posKhqrPollTimer: any = null;
+  protected readonly posOrders = signal<any[]>([]);
+  protected readonly posShiftsList = signal<any[]>([]);
+  protected readonly posRefundsList = signal<any[]>([]);
+  protected readonly posReportsData = signal<any | null>(null);
+
+  // POS Refund Modal State
+  protected readonly refundModalOpen = signal(false);
+  protected readonly selectedOrderForRefund = signal<any | null>(null);
+  protected readonly refundItemsSelection = signal<Array<{ itemId: string; name: string; maxQty: number; qty: number; unitPrice: number; returnToInventory: boolean }>>([]);
+  protected readonly refundReason = signal('');
+  protected readonly refundMethod = signal('POS_CASH');
+  protected readonly isRefunding = signal(false);
+  protected readonly refundError = signal('');
+  protected readonly refundTotalCalculation = computed(() => {
+    return this.refundItemsSelection().reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
+  });
+
+  // POS Void Modal State
+  protected readonly voidModalOpen = signal(false);
+  protected readonly selectedOrderForVoid = signal<any | null>(null);
+  protected readonly voidReasonText = signal('');
+  protected readonly isVoiding = signal(false);
+  protected readonly voidError = signal('');
+
+  // POS Register Modal State
+  protected readonly newRegisterModalOpen = signal(false);
+  protected readonly newRegisterName = signal('');
+  protected readonly newRegisterNumber = signal('');
+  protected readonly newRegisterLocation = signal('');
+
+  // POS Quick Customer Modal State
+  protected readonly quickCustomerModalOpen = signal(false);
+  protected readonly quickCustomerName = signal('');
+  protected readonly quickCustomerEmail = signal('');
+  protected readonly quickCustomerPhone = signal('');
+
+  // POS Settings State
+  protected readonly posSettings = signal<{ receiptHeader: string; receiptFooter: string; defaultTax: number; acceptCash: boolean; acceptKhqr: boolean }>({
+    receiptHeader: 'Thank you for supporting Cambodian Artisans!',
+    receiptFooter: 'Items exchangeable within 7 days with original receipt.',
+    defaultTax: 0,
+    acceptCash: true,
+    acceptKhqr: true,
+  });
+  protected readonly posSettingsSaved = signal(false);
+
+  protected readonly posFilteredProducts = computed(() => {
+    let list = this.products().filter(p => p.status === 'ACTIVE' || p.stock >= 0);
+    const cat = this.posCategoryFilter();
+    if (cat !== 'ALL') {
+      list = list.filter(p => p.category === cat);
+    }
+    const q = this.posSearch().toLowerCase().trim();
+    if (!q) return list;
+    return list.filter(p =>
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.sku && p.sku.toLowerCase().includes(q)) ||
+      (p.category && p.category.toLowerCase().includes(q))
+    );
+  });
+
+  protected readonly posSubtotal = computed(() => {
+    return this.posCart().reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  });
+  protected readonly posTaxAmount = computed(() => {
+    const net = Math.max(0, this.posSubtotal() - this.posDiscount());
+    return net * (this.posTaxRate() / 100);
+  });
+  protected readonly posTotal = computed(() => {
+    return Math.max(0, this.posSubtotal() - this.posDiscount() + this.posTaxAmount());
+  });
+  protected readonly posChange = computed(() => {
+    if (this.posPaymentMethod() !== 'CASH') return 0;
+    return Math.max(0, this.posCashReceived() - this.posTotal());
+  });
+
+  // Customers
+  protected readonly customers = signal<any[]>([]);
+  protected readonly customerSearch = signal('');
+  protected readonly customerStatusFilter = signal<'ALL' | 'ACTIVE'>('ALL');
+  protected readonly selectedCustomer = signal<any | null>(null);
+  protected readonly customerDetail = signal<any | null>(null);
+  protected readonly loadingCustomerDetail = signal(false);
+  protected readonly filteredCustomers = computed(() => {
+    let list = this.customers();
+    if (this.customerStatusFilter() === 'ACTIVE') {
+      list = list.filter(c => c.status === 'ACTIVE');
+    }
+    const q = this.customerSearch().toLowerCase();
+    if (q) {
+      list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.email && c.email.toLowerCase().includes(q)) || (c.phone && c.phone.includes(q)));
+    }
+    return list;
+  });
+
+  // Reviews
+  protected readonly reviews = signal<any[]>([]);
+  protected readonly filteredReviews = computed(() => {
+    const q = this.globalSearchQuery().toLowerCase();
+    if (!q) return this.reviews();
+    return this.reviews().filter(r => (r.name && r.name.toLowerCase().includes(q)) || (r.text && r.text.toLowerCase().includes(q)));
+  });
+
+  // Promotions & Discounts
+  protected readonly discounts = signal<any[]>([]);
+  protected readonly discountTab = signal<'ALL' | 'ACTIVE' | 'SCHEDULED' | 'EXPIRED'>('ACTIVE');
+  protected readonly showCreateDiscountModal = signal(false);
+  protected readonly creatingDiscount = signal(false);
+  protected readonly discountError = signal('');
+  protected readonly newDiscount = signal<any>({
+    name: '', code: '', type: 'PERCENTAGE', value: 10, appliesTo: 'ALL', startDate: '', endDate: ''
+  });
+  protected readonly filteredDiscounts = computed(() => {
+    const tab = this.discountTab();
+    if (tab === 'ALL') return this.discounts();
+    return this.discounts().filter(d => d.status === tab);
+  });
+
+  // Advertisements
+  protected readonly promoCampaigns = signal<any[]>([]);
+  protected readonly myPromoSlides = signal<any[]>([]);
+  protected readonly showPromoModal = signal(false);
+  protected readonly submittingPromo = signal(false);
+  protected readonly showKhqrModal = signal(false);
+  protected readonly selectedSlideForPayment = signal<any | null>(null);
+  protected readonly editingSlideId = signal<string | null>(null);
+  protected readonly promoForm = signal<any>({
+    title: '', subtitle: '', targetType: 'STORE', targetId: '', imageUrl: '', startDate: '', days: 7, isFree: true, freeDays: 7, dailyRate: 3
+  });
+  protected readonly promoCalculation = computed(() => {
+    const f = this.promoForm();
+    const days = f.days || 7;
+    const isFree = f.isFree !== false;
+    const freeDays = isFree ? (f.freeDays ?? 7) : 0;
+    const dailyRate = f.dailyRate ?? 3;
+    const billableDays = Math.max(0, days - freeDays);
+    const totalPrice = dailyRate > 0 ? billableDays * dailyRate : 0;
+    return {
+      days,
+      isFree,
+      freeDays,
+      billableDays,
+      dailyRate,
+      totalPrice,
+      isZero: totalPrice === 0,
+    };
+  });
+
+  // Storefront & Profile
+  protected readonly storeProfile = signal<any>({
+    storeName: '', storeDescription: '', storeTagline: '', announcement: '', theme: 'FOREST', location: '', phoneNumber: '', slug: ''
+  });
+  protected readonly savingProfile = signal(false);
+  protected readonly storefrontThemes = [
+    { value: 'FOREST', label: 'Forest', color: '#275643' },
+    { value: 'CLAY', label: 'Clay', color: '#a33a24' },
+    { value: 'GOLD', label: 'Harvest', color: '#a97517' },
+    { value: 'MIDNIGHT', label: 'Midnight', color: '#243547' },
+  ];
+
+  // Finance, Analytics & Reports
+  protected readonly financeData = signal<any>({});
+  protected readonly analyticsData = signal<any>({});
+  protected readonly analyticsPeriod = signal<'today' | '7d' | '30d' | 'all'>('30d');
+  protected readonly reportType = signal<string>('sales');
+
+  // Support Cases
+  protected readonly supportCases = signal<any[]>([]);
+  protected readonly showCreateCaseModal = signal(false);
+  protected readonly newCase = signal<any>({ category: 'ORDER_ISSUE', subject: '', description: '', priority: 'MEDIUM' });
+  protected readonly selectedCase = signal<any | null>(null);
+  protected readonly replyText = signal('');
+  protected readonly submittingReply = signal(false);
+
+  // Settings
   protected readonly currentPassword = signal('');
   protected readonly newPassword = signal('');
   protected readonly confirmNewPassword = signal('');
 
-  protected readonly isDetectingLocation = signal(false);
-
-  updatePassword() {
-    if (!this.currentPassword() || !this.newPassword() || !this.confirmNewPassword()) {
-      alert('Please fill in all password fields.');
-      return;
-    }
-    if (this.newPassword() !== this.confirmNewPassword()) {
-      alert('New passwords do not match.');
-      return;
-    }
-
-    this.authService.changePassword(
-      this.currentPassword(),
-      this.newPassword(),
-      this.confirmNewPassword()
-    ).subscribe({
-      next: () => {
-        alert('Password updated successfully');
-        this.currentPassword.set('');
-        this.newPassword.set('');
-        this.confirmNewPassword.set('');
-      },
-      error: (err) => {
-        alert('Failed to update password: ' + (err.error?.message || err.message));
-      }
-    });
-  }
-
-  async detectLocation() {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
-      return;
-    }
-
-    this.isDetectingLocation.set(true);
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-          const data = await res.json();
-          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county || '';
-          const country = data.address?.country || '';
-          const locationString = [city, country].filter(Boolean).join(', ');
-          
-          this.storeProfile.set({ ...this.storeProfile(), location: locationString || `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
-        } catch (err) {
-          alert('Failed to get location name. Using coordinates instead.');
-          this.storeProfile.set({ ...this.storeProfile(), location: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
-        } finally {
-          this.isDetectingLocation.set(false);
-        }
-      },
-      (error) => {
-        alert('Unable to retrieve your location. Please check your browser permissions.');
-        this.isDetectingLocation.set(false);
-      }
-    );
-  }
-
-  protected readonly profileCompletion = computed(() => {
-    const p = this.storeProfile();
-    let score = 0;
-    if (p.storeName?.trim()) score += 20;
-    if (p.storeDescription?.trim() && p.storeTagline?.trim()) score += 20;
-    if (p.location?.trim() && p.phoneNumber?.trim()) score += 20;
-    if (p.logoUrl) score += 20;
-    if (p.bannerUrl || p.featuredProductIds?.length) score += 20;
-    return score;
-  });
-  
-  private readonly http = inject(HttpClient);
-  
+  // ---------------------- Lifecycle ----------------------
   ngOnInit() {
-    this.http.get<any[]>(`${API_URL}/sellers/my-stores`).subscribe({
-      next: (stores) => {
-        this.stores.set(stores ?? []);
-        if (stores && stores.length > 0) {
-          const requestedStoreId = this.route.snapshot.queryParamMap.get('storeId');
-          const selectedStore = requestedStoreId
-            ? stores.find((store) => (store.id ?? store._id) === requestedStoreId) ?? stores[0]
-            : stores[0];
-          // The current API intentionally exposes `id`, not MongoDB's `_id`.
-          // Keep the fallback so older deployments remain compatible.
-          const storeId = selectedStore.id ?? selectedStore._id;
-          this.myStoreId.set(storeId);
-          this.loadDashboardData(storeId);
-        } else {
-          alert('API returned empty stores list! Backend failed to create it.');
-        }
-      },
-      error: (err) => {
-        console.error('Failed to load stores', err);
-        alert('API error when loading stores: ' + err.status + ' ' + (err.error?.message || err.message));
+    const cachedStoreId = typeof localStorage !== 'undefined' ? localStorage.getItem('khmercraft_active_store_id') || undefined : undefined;
+    const requestedStoreId = this.route.snapshot.queryParamMap.get('storeId') ?? cachedStoreId;
+    this.loadMyStores(requestedStoreId, (storeId) => {
+      this.loadDashboardData(storeId);
+      const cachedView = typeof localStorage !== 'undefined' ? (localStorage.getItem('khmercraft_seller_view') as DashboardView) : undefined;
+      const requestedView = (this.route.snapshot.queryParamMap.get('view') as DashboardView) || cachedView;
+      if (requestedView) {
+        this.setView(requestedView);
       }
     });
   }
 
-  protected switchStore(storeId: string): void {
+  loadMyStores(preferredId?: string, onLoaded?: (id: string) => void) {
+    this.sellerService.getMyStores().subscribe({
+      next: (stores) => {
+        this.stores.set(stores);
+        if (stores.length > 0) {
+          const selected = stores.find((s: any) => (s.id || s._id) === preferredId) || stores[0];
+          const storeId = selected.id || (selected as any)._id;
+          this.myStoreId.set(storeId);
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('khmercraft_active_store_id', storeId);
+          }
+          this.storeProfile.set({
+            storeName: selected.storeName || '',
+            storeDescription: selected.storeDescription || '',
+            storeTagline: selected.storeTagline || '',
+            announcement: selected.announcement || '',
+            theme: selected.theme || 'FOREST',
+            location: selected.location || '',
+            phoneNumber: selected.phoneNumber || '',
+            slug: selected.slug || selected.id || (selected as any)._id,
+          });
+          if (onLoaded) onLoaded(storeId);
+        }
+      },
+      error: (err) => console.error('Failed to load stores', err),
+    });
+  }
+
+  switchStore(storeId: string) {
     if (!storeId || storeId === this.myStoreId()) return;
     this.myStoreId.set(storeId);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('khmercraft_active_store_id', storeId);
+    }
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { storeId },
@@ -1864,569 +4082,1308 @@ export class SellerDashboardPage implements OnInit {
     this.loadDashboardData(storeId);
   }
 
-  protected createAnotherStore(): void {
-    void this.router.navigate(['/seller/onboarding']);
+  setView(v: DashboardView) {
+    this.view.set(v);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('khmercraft_seller_view', v);
+    }
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+
+    if (v === 'customers') this.loadCustomers(storeId);
+    else if (v === 'pos') this.loadPosData(storeId);
+    else if (v === 'promotions') this.loadPromotions(storeId);
+    else if (v === 'advertisements') this.loadAdvertisements(storeId);
+    else if (v === 'sales' || v === 'payments' || v === 'transactions') this.loadFinance(storeId);
+    else if (v === 'analytics') this.loadAnalytics(storeId);
+    else if (v === 'support') this.loadSupportCases(storeId);
+    else if (v === 'notifications') this.loadNotifications(storeId);
   }
 
-  protected activeStorefrontUrl(): string {
-    const store = this.activeStore();
-    return store ? `/stores/${store.slug ?? store.id ?? store._id}` : '/stores';
+  loadStoreProducts(storeId: string) {
+    this.commerceApi.listProducts({ storeId }).subscribe({
+      next: (res: any) => {
+        const prods = (res.products || []).map((p: any) => ({
+          id: p.id || p._id,
+          name: p.name,
+          category: p.category,
+          price: p.price,
+          stock: p.stock ?? 10,
+          status: p.status || 'ACTIVE',
+          image: p.image || (p.images && p.images[0]) || '',
+          material: p.material || '',
+          description: p.description || '',
+        }));
+        this.products.set(prods);
+        this.lowStock.set(prods.filter((p: any) => p.stock <= 5));
+      },
+      error: (err: any) => console.error('Failed to load products', err),
+    });
   }
 
-  protected logout(): void {
+  loadDashboardData(storeId: string) {
+    // 1. Orders and basic dashboard metrics
+    this.sellerService.getStoreOrders(storeId).subscribe({
+      next: (data) => {
+        this.dashboardMetrics.set([
+          { label: 'Total Revenue', value: `$${data.metrics.revenueMtd.toFixed(2)}`, icon: 'chart', note: 'This month' },
+          { label: 'Pending Orders', value: data.metrics.pendingOrders.toString(), icon: 'clipboard', warn: data.metrics.pendingOrders > 0 },
+          { label: 'Completed (30d)', value: data.metrics.completed30d.toString(), icon: 'check' },
+          { label: 'In Transit', value: data.metrics.inTransit.toString(), icon: 'truck' },
+        ]);
+        this.payoutMetrics.set([
+          { label: 'Total Sales', value: `$${data.metrics.revenueMtd.toFixed(2)}`, note: 'Current cycle', icon: 'chart' },
+          { label: 'Platform Fee (10%)', value: `$${(data.metrics.revenueMtd * 0.1).toFixed(2)}`, note: 'Marketplace commission', icon: 'percent', warn: true },
+          { label: 'Net Seller Earnings', value: `$${(data.metrics.revenueMtd * 0.9).toFixed(2)}`, note: 'Ready for payout', icon: 'wallet', gold: true },
+        ]);
+
+        const mappedOrders: SellerOrder[] = data.orders.map((o: any) => ({
+          id: o.orderNumber || o.id,
+          buyer: o.buyerName || 'Valued Buyer',
+          initials: (o.buyerName || 'VB').substring(0, 2).toUpperCase(),
+          color: '#dfe8ff',
+          product: o.myItems.length > 0 ? o.myItems[0].productName : 'Crafted Product',
+          qty: o.myItems.length > 0 ? o.myItems[0].quantity : 1,
+          total: `$${o.myTotal.toFixed(2)}`,
+          address: o.deliveryInfo?.address || 'Phnom Penh, Cambodia',
+          date: new Date(o.createdAt).toLocaleDateString(),
+          status: o.orderStatus,
+          statusClass: o.orderStatus === 'DELIVERED' ? 'delivered' : (o.orderStatus === 'SHIPPED' ? 'shipped' : 'pending'),
+          phone: o.buyerPhone || o.deliveryInfo?.phone || '',
+          note: o.deliveryInfo?.note || '',
+          paymentMethod: o.paymentMethod || 'COD',
+          paymentStatus: o.paymentStatus || 'COMPLETED',
+          items: o.myItems.map((item: any) => ({
+            name: item.productName,
+            image: item.productImage ?? null,
+            qty: item.quantity,
+            price: item.price,
+            subtotal: item.subtotal,
+          })),
+        }));
+        this.orders.set(mappedOrders);
+        this.dashboardOrders.set(mappedOrders.slice(0, 5));
+
+        this.payouts.set(
+          data.orders.filter((o: any) => o.orderStatus === 'DELIVERED').map((o: any) => ({
+            id: o.orderNumber || o.id,
+            date: new Date(o.createdAt).toLocaleDateString(),
+            total: `$${o.myTotal.toFixed(2)}`,
+            commission: `-$${(o.myTotal * 0.1).toFixed(2)}`,
+            earning: `$${(o.myTotal * 0.9).toFixed(2)}`,
+            status: 'SETTLED',
+          }))
+        );
+      },
+      error: (err) => console.error('Failed to load orders', err),
+    });
+
+    // 2. Products
+    this.loadStoreProducts(storeId);
+
+    // 3. Notifications
+    this.sellerService.getStoreNotifications(storeId).subscribe({
+      next: (list) => this.notifications.set(list),
+      error: () => this.notifications.set([]),
+    });
+  }
+
+  // ---------------------- Products Logic ----------------------
+  startNewProduct() {
+    this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: 10, status: 'ACTIVE', image: '' });
+    this.productSaveError.set('');
+    this.showProductModal.set(true);
+  }
+
+  editProduct(p: any) {
+    this.newProduct.set({ ...p });
+    this.productSaveError.set('');
+    this.showProductModal.set(true);
+  }
+
+  cancelProductEdit() {
+    this.showProductModal.set(false);
+    this.productSaveError.set('');
+  }
+
+  submitProduct() {
+    const p = this.newProduct();
+    if (!p.name || !p.price) {
+      this.productSaveError.set('Title and Price are required.');
+      return;
+    }
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+
+    this.savingProduct.set(true);
+    if (p.id) {
+      this.sellerService.updateProduct(p.id, p).subscribe({
+        next: () => {
+          this.savingProduct.set(false);
+          this.showProductModal.set(false);
+          this.loadDashboardData(storeId);
+        },
+        error: (err) => {
+          this.savingProduct.set(false);
+          this.productSaveError.set(err.message || 'Failed to update product');
+        },
+      });
+    } else {
+      this.sellerService.createProduct({ ...p, storeId }).subscribe({
+        next: () => {
+          this.savingProduct.set(false);
+          this.showProductModal.set(false);
+          this.loadDashboardData(storeId);
+        },
+        error: (err) => {
+          this.savingProduct.set(false);
+          this.productSaveError.set(err.message || 'Failed to create product');
+        },
+      });
+    }
+  }
+
+  deleteProduct(id: string) {
+    if (!confirm('Are you sure you want to delete this listing?')) return;
+    this.sellerService.deleteProduct(id).subscribe({
+      next: () => {
+        if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
+      },
+      error: (err) => alert('Failed to delete: ' + err.message),
+    });
+  }
+
+  toggleProductStatus(p: any) {
+    const newStatus = p.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE';
+    this.sellerService.updateProduct(p.id, { status: newStatus }).subscribe({
+      next: () => {
+        if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
+      },
+      error: (err) => alert('Failed to update status: ' + err.message),
+    });
+  }
+
+  adjustStockInline(p: any, delta: number) {
+    const newStock = Math.max(0, (p.stock || 0) + delta);
+    this.sellerService.updateProduct(p.id, { stock: newStock }).subscribe({
+      next: () => {
+        if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
+      },
+      error: (err) => alert('Failed to adjust stock: ' + err.message),
+    });
+  }
+
+  // ---------------------- Orders Logic ----------------------
+  openOrder(order: SellerOrder) {
+    this.selectedOrder.set(order);
+    this.statusChoice.set('');
+    this.statusUpdateError.set('');
+  }
+
+  closeOrder() {
+    this.selectedOrder.set(null);
+  }
+
+  nextStatusOptions(currentStatus: string): OrderStatus[] {
+    switch (currentStatus) {
+      case 'PENDING': return ['CONFIRMED', 'CANCELLED'];
+      case 'CONFIRMED': return ['SHIPPED', 'CANCELLED'];
+      case 'SHIPPED': return ['DELIVERED'];
+      default: return [];
+    }
+  }
+
+  updateOrderStatusDirect(newStatus: string) {
+    const order = this.selectedOrder();
+    if (!order) return;
+    this.updatingStatus.set(true);
+    this.statusUpdateError.set('');
+    this.sellerService.updateOrderStatus(order.id, newStatus).subscribe({
+      next: () => {
+        this.updatingStatus.set(false);
+        this.selectedOrder.set({
+          ...order,
+          status: newStatus,
+          statusClass: newStatus.toLowerCase() as any,
+        });
+        if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
+      },
+      error: (err) => {
+        this.updatingStatus.set(false);
+        this.statusUpdateError.set(err.error?.message || err.message || 'Failed to update order status');
+      },
+    });
+  }
+
+  submitStatusUpdate() {
+    const choice = this.statusChoice();
+    if (choice) {
+      this.updateOrderStatusDirect(choice);
+    }
+  }
+
+  quickConfirmOrder(order: any, event?: Event) {
+    if (event) event.stopPropagation();
+    if (!order?.id) return;
+    this.sellerService.updateOrderStatus(order.id, 'CONFIRMED').subscribe({
+      next: () => {
+        if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
+      },
+      error: (err) => alert('Failed to confirm order: ' + (err.error?.message || err.message)),
+    });
+  }
+
+  quickShipOrder(order: any, event?: Event) {
+    if (event) event.stopPropagation();
+    if (!order?.id) return;
+    this.sellerService.updateOrderStatus(order.id, 'SHIPPED').subscribe({
+      next: () => {
+        if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
+      },
+      error: (err) => alert('Failed to mark as shipped: ' + (err.error?.message || err.message)),
+    });
+  }
+
+  // ---------------------- Complete POS Logic ----------------------
+  setPosSubArea(area: PosSubArea) {
+    this.posSubArea.set(area);
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    if (area === 'registers') this.loadPosRegisters(storeId);
+    else if (area === 'shifts') this.loadPosShiftsList(storeId);
+    else if (area === 'returns') this.loadPosRefundsList(storeId);
+    else if (area === 'reports') this.loadPosReports(storeId);
+    else if (area === 'orders') this.loadPosOrders(storeId);
+    else if (area === 'customers') this.loadCustomers(storeId);
+    else if (area === 'discounts') this.loadPromotions(storeId);
+  }
+
+  loadPosData(storeId: string) {
+    this.loadPosRegisters(storeId);
+    this.sellerService.getPosCurrentShift(storeId, this.activeRegisterId() || undefined).subscribe({
+      next: (shift) => this.posShift.set(shift),
+      error: () => this.posShift.set(null),
+    });
+    this.loadPosOrders(storeId);
+    this.loadPosRefundsList(storeId);
+    this.loadPosReports(storeId);
+    this.loadCustomers(storeId);
+    this.loadPromotions(storeId);
+  }
+
+  loadPosOrders(storeId?: string) {
+    const sId = storeId || this.myStoreId();
+    if (!sId) return;
+    this.sellerService.getPosOrders(sId).subscribe({
+      next: (res: any) => {
+        const list = Array.isArray(res) ? res : (res?.orders || []);
+        this.posOrders.set(list);
+      },
+      error: () => this.posOrders.set([]),
+    });
+  }
+
+  loadPosRegisters(storeId?: string) {
+    const sId = storeId || this.myStoreId();
+    if (!sId) return;
+    this.sellerService.listPosRegisters(sId).subscribe({
+      next: (regs) => {
+        this.posRegisters.set(regs || []);
+        if ((!this.activeRegisterId() || !regs.some((r: any) => (r.id || r._id) === this.activeRegisterId())) && regs.length > 0) {
+          this.activeRegisterId.set(regs[0].id || regs[0]._id);
+        }
+      },
+      error: () => this.posRegisters.set([]),
+    });
+  }
+
+  switchRegister(regId: string) {
+    this.activeRegisterId.set(regId);
+    const storeId = this.myStoreId();
+    if (storeId) {
+      this.sellerService.getPosCurrentShift(storeId, regId).subscribe({
+        next: (shift) => this.posShift.set(shift),
+        error: () => this.posShift.set(null),
+      });
+    }
+  }
+
+  createRegisterSubmit() {
+    const storeId = this.myStoreId();
+    if (!storeId || !this.newRegisterName().trim()) return;
+    this.sellerService.createPosRegister(storeId, {
+      name: this.newRegisterName().trim(),
+      registerNumber: this.newRegisterNumber().trim() || undefined,
+      location: this.newRegisterLocation().trim() || undefined,
+    }).subscribe({
+      next: (reg: any) => {
+        this.newRegisterModalOpen.set(false);
+        this.newRegisterName.set('');
+        this.newRegisterNumber.set('');
+        this.newRegisterLocation.set('');
+        this.loadPosRegisters(storeId);
+        this.activeRegisterId.set(reg.id || reg._id);
+      },
+      error: (err: any) => alert(err.error?.message || 'Failed to create register'),
+    });
+  }
+
+  loadPosShiftsList(storeId?: string) {
+    const sId = storeId || this.myStoreId();
+    if (!sId) return;
+    this.sellerService.listPosShifts(sId).subscribe({
+      next: (res: any) => {
+        this.posShiftsList.set(res?.shifts || (Array.isArray(res) ? res : []));
+      },
+      error: () => this.posShiftsList.set([]),
+    });
+  }
+
+  loadPosRefundsList(storeId?: string) {
+    const sId = storeId || this.myStoreId();
+    if (!sId) return;
+    this.sellerService.listPosRefunds(sId).subscribe({
+      next: (refunds) => this.posRefundsList.set(refunds || []),
+      error: () => this.posRefundsList.set([]),
+    });
+  }
+
+  loadPosReports(storeId?: string) {
+    const sId = storeId || this.myStoreId();
+    if (!sId) return;
+    this.sellerService.getPosReports(sId).subscribe({
+      next: (data) => this.posReportsData.set(data),
+      error: () => this.posReportsData.set(null),
+    });
+  }
+
+  addToPosCart(product: any) {
+    if (product.stock <= 0) {
+      alert('This item is currently out of stock.');
+      return;
+    }
+    const current = [...this.posCart()];
+    const existing = current.find(item => item.product.id === product.id);
+    if (existing) {
+      if (existing.quantity >= product.stock) {
+        alert(`Cannot add more than ${product.stock} units available.`);
+        return;
+      }
+      existing.quantity += 1;
+      this.posCart.set(current);
+    } else {
+      this.posCart.set([...current, { product, price: product.price, quantity: 1 }]);
+    }
+  }
+
+  removeFromPosCart(idx: number) {
+    const current = [...this.posCart()];
+    current.splice(idx, 1);
+    this.posCart.set(current);
+    if (this.posKhqrSession()) {
+      this.posKhqrSession.set(null);
+      this.posKhqrPaid.set(false);
+      this.stopPosKhqrPolling();
+    }
+  }
+
+  updatePosCartQty(idx: number, delta: number) {
+    const current = [...this.posCart()];
+    const item = current[idx];
+    if (!item) return;
+    const nextQty = item.quantity + delta;
+    if (nextQty <= 0) {
+      this.removeFromPosCart(idx);
+    } else if (nextQty > item.product.stock) {
+      alert(`Only ${item.product.stock} units in stock.`);
+    } else {
+      item.quantity = nextQty;
+      this.posCart.set(current);
+      if (this.posKhqrSession()) {
+        this.posKhqrSession.set(null);
+        this.posKhqrPaid.set(false);
+        this.stopPosKhqrPolling();
+      }
+    }
+  }
+
+  clearPosCart() {
+    this.posCart.set([]);
+    this.posCashReceived.set(0);
+    this.posDiscount.set(0);
+    this.posOrderError.set('');
+    this.posKhqrSession.set(null);
+    this.posKhqrPaid.set(false);
+    this.stopPosKhqrPolling();
+    this.showPosCustomerQrModal.set(false);
+  }
+
+  setCashPreset(val: number | 'EXACT') {
+    if (val === 'EXACT') {
+      this.posCashReceived.set(Math.ceil(this.posTotal() * 100) / 100);
+    } else {
+      this.posCashReceived.set(val);
+    }
+  }
+
+  assignCustomerToCart(customer: { id?: string; name: string; phone?: string; email?: string }) {
+    this.posAssignedCustomer.set(customer);
+    this.posSubArea.set('checkout');
+  }
+
+  removeAssignedCustomer() {
+    this.posAssignedCustomer.set(null);
+  }
+
+  quickAddCustomerSubmit() {
+    if (!this.quickCustomerName().trim()) return;
+    this.posAssignedCustomer.set({
+      name: this.quickCustomerName().trim(),
+      email: this.quickCustomerEmail().trim() || undefined,
+      phone: this.quickCustomerPhone().trim() || undefined,
+    });
+    this.quickCustomerModalOpen.set(false);
+    this.quickCustomerName.set('');
+    this.quickCustomerEmail.set('');
+    this.quickCustomerPhone.set('');
+    this.posSubArea.set('checkout');
+  }
+
+  setPosPaymentMethod(method: 'CASH' | 'KHQR') {
+    this.posPaymentMethod.set(method);
+    this.posOrderError.set('');
+    if (method === 'KHQR' && this.posCart().length > 0 && !this.posKhqrSession()) {
+      this.generatePosKhqr();
+    }
+  }
+
+  generatePosKhqr() {
+    const storeId = this.myStoreId();
+    if (!storeId || this.posCart().length === 0) return;
+
+    this.generatingKhqr.set(true);
+    this.posOrderError.set('');
+    this.posKhqrPaid.set(false);
+    this.stopPosKhqrPolling();
+
+    const payload = {
+      amount: this.posTotal(),
+      items: this.posCart().map(i => ({
+        name: i.product.name,
+        quantity: i.quantity,
+        price: i.price,
+      })),
+      customerName: this.posAssignedCustomer()?.name,
+      customerPhone: this.posAssignedCustomer()?.phone,
+    };
+
+    this.sellerService.generatePosKhqr(storeId, payload).subscribe({
+      next: (session: any) => {
+        this.generatingKhqr.set(false);
+        this.posKhqrSession.set(session);
+        this.startPosKhqrPolling();
+      },
+      error: (err: any) => {
+        this.generatingKhqr.set(false);
+        this.posOrderError.set(err.error?.message || err.message || 'Failed to generate Bakong KHQR code');
+      },
+    });
+  }
+
+  startPosKhqrPolling() {
+    this.stopPosKhqrPolling();
+    this.posKhqrPollTimer = setInterval(() => {
+      if (this.posKhqrSession() && !this.posKhqrPaid() && !this.checkingKhqrPayment()) {
+        this.checkPosKhqrPayment(false);
+      }
+    }, 4000);
+  }
+
+  stopPosKhqrPolling() {
+    if (this.posKhqrPollTimer) {
+      clearInterval(this.posKhqrPollTimer);
+      this.posKhqrPollTimer = null;
+    }
+  }
+
+  checkPosKhqrPayment(manual = true) {
+    const storeId = this.myStoreId();
+    const session = this.posKhqrSession();
+    if (!storeId || !session?.tranId) return;
+
+    if (manual) {
+      this.checkingKhqrPayment.set(true);
+      this.posOrderError.set('');
+    }
+
+    this.sellerService.checkPosKhqr(storeId, session.tranId).subscribe({
+      next: (res: any) => {
+        this.checkingKhqrPayment.set(false);
+        if (res.paid) {
+          this.posKhqrPaid.set(true);
+          this.stopPosKhqrPolling();
+          this.submitPosOrder(session.tranId);
+        } else if (manual) {
+          this.posOrderError.set('Payment is still pending. Customer has not completed transfer yet.');
+        }
+      },
+      error: (err: any) => {
+        this.checkingKhqrPayment.set(false);
+        if (manual) {
+          this.posOrderError.set(err.error?.message || 'Payment status check failed');
+        }
+      },
+    });
+  }
+
+  simulatePosKhqrPayment() {
+    const storeId = this.myStoreId();
+    const session = this.posKhqrSession();
+    if (!storeId || !session?.tranId) return;
+
+    this.checkingKhqrPayment.set(true);
+    this.sellerService.simulatePosKhqr(storeId, session.tranId).subscribe({
+      next: (res: any) => {
+        this.checkingKhqrPayment.set(false);
+        this.posKhqrPaid.set(true);
+        this.stopPosKhqrPolling();
+        this.showPosCustomerQrModal.set(false);
+        this.submitPosOrder(session.tranId);
+      },
+      error: (err: any) => {
+        this.checkingKhqrPayment.set(false);
+        this.posOrderError.set(err.error?.message || 'Simulation failed');
+      },
+    });
+  }
+
+  confirmKhqrPaidAndComplete() {
+    const session = this.posKhqrSession();
+    this.showPosCustomerQrModal.set(false);
+    this.submitPosOrder(session?.tranId);
+  }
+
+  submitPosOrder(tranId?: string) {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    if (this.posCart().length === 0) return;
+
+    if (this.posPaymentMethod() === 'CASH' && this.posCashReceived() < this.posTotal()) {
+      this.posOrderError.set(`Cash received ($${this.posCashReceived()}) is less than total payable ($${this.posTotal().toFixed(2)}).`);
+      return;
+    }
+
+    this.posProcessingOrder.set(true);
+    this.posOrderError.set('');
+
+    const effectiveTranId = tranId || (this.posPaymentMethod() === 'KHQR' ? this.posKhqrSession()?.tranId : undefined);
+
+    const payload = {
+      registerId: this.activeRegisterId() || undefined,
+      shiftId: this.posShift()?.id || this.posShift()?._id || undefined,
+      items: this.posCart().map(i => ({
+        productId: i.product.id,
+        quantity: i.quantity,
+        price: i.price,
+      })),
+      paymentMethod: this.posPaymentMethod() === 'KHQR' ? 'POS_KHQR' : 'POS_CASH',
+      paymentTranId: effectiveTranId,
+      discountAmount: this.posDiscount(),
+      taxAmount: this.posTaxAmount(),
+      cashReceived: this.posPaymentMethod() === 'CASH' ? this.posCashReceived() : undefined,
+      customerName: this.posAssignedCustomer()?.name,
+      customerPhone: this.posAssignedCustomer()?.phone,
+    };
+
+    this.sellerService.createPosOrder(storeId, payload).subscribe({
+      next: (res: any) => {
+        this.posProcessingOrder.set(false);
+        this.stopPosKhqrPolling();
+        this.posKhqrSession.set(null);
+        this.posKhqrPaid.set(false);
+        this.showPosCustomerQrModal.set(false);
+        const receipt = res.receipt || {
+          orderNumber: res.order?.orderNumber || `KC-POS-${Date.now().toString().slice(-6)}`,
+          createdAt: new Date().toISOString(),
+          items: this.posCart().map(i => ({ name: i.product.name, qty: i.quantity, price: i.price })),
+          subtotal: this.posSubtotal(),
+          discount: this.posDiscount(),
+          tax: this.posTaxAmount(),
+          total: this.posTotal(),
+          paymentMethod: this.posPaymentMethod(),
+          cashReceived: this.posCashReceived(),
+          change: this.posChange(),
+        };
+        this.posReceipt.set(receipt);
+        this.clearPosCart();
+        this.posAssignedCustomer.set(null);
+        this.sellerService.getPosCurrentShift(storeId, this.activeRegisterId() || undefined).subscribe(s => this.posShift.set(s));
+        this.loadPosOrders(storeId);
+        this.loadStoreProducts(storeId);
+        this.loadPosReports(storeId);
+      },
+      error: (err: any) => {
+        this.posProcessingOrder.set(false);
+        this.posOrderError.set(err.error?.message || err.message || 'Failed to complete POS order');
+      },
+    });
+  }
+
+  openPosShiftSubmit() {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    this.sellerService.openPosShift(storeId, {
+      startingCash: this.posStartingFloat(),
+      registerId: this.activeRegisterId() || undefined,
+    }).subscribe({
+      next: (shift) => {
+        this.posShift.set(shift);
+        this.posShiftModalOpen.set(false);
+        this.loadPosShiftsList(storeId);
+      },
+      error: (err: any) => alert(err.error?.message || 'Failed to open shift'),
+    });
+  }
+
+  openCloseShiftModal() {
+    const shift = this.posShift();
+    if (shift) {
+      this.posActualCash.set(shift.expectedCash || 0);
+    }
+    this.posCloseShiftModalOpen.set(true);
+  }
+
+  closePosShiftSubmit() {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    this.sellerService.closePosShift(storeId, this.posActualCash(), this.posShiftNotes()).subscribe({
+      next: () => {
+        this.posShift.set(null);
+        this.posCloseShiftModalOpen.set(false);
+        this.posShiftNotes.set('');
+        this.loadPosShiftsList(storeId);
+        this.loadPosReports(storeId);
+        alert('Register shift closed successfully.');
+      },
+      error: (err: any) => alert(err.error?.message || 'Failed to close shift'),
+    });
+  }
+
+  openCashMovementModal() {
+    this.posCashMovementAmount.set(0);
+    this.posCashMovementReason.set('');
+    this.posCashMovementModalOpen.set(true);
+  }
+
+  recordCashMovementSubmit() {
+    const storeId = this.myStoreId();
+    if (!storeId || this.posCashMovementAmount() <= 0) return;
+    this.sellerService.recordPosCashMovement(storeId, this.posCashMovementType(), this.posCashMovementAmount(), this.posCashMovementReason()).subscribe({
+      next: (shift) => {
+        this.posShift.set(shift);
+        this.posCashMovementModalOpen.set(false);
+      },
+      error: (err: any) => alert(err.error?.message || 'Failed to record cash movement'),
+    });
+  }
+
+  openRefundModal(order: any) {
+    this.selectedOrderForRefund.set(order);
+    this.refundItemsSelection.set(
+      (order.items || order.myItems || []).map((i: any) => ({
+        itemId: i.productId || i._id,
+        name: i.productName || i.name,
+        maxQty: i.quantity || i.qty || 1,
+        qty: i.quantity || i.qty || 1,
+        unitPrice: i.unitPrice || i.price || 0,
+        returnToInventory: true,
+      }))
+    );
+    this.refundReason.set('');
+    this.refundMethod.set(order.paymentMethod?.includes('CASH') ? 'POS_CASH' : 'ORIGINAL_PAYMENT');
+    this.refundError.set('');
+    this.refundModalOpen.set(true);
+  }
+
+  updateRefundItemQty(idx: number, delta: number) {
+    const items = [...this.refundItemsSelection()];
+    const item = items[idx];
+    if (!item) return;
+    const next = item.qty + delta;
+    if (next >= 0 && next <= item.maxQty) {
+      item.qty = next;
+      this.refundItemsSelection.set(items);
+    }
+  }
+
+  toggleRefundReturnStock(idx: number) {
+    const items = [...this.refundItemsSelection()];
+    if (items[idx]) {
+      items[idx].returnToInventory = !items[idx].returnToInventory;
+      this.refundItemsSelection.set(items);
+    }
+  }
+
+  submitRefund() {
+    const storeId = this.myStoreId();
+    const order = this.selectedOrderForRefund();
+    if (!storeId || !order) return;
+
+    const itemsToRefund = this.refundItemsSelection().filter(i => i.qty > 0);
+    if (itemsToRefund.length === 0) {
+      this.refundError.set('Please select at least 1 item quantity to refund.');
+      return;
+    }
+    if (!this.refundReason().trim()) {
+      this.refundError.set('Please enter a reason for the return / refund.');
+      return;
+    }
+
+    this.isRefunding.set(true);
+    this.refundError.set('');
+
+    const payload = {
+      items: itemsToRefund.map(i => ({
+        productId: i.itemId,
+        quantity: i.qty,
+        returnToInventory: i.returnToInventory,
+      })),
+      reason: this.refundReason().trim(),
+      refundMethod: this.refundMethod(),
+    };
+
+    const orderId = order.id || order._id;
+    this.sellerService.createPosRefund(storeId, orderId, payload).subscribe({
+      next: () => {
+        this.isRefunding.set(false);
+        this.refundModalOpen.set(false);
+        this.selectedOrderForRefund.set(null);
+        this.loadPosOrders(storeId);
+        this.loadPosRefundsList(storeId);
+        this.sellerService.getPosCurrentShift(storeId, this.activeRegisterId() || undefined).subscribe(s => this.posShift.set(s));
+        this.loadStoreProducts(storeId);
+        this.loadPosReports(storeId);
+        alert('Refund processed successfully.');
+      },
+      error: (err: any) => {
+        this.isRefunding.set(false);
+        this.refundError.set(err.error?.message || err.message || 'Failed to process refund');
+      },
+    });
+  }
+
+  openVoidModal(order: any) {
+    this.selectedOrderForVoid.set(order);
+    this.voidReasonText.set('');
+    this.voidError.set('');
+    this.voidModalOpen.set(true);
+  }
+
+  submitVoid() {
+    const storeId = this.myStoreId();
+    const order = this.selectedOrderForVoid();
+    if (!storeId || !order) return;
+
+    this.isVoiding.set(true);
+    this.voidError.set('');
+
+    const orderId = order.id || order._id;
+    this.sellerService.voidPosOrder(storeId, orderId, this.voidReasonText().trim() || 'Manager Void').subscribe({
+      next: () => {
+        this.isVoiding.set(false);
+        this.voidModalOpen.set(false);
+        this.selectedOrderForVoid.set(null);
+        this.loadPosOrders(storeId);
+        this.sellerService.getPosCurrentShift(storeId, this.activeRegisterId() || undefined).subscribe(s => this.posShift.set(s));
+        this.loadStoreProducts(storeId);
+        this.loadPosReports(storeId);
+        alert('Order voided and stock restored.');
+      },
+      error: (err: any) => {
+        this.isVoiding.set(false);
+        this.voidError.set(err.error?.message || err.message || 'Failed to void order');
+      },
+    });
+  }
+
+  exportPosReportCsv() {
+    const orders = this.posOrders();
+    let csv = 'Receipt_Number,Date,Customer,Payment_Method,Total,Status\n';
+    orders.forEach((o) => {
+      const num = o.orderNumber || o.id;
+      const date = new Date(o.createdAt).toLocaleDateString();
+      const cust = o.buyerName || 'Walk-in';
+      const method = o.paymentMethod || 'CASH';
+      const tot = o.totalAmount || 0;
+      const st = o.orderStatus || 'COMPLETED';
+      csv += `"${num}","${date}","${cust}","${method}",${tot},"${st}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `KhmerCraft_POS_Report_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  savePosSettings() {
+    this.posSettingsSaved.set(true);
+    setTimeout(() => this.posSettingsSaved.set(false), 3000);
+  }
+
+  printReceipt() {
+    window.print();
+  }
+
+  viewPosOrderReceipt(order: any) {
+    this.posReceipt.set({
+      orderNumber: order.orderNumber || order.id,
+      createdAt: order.createdAt,
+      items: (order.myItems || order.items || []).map((i: any) => ({ name: i.productName || i.name, qty: i.quantity || i.qty, price: i.unitPrice || i.price })),
+      subtotal: order.myTotal || order.totalAmount,
+      discount: order.discountAmount || 0,
+      tax: order.taxAmount || 0,
+      total: order.myTotal || order.totalAmount,
+      paymentMethod: order.paymentMethod,
+      cashReceived: order.cashReceived || order.myTotal || order.totalAmount,
+      change: order.changeGiven || 0,
+    });
+  }
+
+  // ---------------------- Customers Logic ----------------------
+  loadCustomers(storeId: string) {
+    this.sellerService.getStoreCustomers(storeId).subscribe({
+      next: (res: any) => this.customers.set(Array.isArray(res) ? res : (res?.customers || [])),
+      error: () => this.customers.set([]),
+    });
+  }
+
+  openCustomerDetail(c: any) {
+    this.selectedCustomer.set(c);
+    this.customerDetail.set(null);
+    this.loadingCustomerDetail.set(true);
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    this.sellerService.getStoreCustomerDetail(storeId, c.id).subscribe({
+      next: (detail) => {
+        this.customerDetail.set(detail);
+        this.loadingCustomerDetail.set(false);
+      },
+      error: () => this.loadingCustomerDetail.set(false),
+    });
+  }
+
+  closeCustomerDetail() {
+    this.selectedCustomer.set(null);
+  }
+
+  // ---------------------- Promotions Logic ----------------------
+  loadPromotions(storeId: string) {
+    this.sellerService.getStorePromotions(storeId).subscribe({
+      next: (res) => this.discounts.set(res),
+      error: () => this.discounts.set([]),
+    });
+  }
+
+  submitCreateDiscount() {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    const d = this.newDiscount();
+    if (!d.name || !d.value) {
+      this.discountError.set('Name and discount value are required.');
+      return;
+    }
+    this.creatingDiscount.set(true);
+    this.sellerService.createStorePromotion(storeId, d).subscribe({
+      next: () => {
+        this.creatingDiscount.set(false);
+        this.showCreateDiscountModal.set(false);
+        this.loadPromotions(storeId);
+      },
+      error: (err) => {
+        this.creatingDiscount.set(false);
+        this.discountError.set(err.error?.message || err.message || 'Failed to create discount');
+      },
+    });
+  }
+
+  deleteDiscount(id: string) {
+    const storeId = this.myStoreId();
+    if (!storeId || !confirm('Remove this promotion?')) return;
+    this.sellerService.deleteStorePromotion(storeId, id).subscribe({
+      next: () => this.loadPromotions(storeId),
+      error: (err) => alert('Failed to delete promotion: ' + err.message),
+    });
+  }
+
+  // ---------------------- Advertisements Logic ----------------------
+  loadAdvertisements(storeId: string) {
+    this.sellerService.getPromotionCampaigns().subscribe({
+      next: (res: any) => this.promoCampaigns.set(res || []),
+      error: () => this.promoCampaigns.set([]),
+    });
+    this.sellerService.getMyPromotionSlides().subscribe({
+      next: (res: any) => this.myPromoSlides.set(res || []),
+      error: () => this.myPromoSlides.set([]),
+    });
+  }
+
+  openApplyPromoModal(campaignId?: string) {
+    const today = new Date().toISOString().split('T')[0];
+    this.editingSlideId.set(null);
+    let isFree = true;
+    let freeDays = 7;
+    let dailyRate = 3;
+    let targetCampaignId = campaignId || '';
+
+    if (campaignId) {
+      const c = this.promoCampaigns().find((x) => (x._id || x.id) === campaignId);
+      if (c) {
+        isFree = c.isFree !== false;
+        freeDays = c.freeDays ?? (c.isFree ? 7 : 0);
+        dailyRate = c.dailyRate ?? 3;
+      }
+    } else {
+      const firstActive = this.promoCampaigns().find((x) => x.isFree);
+      if (firstActive) {
+        targetCampaignId = firstActive._id || firstActive.id;
+        isFree = true;
+        freeDays = firstActive.freeDays ?? 7;
+        dailyRate = firstActive.dailyRate ?? 3;
+      }
+    }
+
+    this.promoForm.set({
+      campaignId: targetCampaignId,
+      title: '',
+      subtitle: '',
+      targetType: 'STORE',
+      targetId: '',
+      imageUrl: '',
+      startDate: today,
+      days: 7,
+      isFree,
+      freeDays,
+      dailyRate,
+    });
+    this.showPromoModal.set(true);
+  }
+
+  editPromoSlide(slide: any) {
+    this.editingSlideId.set(slide._id || slide.id);
+    let startDate = new Date().toISOString().split('T')[0];
+    if (slide.startDate) {
+      try {
+        startDate = new Date(slide.startDate).toISOString().split('T')[0];
+      } catch {
+        startDate = new Date().toISOString().split('T')[0];
+      }
+    }
+    const c = this.promoCampaigns().find((x) => (x._id || x.id) === slide.campaignId);
+    const isFree = slide.freeDays > 0 || (c ? c.isFree !== false : true);
+    const freeDays = slide.freeDays ?? (c ? (c.freeDays ?? 7) : 7);
+    const dailyRate = slide.dailyRate ?? (c ? (c.dailyRate ?? 3) : 3);
+
+    this.promoForm.set({
+      campaignId: slide.campaignId || '',
+      title: slide.title || '',
+      subtitle: slide.subtitle || '',
+      targetType: slide.targetType || 'STORE',
+      targetId: slide.targetId || '',
+      imageUrl: slide.imageUrl || '',
+      startDate,
+      days: slide.days || 7,
+      isFree,
+      freeDays,
+      dailyRate,
+    });
+    this.showPromoModal.set(true);
+  }
+
+  saveDraftPromoSlide() {
+    this.submitOrSavePromo(true);
+  }
+
+  submitPromoSlide() {
+    this.submitOrSavePromo(false);
+  }
+
+  submitOrSavePromo(isDraft: boolean) {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    const f = this.promoForm();
+    if (!isDraft && !f.title?.trim()) {
+      alert('Headline title is required before submitting.');
+      return;
+    }
+    this.submittingPromo.set(true);
+
+    const calc = this.promoCalculation();
+    const payload: any = {
+      ...f,
+      storeId,
+      targetId: f.targetType === 'STORE' ? storeId : f.targetId,
+      days: calc.days,
+      freeDays: calc.freeDays,
+      billableDays: calc.billableDays,
+      dailyRate: calc.dailyRate,
+      totalPrice: calc.totalPrice,
+      isDraft,
+      status: isDraft ? 'DRAFT' : 'PENDING_APPROVAL',
+    };
+
+    const editingId = this.editingSlideId();
+    const req$ = editingId
+      ? this.sellerService.updatePromotionSlide(editingId, payload)
+      : this.sellerService.applyPromotionSlide(payload);
+
+    req$.subscribe({
+      next: () => {
+        this.submittingPromo.set(false);
+        this.showPromoModal.set(false);
+        this.editingSlideId.set(null);
+        this.loadAdvertisements(storeId);
+        if (isDraft) {
+          alert('Advertisement saved as draft.');
+        } else if (calc.isZero) {
+          alert('Free advertisement submitted for review! No payment required.');
+        } else {
+          alert(`Advertisement request submitted ($${calc.totalPrice}).`);
+        }
+      },
+      error: (err: any) => {
+        this.submittingPromo.set(false);
+        alert('Failed: ' + (err.error?.message || err.message));
+      },
+    });
+  }
+
+  submitDraftPromo(slide: any) {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    const id = slide._id || slide.id;
+    this.sellerService.submitDraftPromotionSlide(id).subscribe({
+      next: () => {
+        this.loadAdvertisements(storeId);
+        alert('Advertisement draft submitted for review.');
+      },
+      error: (err: any) => alert('Failed to submit: ' + (err.error?.message || err.message)),
+    });
+  }
+
+  deletePromoSlide(slide: any) {
+    if (!confirm('Are you sure you want to delete this advertisement?')) return;
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    const id = slide._id || slide.id;
+    this.sellerService.deletePromotionSlide(id).subscribe({
+      next: () => {
+        this.loadAdvertisements(storeId);
+      },
+      error: (err: any) => alert('Failed to delete: ' + (err.error?.message || err.message)),
+    });
+  }
+
+  openKhqrPaymentModal(slide: any) {
+    this.selectedSlideForPayment.set(slide);
+    this.showKhqrModal.set(true);
+  }
+
+  verifySlidePayment(slide: any) {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    this.sellerService.payPromotionSlide(slide._id || slide.id).subscribe({
+      next: () => {
+        this.showKhqrModal.set(false);
+        this.loadAdvertisements(storeId);
+        alert('Payment verified! Your advertisement is now scheduled.');
+      },
+      error: (err: any) => alert('Payment verification failed: ' + (err.error?.message || err.message)),
+    });
+  }
+
+  // ---------------------- Storefront & Profile ----------------------
+  activeStorefrontUrl(): string {
+    const s = this.activeStore();
+    return s ? `/stores/${s.slug || s.id || (s as any)._id}` : '/stores';
+  }
+
+  saveStoreProfile() {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    this.savingProfile.set(true);
+    const p = this.storeProfile();
+    const payload: any = {};
+    if (p.storeName) payload.storeName = p.storeName;
+    if (p.storeDescription !== undefined) payload.storeDescription = p.storeDescription;
+    if (p.storeTagline !== undefined) payload.storeTagline = p.storeTagline;
+    if (p.announcement !== undefined) payload.announcement = p.announcement;
+    if (p.theme) payload.theme = p.theme;
+    if (p.category !== undefined) payload.category = p.category;
+    if (p.showContact !== undefined) payload.showContact = Boolean(p.showContact);
+    if (p.location !== undefined) payload.location = p.location;
+    if (p.phoneNumber !== undefined) payload.phoneNumber = p.phoneNumber;
+    if (p.appearance) payload.appearance = p.appearance;
+    if (p.logoUrl) payload.logoUrl = p.logoUrl;
+    if (p.bannerUrl) payload.bannerUrl = p.bannerUrl;
+    if (Array.isArray(p.featuredProductIds)) {
+      payload.featuredProductIds = p.featuredProductIds.filter((id: string) => /^[a-f\d]{24}$/i.test(id));
+    }
+    if (Object.keys(payload).length === 0) {
+      payload.storeName = p.storeName || 'My Store';
+    }
+
+    this.sellerService.updateStoreProfile(storeId, payload).subscribe({
+      next: () => {
+        this.savingProfile.set(false);
+        this.loadMyStores(storeId);
+        alert('Store profile and appearance saved successfully.');
+      },
+      error: (err: any) => {
+        this.savingProfile.set(false);
+        alert('Failed to save profile: ' + (err.error?.message || err.message));
+      },
+    });
+  }
+
+  // ---------------------- Finance & Analytics ----------------------
+  loadFinance(storeId: string) {
+    this.sellerService.getStoreFinance(storeId).subscribe({
+      next: (res) => this.financeData.set(res),
+      error: () => this.financeData.set({}),
+    });
+  }
+
+  loadAnalytics(storeId: string) {
+    this.sellerService.getStoreAnalytics(storeId, this.analyticsPeriod()).subscribe({
+      next: (res) => this.analyticsData.set(res),
+      error: () => this.analyticsData.set({}),
+    });
+  }
+
+  setAnalyticsPeriod(p: 'today' | '7d' | '30d' | 'all') {
+    this.analyticsPeriod.set(p);
+    const storeId = this.myStoreId();
+    if (storeId) this.loadAnalytics(storeId);
+  }
+
+  // ---------------------- Reports ----------------------
+  protected readonly reportPreviewData = computed(() => {
+    const type = this.reportType();
+    if (type === 'products') {
+      return this.products().map(p => ({ col1: p.name, col2: p.category, col3: `$${p.price}`, col4: `${p.stock} units` }));
+    } else if (type === 'customers') {
+      return this.customers().map(c => ({ col1: c.name, col2: c.email, col3: `${c.ordersCount} orders`, col4: `$${c.totalSpent.toFixed(2)}` }));
+    } else if (type === 'pos') {
+      return this.posOrders().map(o => ({ col1: o.orderNumber, col2: o.paymentMethod, col3: `$${o.totalAmount}`, col4: new Date(o.createdAt).toLocaleDateString() }));
+    } else {
+      return this.orders().map(o => ({ col1: o.id, col2: o.buyer, col3: o.total, col4: o.status }));
+    }
+  });
+
+  exportReportCSV() {
+    const data = this.reportPreviewData();
+    let csv = 'Record,Name_Description,Metric_A,Metric_B,Status_Date\n';
+    data.forEach((row, i) => {
+      csv += `${i + 1},"${row.col1}","${row.col2}","${row.col3}","${row.col4}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `KhmerCraft_${this.reportType()}_report_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------------------- Support Cases ----------------------
+  loadSupportCases(storeId: string) {
+    this.sellerService.getStoreSupportCases(storeId).subscribe({
+      next: (res) => this.supportCases.set(res),
+      error: () => this.supportCases.set([]),
+    });
+  }
+
+  submitSupportCase() {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    const c = this.newCase();
+    if (!c.subject || !c.description) {
+      alert('Subject and description are required.');
+      return;
+    }
+    this.sellerService.createStoreSupportCase(storeId, c).subscribe({
+      next: () => {
+        this.showCreateCaseModal.set(false);
+        this.loadSupportCases(storeId);
+      },
+      error: (err) => alert('Failed to create support case: ' + err.message),
+    });
+  }
+
+  openCaseDetail(sc: any) {
+    this.selectedCase.set(sc);
+    this.replyText.set('');
+  }
+
+  submitReplySupportCase() {
+    const sc = this.selectedCase();
+    const storeId = this.myStoreId();
+    const text = this.replyText();
+    if (!sc || !storeId || !text) return;
+
+    this.submittingReply.set(true);
+    this.sellerService.replyStoreSupportCase(storeId, sc.id || sc._id, text).subscribe({
+      next: (updated) => {
+        this.submittingReply.set(false);
+        this.selectedCase.set(updated);
+        this.replyText.set('');
+        this.loadSupportCases(storeId);
+      },
+      error: (err) => {
+        this.submittingReply.set(false);
+        alert('Failed to reply: ' + err.message);
+      },
+    });
+  }
+
+  loadNotifications(storeId: string) {
+    this.sellerService.getStoreNotifications(storeId).subscribe({
+      next: (list) => this.notifications.set(list),
+      error: () => this.notifications.set([]),
+    });
+  }
+
+  // ---------------------- Settings & Auth ----------------------
+  updatePassword() {
+    if (!this.currentPassword() || !this.newPassword()) {
+      alert('Please fill in password fields.');
+      return;
+    }
+    if (this.newPassword() !== this.confirmNewPassword()) {
+      alert('New passwords do not match.');
+      return;
+    }
+    this.authService.changePassword(this.currentPassword(), this.newPassword(), this.confirmNewPassword()).subscribe({
+      next: () => {
+        alert('Password updated successfully.');
+        this.currentPassword.set('');
+        this.newPassword.set('');
+        this.confirmNewPassword.set('');
+      },
+      error: (err) => alert('Failed to update password: ' + err.message),
+    });
+  }
+
+  createAnotherStore() {
+    void this.router.navigate(['/seller/onboarding'], { queryParams: { new: '1' } });
+  }
+
+  logout() {
     this.authService.logout().subscribe({
       next: () => void this.router.navigateByUrl('/'),
       error: () => void this.router.navigateByUrl('/'),
     });
-  }
-
-  private loadDashboardData(storeId: string) {
-    this.loadWarehouses();
-
-    // 1. Orders and Metrics
-    this.sellerService.getStoreOrders(storeId).subscribe({
-      next: (data) => {
-        this.metrics.set([
-          { label: 'Pending Orders', value: data.metrics.pendingOrders.toString(), icon: 'clipboard' },
-          { label: 'In Transit', value: data.metrics.inTransit.toString(), icon: 'truck', warn: true },
-          { label: 'Completed (30d)', value: data.metrics.completed30d.toString(), icon: 'check' },
-          { label: 'Revenue (MTD)', value: `$${data.metrics.revenueMtd.toFixed(2)}`, icon: 'wallet', gold: true },
-        ]);
-
-        this.dashboardMetrics.set([
-          { label: 'Total Sales', value: `$${data.metrics.revenueMtd.toFixed(2)}`, note: 'Lifetime', icon: 'chart' },
-          { label: 'Pending Orders', value: data.metrics.pendingOrders.toString(), note: 'Requires Action', icon: 'clipboard', warn: true },
-        ]);
-
-        this.payoutMetrics.set([
-          { label: 'Total Sales', value: `$${data.metrics.revenueMtd.toFixed(2)}`, note: 'This month', icon: 'chart' },
-          { label: 'Platform Commission', value: `$${(data.metrics.revenueMtd * 0.1).toFixed(2)}`, note: '10% standard rate', icon: 'percent', warn: true },
-          { label: 'Seller Earnings', value: `$${(data.metrics.revenueMtd * 0.9).toFixed(2)}`, note: 'Ready for payout', icon: 'wallet' },
-        ]);
-
-        const mappedOrders = data.orders.map((o: any) => {
-          let statusClass: OrderStatusClass = 'pending';
-          if (o.orderStatus === 'SHIPPED') statusClass = 'shipped';
-          if (o.orderStatus === 'DELIVERED') statusClass = 'delivered';
-          return {
-            id: o.orderNumber || o.id,
-            buyer: o.buyerName,
-            initials: o.buyerName ? o.buyerName.substring(0, 2).toUpperCase() : 'CU',
-            color: '#dfe8ff',
-            product: o.myItems.length > 0 ? o.myItems[0].productName : 'Multiple Items',
-            qty: o.myItems.length > 0 ? o.myItems[0].quantity : 1,
-            total: `$${o.myTotal.toFixed(2)}`,
-            address: o.deliveryInfo?.address || 'No address',
-            date: new Date(o.createdAt).toLocaleDateString(),
-            status: o.orderStatus,
-            statusClass,
-            phone: o.buyerPhone || o.deliveryInfo?.phone || '',
-            note: o.deliveryInfo?.note || '',
-            paymentMethod: o.paymentMethod,
-            paymentStatus: o.paymentStatus,
-            items: o.myItems.map((item: any) => ({
-              name: item.productName,
-              image: item.productImage ?? null,
-              qty: item.quantity,
-              price: item.price,
-              subtotal: item.subtotal,
-            })),
-          };
-        });
-        this.orders.set(mappedOrders);
-        this.dashboardOrders.set(mappedOrders.slice(0, 5));
-
-        // Populate payouts logic (mock payout using completed orders)
-        const payoutData = data.orders
-          .filter((o: any) => o.paymentStatus === 'PAID')
-          .map((o: any) => {
-            const total = o.myTotal;
-            const commission = total * 0.1;
-            const earning = total - commission;
-            return {
-              id: o.orderNumber || o.id,
-              date: new Date(o.createdAt).toLocaleDateString(),
-              total: `$${total.toFixed(2)}`,
-              commission: `$${commission.toFixed(2)}`,
-              earning: `$${earning.toFixed(2)}`,
-              status: 'PAID'
-            };
-          });
-        this.payouts.set(payoutData);
-      },
-      error: (err) => console.error('Failed to load orders', err)
-    });
-
-    // 2. Products
-    this.sellerService.getStoreProducts(storeId).subscribe({
-      next: (data) => {
-        this.products.set(data.products || []);
-        this.lowStock.set((data.products || []).filter((p: any) => p.stock <= 5));
-      },
-      error: (err) => console.error('Failed to load products', err)
-    });
-
-    // 3. Profile
-    this.sellerService.getStoreProfile(storeId).subscribe({
-      next: (profile) => {
-        this.storeProfile.set({
-          storeName: profile.storeName ?? '',
-          storeDescription: profile.storeDescription ?? '',
-          storeTagline: profile.storeTagline ?? '',
-          announcement: profile.announcement ?? '',
-          theme: profile.theme ?? 'FOREST',
-          showContact: profile.showContact ?? false,
-          featuredProductIds: profile.featuredProductIds ?? [],
-          location: profile.location ?? '',
-          phoneNumber: profile.phoneNumber ?? '',
-          logoUrl: profile.logoUrl ?? '',
-          bannerUrl: profile.bannerUrl ?? ''
-        });
-        this.profileMessage.set('');
-      },
-      error: (err) => console.error('Failed to load profile', err)
-    });
-
-    // 4. Reviews
-    this.sellerService.getStoreReviews(storeId).subscribe({
-      next: (data) => {
-        this.reviewsStats.set(data.stats || {});
-        const mappedReviews = (data.reviews || []).map((r: any) => ({
-          id: r.id ?? r._id,
-          name: r.buyerName || r.reviewerName || 'Anonymous',
-          initial: (r.buyerName || r.reviewerName || 'A').substring(0, 1).toUpperCase(),
-          color: '#f0a36e',
-          product: r.productName || 'Unknown Product',
-          date: new Date(r.createdAt).toLocaleDateString(),
-          text: r.comment,
-          rating: r.rating,
-          response: r.sellerResponse || null
-        }));
-        this.reviews.set(mappedReviews);
-      },
-      error: (err) => console.error('Failed to load reviews', err)
-    });
-  }
-
-  protected readonly navItems: Array<{ view: DashboardView; label: string; icon: string }> = [
-    { view: 'dashboard', label: 'Dashboard', icon: 'grid' },
-    { view: 'products', label: 'Products', icon: 'box' },
-    { view: 'add', label: 'Add Product', icon: 'plus-square' },
-    { view: 'orders', label: 'Orders', icon: 'cart' },
-    { view: 'profile', label: 'Store Profile', icon: 'store' },
-    { view: 'store-categories', label: 'Store Categories', icon: 'grid' },
-    { view: 'warehouses', label: 'Stock Locations', icon: 'store' },
-    { view: 'sales', label: 'Sales / Payout', icon: 'wallet' },
-    { view: 'reviews', label: 'Reviews', icon: 'review' },
-    { view: 'settings', label: 'Settings', icon: 'settings' },
-  ];
-
-  protected readonly metrics = signal<DashboardMetric[]>([
-    { label: 'Pending Orders', value: '-', icon: 'clipboard' },
-    { label: 'In Transit', value: '-', icon: 'truck', warn: true },
-    { label: 'Completed (30d)', value: '-', icon: 'check' },
-    { label: 'Revenue (MTD)', value: '-', icon: 'wallet', gold: true },
-  ]);
-
-  protected readonly dashboardMetrics = signal<DashboardMetric[]>([]);
-  protected readonly dashboardOrders = signal<any[]>([]);
-  protected readonly lowStock = signal<any[]>([]);
-  protected readonly products = signal<any[]>([]);
-  protected readonly searchQuery = signal('');
-  protected readonly globalSearchQuery = signal('');
-  
-  protected readonly filteredProducts = computed(() => {
-    const localQ = this.searchQuery().toLowerCase();
-    const globalQ = this.globalSearchQuery().toLowerCase();
-    const q = localQ || globalQ;
-    if (!q) return this.products();
-    return this.products().filter(p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)));
-  });
-  protected readonly payoutMetrics = signal<DashboardMetric[]>([]);
-  
-  // Also create a signal for store profile
-  protected readonly storeProfile = signal<any>({
-    storeName: '',
-    storeDescription: '',
-    storeTagline: '',
-    announcement: '',
-    theme: 'FOREST',
-    showContact: false,
-    featuredProductIds: [],
-    location: '',
-    phoneNumber: '',
-    logoUrl: '',
-    bannerUrl: '',
-  });
-
-  protected readonly storefrontThemes = [
-    { value: 'FOREST', label: 'Forest', color: '#275643' },
-    { value: 'CLAY', label: 'Clay', color: '#a33a24' },
-    { value: 'GOLD', label: 'Harvest', color: '#a97517' },
-    { value: 'MIDNIGHT', label: 'Midnight', color: '#243547' },
-  ] as const;
-  protected readonly savingProfile = signal(false);
-  protected readonly profileMessage = signal('');
-
-  /**
-   * The seller's stock locations, for the picker on the product form. Loaded
-   * once the store id is known; sellers who have not created any simply do not
-   * see the field, so nothing new is demanded of a one-shop seller.
-   */
-  protected readonly warehouses = signal<Warehouse[]>([]);
-
-  private loadWarehouses(): void {
-    const storeId = this.myStoreId();
-    if (!storeId) return;
-    this.sellerService.listWarehouses(storeId).subscribe({
-      next: ({ warehouses }) => {
-        const open = warehouses.filter((w) => w.isActive);
-        this.warehouses.set(open);
-        // Pre-select the default so a seller adding their first product is not
-        // asked a question they have already answered.
-        const fallback = open.find((w) => w.isDefault) ?? open[0];
-        if (fallback && !this.newProduct().warehouseId) {
-          this.newProduct.set({ ...this.newProduct(), warehouseId: fallback.id });
-        }
-      },
-      error: () => this.warehouses.set([]),
-    });
-  }
-
-  protected readonly newProduct = signal<any>({
-    name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: '', images: [], variants: [], warehouseId: ''
-  });
-
-  /**
-   * Every photo on the product, main first.
-   *
-   * The API keeps the main photo in `image` and the rest in `images`, so this
-   * flattens both into one list for editing and splits them again on save.
-   * Treating them as one ordered list is what lets "make main" be a reorder
-   * rather than a special case.
-   */
-  protected readonly gallery = computed<string[]>(() => {
-    const product = this.newProduct();
-    return [product.image, ...(product.images ?? [])].filter(Boolean);
-  });
-
-  protected readonly variants = computed<Array<{ label: string; image: string }>>(
-    () => this.newProduct().variants ?? [],
-  );
-
-  private setGallery(shots: string[]): void {
-    const [main, ...rest] = shots;
-    this.newProduct.set({ ...this.newProduct(), image: main ?? '', images: rest });
-  }
-
-  private readFile(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e: any) => resolve(e.target.result as string);
-      reader.onerror = () => reject(new Error('Could not read that file'));
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async onFileSelected(event: any) {
-    const files: File[] = Array.from(event.target.files ?? []);
-    if (!files.length) return;
-    const added = await Promise.all(files.map((file) => this.readFile(file)));
-    this.setGallery([...this.gallery(), ...added]);
-    // Without this, picking the same file twice in a row fires no change event
-    // and the second attempt silently does nothing.
-    event.target.value = '';
-  }
-
-  protected makeMainImage(index: number): void {
-    const shots = [...this.gallery()];
-    const [picked] = shots.splice(index, 1);
-    this.setGallery([picked, ...shots]);
-  }
-
-  protected removeImage(index: number): void {
-    const shots = [...this.gallery()];
-    shots.splice(index, 1);
-    this.setGallery(shots);
-  }
-
-  async onVariantSelected(event: any) {
-    const file: File | undefined = event.target.files?.[0];
-    if (!file) return;
-    const image = await this.readFile(file);
-    this.newProduct.set({
-      ...this.newProduct(),
-      variants: [...this.variants(), { label: '', image }],
-    });
-    event.target.value = '';
-  }
-
-  protected setVariantLabel(index: number, label: string): void {
-    const next = this.variants().map((v, i) => (i === index ? { ...v, label } : v));
-    this.newProduct.set({ ...this.newProduct(), variants: next });
-  }
-
-  protected removeVariant(index: number): void {
-    this.newProduct.set({
-      ...this.newProduct(),
-      variants: this.variants().filter((_, i) => i !== index),
-    });
-  }
-
-  protected readonly reviews = signal<any[]>([]);
-  protected readonly filteredReviews = computed(() => {
-    const q = this.globalSearchQuery().toLowerCase();
-    if (!q) return this.reviews();
-    return this.reviews().filter(r => 
-      r.name.toLowerCase().includes(q) || 
-      r.text.toLowerCase().includes(q) ||
-      (r.product && r.product.toLowerCase().includes(q))
-    );
-  });
-  protected readonly reviewsStats = signal<any>({});
-  protected readonly payouts = signal<any[]>([]);
-
-  editProduct(product: any) {
-    this.newProduct.set({ ...product });
-    this.view.set('add'); // Reusing the add view for editing
-  }
-
-  toggleProductStatus(product: any) {
-    const newStatus = product.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE';
-    this.sellerService.updateProduct(product.id, { status: newStatus }).subscribe({
-      next: () => {
-        if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
-      },
-      error: (err) => alert('Failed to update status: ' + err.message)
-    });
-  }
-
-  deleteProduct(productId: string) {
-    if (confirm('Are you sure you want to delete this product?')) {
-      this.sellerService.deleteProduct(productId).subscribe({
-        next: () => {
-          if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
-        },
-        error: (err) => alert('Failed to delete product: ' + err.message)
-      });
-    }
-  }
-
-  submitAddProduct() {
-    const data = { ...this.newProduct() };
-    
-    // Parse numbers safely from input binding strings
-    data.price = Number(data.price);
-    data.stock = Number(data.stock);
-
-    if (!data.name || !data.category || !data.price || isNaN(data.stock)) return;
-
-    // Ownership and store identity always come from the signed-in account on
-    // the API; never send editable/fallback seller names from the browser.
-    delete data.material;
-    delete data.sellerName;
-    delete data.storeName;
-    delete data.sellerId;
-    if (!data.image) {
-      delete data.image;
-    }
-
-    // An option with no label is a half-finished row the seller left behind —
-    // the API requires one, so sending it would fail the whole save rather
-    // than just dropping the row.
-    data.variants = (data.variants ?? []).filter(
-      (v: { label?: string; image?: string }) => v.label?.trim() && v.image,
-    );
-    if (!data.variants.length) delete data.variants;
-    if (!data.images?.length) delete data.images;
-    
-    // If it has an id, it is an edit
-    if (data.id) {
-      const id = data.id;
-      delete data.id;
-      this.sellerService.updateProduct(id, data).subscribe({
-        next: () => {
-          alert('Product updated successfully!');
-          if (this.myStoreId()) this.loadDashboardData(this.myStoreId()!);
-          this.view.set('products');
-          this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: '', images: [], variants: [], warehouseId: '' });
-        },
-        error: (err) => {
-          const errorMsg = err.error?.error?.details || err.error?.error?.message || err.message;
-          alert('Failed to update product: ' + JSON.stringify(errorMsg));
-        }
-      });
-      return;
-    }
-
-    data.storeId = this.myStoreId();
-    this.sellerService.createProduct(data).subscribe({
-      next: () => {
-        alert('Product added successfully!');
-        if (this.myStoreId()) {
-          this.loadDashboardData(this.myStoreId()!);
-        }
-        this.view.set('products');
-        this.newProduct.set({ name: '', category: '', material: '', description: '', price: null, stock: null, location: 'Phnom Penh', status: 'ACTIVE', image: '', images: [], variants: [], warehouseId: '' });
-      },
-      error: (err) => {
-        const errorMsg = err.error?.error?.details || err.error?.error?.message || err.message;
-        alert('Failed to add product: ' + JSON.stringify(errorMsg));
-      }
-    });
-  }
-
-  saveStoreProfile() {
-    const data = this.storeProfile();
-    const id = this.myStoreId();
-    if (!id) {
-      this.profileMessage.set('Store ID is missing. Please refresh and try again.');
-      return;
-    }
-    this.savingProfile.set(true);
-    this.profileMessage.set('');
-    this.sellerService.updateStoreProfile(id, data).pipe(
-      finalize(() => this.savingProfile.set(false))
-    ).subscribe({
-      next: (updated) => {
-        this.storeProfile.update((current) => ({ ...current, ...updated }));
-        this.stores.update((stores) => stores.map((store) =>
-          (store.id ?? store._id) === id ? { ...store, ...updated } : store
-        ));
-        this.profileMessage.set('Your storefront changes are now live.');
-      },
-      error: (err) => this.profileMessage.set(
-        err.error?.error?.message || err.error?.message || err.message || 'Could not publish storefront changes.'
-      )
-    });
-  }
-
-  protected isFeaturedProduct(productId: string): boolean {
-    return (this.storeProfile().featuredProductIds ?? []).includes(productId);
-  }
-
-  protected toggleFeaturedProduct(productId: string): void {
-    const selected: string[] = this.storeProfile().featuredProductIds ?? [];
-    if (selected.includes(productId)) {
-      this.storeProfile.update((profile) => ({
-        ...profile,
-        featuredProductIds: selected.filter((id) => id !== productId),
-      }));
-      return;
-    }
-    if (selected.length >= 6) {
-      this.profileMessage.set('Choose up to 6 featured products.');
-      return;
-    }
-    this.profileMessage.set('');
-    this.storeProfile.update((profile) => ({
-      ...profile,
-      featuredProductIds: [...selected, productId],
-    }));
-  }
-
-  protected resetStoreProfile(): void {
-    const id = this.myStoreId();
-    if (id) this.loadDashboardData(id);
-  }
-
-
-
-  protected readonly orders = signal<SellerOrder[]>([]);
-  protected readonly orderSearchQuery = signal('');
-  protected readonly filteredOrders = computed(() => {
-    const localQ = this.orderSearchQuery().toLowerCase();
-    const globalQ = this.globalSearchQuery().toLowerCase();
-    const q = localQ || globalQ;
-    if (!q) return this.orders();
-    return this.orders().filter(o => 
-      o.id.toLowerCase().includes(q) || 
-      o.buyer.toLowerCase().includes(q) ||
-      o.product.toLowerCase().includes(q)
-    );
-  });
-
-  protected readonly bars = signal<any[]>([]);
-
-
-
-
-
-  protected currentTitle(): string {
-    return this.navItems.find((item) => item.view === this.view())?.label ?? 'Dashboard';
-  }
-
-  /** Mirrors the server's order-lifecycle rules so the dropdown never offers an illegal move. */
-  protected nextStatusOptions(status: string): OrderStatus[] {
-    switch (status) {
-      case 'PENDING':
-        return ['CONFIRMED', 'CANCELLED'];
-      case 'CONFIRMED':
-        return ['SHIPPED', 'CANCELLED'];
-      case 'SHIPPED':
-        return ['DELIVERED'];
-      default:
-        return [];
-    }
-  }
-
-  protected openOrder(order: SellerOrder): void {
-    this.statusUpdateError.set('');
-    const options = this.nextStatusOptions(order.status);
-    this.statusChoice.set(options[0] ?? '');
-    this.selectedOrder.set(order);
-  }
-
-  protected closeOrder(): void {
-    this.selectedOrder.set(null);
-    this.statusUpdateError.set('');
-  }
-
-  protected async submitStatusUpdate(): Promise<void> {
-    const order = this.selectedOrder();
-    const next = this.statusChoice();
-    if (!order || !next) {
-      return;
-    }
-
-    this.updatingStatus.set(true);
-    this.statusUpdateError.set('');
-    try {
-      await firstValueFrom(this.commerceApi.setOrderStatus(order.id, next));
-
-      const patch = (candidate: SellerOrder): SellerOrder =>
-        candidate.id === order.id
-          ? {
-              ...candidate,
-              status: next,
-              statusClass:
-                next === 'SHIPPED' ? 'shipped' : next === 'DELIVERED' ? 'delivered' : 'pending',
-            }
-          : candidate;
-      this.orders.update((orders) => orders.map(patch));
-      this.dashboardOrders.update((orders) => orders.map(patch));
-
-      this.closeOrder();
-    } catch (error: unknown) {
-      this.statusUpdateError.set(cartErrorMessage(error));
-    } finally {
-      this.updatingStatus.set(false);
-    }
-  }
-
-  onProfileImageSelected(event: any, field: 'logoUrl' | 'bannerUrl') {
-    const file = event.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File is too large (max 5MB)');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64Str = e.target?.result as string;
-        this.storeProfile.set({ ...this.storeProfile(), [field]: base64Str });
-      };
-      reader.readAsDataURL(file);
-    }
   }
 }
