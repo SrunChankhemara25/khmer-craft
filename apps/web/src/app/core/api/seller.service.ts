@@ -136,6 +136,37 @@ export interface StoreCategoryDTO {
   subcategories: StoreSubcategoryDTO[];
 }
 
+export interface StoreCollectionDTO {
+  id: string;
+  storeId: string;
+  name: string;
+  slug: string;
+  description: string;
+  coverImage: string;
+  productIds: string[];
+  products?: {
+    id: string;
+    name: string;
+    price: number;
+    imageUrl?: string;
+    category?: string;
+    description?: string;
+  }[];
+  productCount: number;
+  visible: boolean;
+  sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StoreCollectionPayload {
+  name: string;
+  description?: string;
+  coverImage?: string;
+  productIds?: string[];
+  visible?: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SellerService {
   private readonly http = inject(HttpClient);
@@ -294,6 +325,36 @@ export class SellerService {
     return this.http.delete<StoreCategoryDTO>(
       `${API_URL}/store-categories/my-stores/${storeId}/${categoryId}/subcategories/${subcategoryId}`,
     );
+  }
+
+  // ------------------------------------------------------- store collections
+
+  getStoreCollections(storeId: string) {
+    return this.http
+      .get<{ collections: StoreCollectionDTO[] }>(`${API_URL}/store-collections/my-stores/${storeId}`)
+      .pipe(map((res) => res.collections));
+  }
+
+  getPublicStoreCollections(storeId: string) {
+    return this.http
+      .get<{ collections: StoreCollectionDTO[] }>(`${API_URL}/store-collections/stores/${storeId}`)
+      .pipe(map((res) => res.collections));
+  }
+
+  getPublicStoreCollection(storeId: string, collectionId: string) {
+    return this.http.get<StoreCollectionDTO>(`${API_URL}/store-collections/stores/${storeId}/${collectionId}`);
+  }
+
+  createStoreCollection(storeId: string, data: StoreCollectionPayload) {
+    return this.http.post<StoreCollectionDTO>(`${API_URL}/store-collections/my-stores/${storeId}`, data);
+  }
+
+  updateStoreCollection(storeId: string, collectionId: string, data: Partial<StoreCollectionPayload>) {
+    return this.http.patch<StoreCollectionDTO>(`${API_URL}/store-collections/my-stores/${storeId}/${collectionId}`, data);
+  }
+
+  deleteStoreCollection(storeId: string, collectionId: string) {
+    return this.http.delete<{ deleted: boolean; id: string }>(`${API_URL}/store-collections/my-stores/${storeId}/${collectionId}`);
   }
 
   // ------------------------------------------------------------- Advertisements (Marketplace Hero & Big Cards)

@@ -9,7 +9,7 @@ import { KcIcon } from '../../components/shared/ui/kc-icon/kc-icon';
 import { StoreCategoriesManagerComponent } from '../../features/seller/store-categories/store-categories-manager.component';
 import { WarehousesManagerComponent } from '../../features/seller/warehouses/warehouses-manager.component';
 import { SellerBillingComponent } from '../seller-billing.component';
-import { SellerService, Warehouse } from '../../core/api/seller.service';
+import { SellerService, Warehouse, StoreCollectionDTO } from '../../core/api/seller.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { CommerceApiService } from '../../core/api/commerce-api.service';
 import { CatalogService } from '../../core/catalog/catalog.service';
@@ -21,6 +21,7 @@ export type DashboardView =
   | 'dashboard'
   | 'products'
   | 'store-categories'
+  | 'collections'
   | 'inventory'
   | 'warehouses'
   | 'orders'
@@ -619,6 +620,10 @@ interface DashboardMetric {
               <kc-icon name="grid" [size]="16" />
               <span>Categories</span>
             </button>
+            <button type="button" class="nav-item" [class.active]="view() === 'collections'" (click)="setView('collections')">
+              <kc-icon name="layers" [size]="16" />
+              <span>Collections</span>
+            </button>
             <button type="button" class="nav-item" [class.active]="view() === 'inventory'" (click)="setView('inventory')">
               <kc-icon name="package" [size]="16" />
               <span>Inventory</span>
@@ -941,6 +946,81 @@ interface DashboardMetric {
               <app-store-categories-manager [storeId]="storeId" />
             } @else {
               <p class="muted">Select a store first.</p>
+            }
+          </main>
+        }
+
+        <!-- ======================= 3b. COLLECTIONS ======================= -->
+        @else if (view() === 'collections') {
+          <main class="page">
+            <div class="page-header">
+              <div>
+                <h1>Store Collections</h1>
+                <p class="muted">Group your products into curated showcases (e.g. Festival Specials, Silk Heritage, Gift Sets) for your storefront.</p>
+              </div>
+              <button class="btn btn-primary" type="button" (click)="openCreateCollectionModal()">
+                <kc-icon name="plus" [size]="16" /> Create Collection
+              </button>
+            </div>
+
+            @if (loadingCollections()) {
+              <div style="padding:40px;text-align:center;color:var(--ink-500);">
+                Loading your store collections...
+              </div>
+            } @else if (!collections().length) {
+              <div class="card empty-state">
+                <div class="empty-icon"><kc-icon name="layers" [size]="32" /></div>
+                <h3>No Collections Created Yet</h3>
+                <p class="muted" style="max-width:440px;margin:8px auto 20px;">
+                  Curate themed collections to highlight seasonal specials, new creations, or matching craft sets directly on your store page.
+                </p>
+                <button class="btn btn-primary" type="button" (click)="openCreateCollectionModal()">
+                  <kc-icon name="plus" [size]="16" /> Create Your First Collection
+                </button>
+              </div>
+            } @else {
+              <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:20px;">
+                @for (col of collections(); track col.id) {
+                  <div class="card" style="overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--line);">
+                    <div style="height:140px;background:#24322b;position:relative;overflow:hidden;">
+                      @if (col.coverImage) {
+                        <img [src]="col.coverImage" style="width:100%;height:100%;object-fit:cover;display:block;" alt="{{ col.name }}" />
+                      } @else {
+                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, #176242 0%, #0e3a28 100%);color:#fff;font-size:20px;font-weight:700;text-align:center;padding:12px;">
+                          {{ col.name }}
+                        </div>
+                      }
+                      <span class="pill" [style.background]="col.visible ? '#dcfce7' : '#f1f5f9'" [style.color]="col.visible ? '#15803d' : '#64748b'" style="position:absolute;top:10px;right:10px;font-weight:700;">
+                        {{ col.visible ? 'Visible' : 'Hidden' }}
+                      </span>
+                    </div>
+                    <div style="padding:16px;flex:1;display:flex;flex-direction:column;">
+                      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">
+                        <h3 style="font-size:16px;font-weight:700;margin:0;color:var(--ink-900);">{{ col.name }}</h3>
+                        <span class="pill" style="font-size:11px;background:var(--canvas);">{{ col.productCount }} {{ col.productCount === 1 ? 'item' : 'items' }}</span>
+                      </div>
+                      @if (col.description) {
+                        <p style="font-size:12.5px;color:var(--ink-600);margin:0 0 12px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                          {{ col.description }}
+                        </p>
+                      }
+                      <div style="margin-top:auto;padding-top:14px;border-top:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                        <a [routerLink]="['/stores', myStoreId()]" [queryParams]="{ collection: col.slug }" target="_blank" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--brand-700);">
+                          <span>Preview on Store</span> ↗
+                        </a>
+                        <div style="display:flex;gap:6px;">
+                          <button type="button" class="btn btn-secondary btn-sm" (click)="editCollection(col)">
+                            Edit
+                          </button>
+                          <button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger);" (click)="deleteCollection(col)">
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
             }
           </main>
         }
@@ -3574,8 +3654,26 @@ interface DashboardMetric {
             </div>
 
             <div class="field-group">
-              <label>Artwork Image URL (Horizontal 1200x500 recommended)</label>
-              <input class="dash-input" placeholder="https://..." [ngModel]="promoForm().imageUrl" (ngModelChange)="promoForm.set({...promoForm(), imageUrl: $event})" />
+              <label>Artwork Image (Upload file or enter URL)</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input class="dash-input" placeholder="https://... or choose an image file" [ngModel]="promoForm().imageUrl" (ngModelChange)="promoForm.set({...promoForm(), imageUrl: $event})" />
+                <button type="button" class="btn btn-secondary" style="white-space:nowrap;display:inline-flex;align-items:center;gap:6px;height:44px;flex-shrink:0;" (click)="promoArtworkFileInput.click()">
+                  <kc-icon name="upload" [size]="15" /> Choose from File
+                </button>
+                <input #promoArtworkFileInput type="file" hidden accept="image/*" (change)="onPromoArtworkFileSelected($event)" />
+              </div>
+              @if (promoForm().imageUrl) {
+                <div style="margin-top:8px;display:flex;align-items:center;gap:12px;background:var(--canvas);padding:8px 12px;border-radius:var(--r-md);border:1px solid var(--line);">
+                  <div style="width:130px;height:54px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--line);background:#1a1a1a;flex-shrink:0;">
+                    <img [src]="promoForm().imageUrl" alt="Artwork Preview" style="width:100%;height:100%;object-fit:cover;display:block;" />
+                  </div>
+                  <div style="flex:1;min-width:0;">
+                    <p style="font-size:12px;font-weight:650;margin:0;color:var(--ink-900);">Artwork Image Loaded</p>
+                    <span style="font-size:11px;color:var(--ink-500);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Recommended horizontal ratio (1200x500)</span>
+                  </div>
+                  <button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger);font-size:12px;" (click)="clearPromoArtwork()">Remove</button>
+                </div>
+              }
             </div>
 
             <div class="two-cols">
@@ -3703,6 +3801,102 @@ interface DashboardMetric {
                 (click)="confirmKhqrPaidAndComplete()"
               >
                 Confirm Paid
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- 8. Collection Add/Edit Modal -->
+    @if (showCollectionModal()) {
+      <div class="backdrop" (click)="closeCollectionModal()">
+        <section class="modal modal-lg" (click)="$event.stopPropagation()">
+          <header class="modal-head">
+            <h2>{{ colForm().id ? 'Edit Collection' : 'Create New Collection' }}</h2>
+            <button type="button" class="close" (click)="closeCollectionModal()">×</button>
+          </header>
+          <div class="modal-body">
+            @if (collectionSaveError()) {
+              <div style="color:var(--danger);background:var(--danger-bg);padding:10px;border-radius:var(--r-md);margin-bottom:12px;">
+                {{ collectionSaveError() }}
+              </div>
+            }
+            <div class="field-group">
+              <label>Collection Name <span style="color:var(--danger)">*</span></label>
+              <input class="dash-input" placeholder="e.g. Royal Silk Heritage or Pchum Ben Specials" [ngModel]="colForm().name" (ngModelChange)="colForm.set({...colForm(), name: $event})" />
+            </div>
+
+            <div class="field-group">
+              <label>Description</label>
+              <textarea class="dash-textarea" style="min-height:70px;" placeholder="Tell shoppers what makes this curated collection unique..." [ngModel]="colForm().description" (ngModelChange)="colForm.set({...colForm(), description: $event})"></textarea>
+            </div>
+
+            <div class="field-group">
+              <label>Cover Artwork Image</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input class="dash-input" placeholder="https://... or choose from your computer" [ngModel]="colForm().coverImage" (ngModelChange)="colForm.set({...colForm(), coverImage: $event})" />
+                <button type="button" class="btn btn-secondary" style="white-space:nowrap;display:inline-flex;align-items:center;gap:6px;height:44px;flex-shrink:0;" (click)="collectionCoverInput.click()">
+                  <kc-icon name="upload" [size]="15" /> Choose from File
+                </button>
+                <input #collectionCoverInput type="file" hidden accept="image/*" (change)="onCollectionCoverSelected($event)" />
+              </div>
+              @if (colForm().coverImage) {
+                <div style="margin-top:8px;display:flex;align-items:center;gap:12px;background:var(--canvas);padding:8px 12px;border-radius:var(--r-md);border:1px solid var(--line);">
+                  <div style="width:130px;height:54px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--line);background:#1a1a1a;flex-shrink:0;">
+                    <img [src]="colForm().coverImage" alt="Collection Cover" style="width:100%;height:100%;object-fit:cover;display:block;" />
+                  </div>
+                  <div style="flex:1;min-width:0;">
+                    <p style="font-size:12px;font-weight:650;margin:0;color:var(--ink-900);">Cover Image Ready</p>
+                    <span style="font-size:11px;color:var(--ink-500);">Featured on your storefront collection showcase</span>
+                  </div>
+                  <button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger);font-size:12px;" (click)="colForm.set({...colForm(), coverImage: ''})">Remove</button>
+                </div>
+              }
+            </div>
+
+            <!-- Custom Product Selection -->
+            <div class="field-group" style="margin-top:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <label style="margin:0;">Select Products to Include in this Collection ({{ colForm().productIds.length }} selected)</label>
+                <div style="display:flex;gap:8px;">
+                  <button type="button" class="btn btn-ghost btn-sm" style="font-size:12px;padding:2px 8px;" (click)="selectAllProductsForCollection()">Select All</button>
+                  <button type="button" class="btn btn-ghost btn-sm" style="font-size:12px;padding:2px 8px;" (click)="clearAllProductsForCollection()">Clear</button>
+                </div>
+              </div>
+
+              <div style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);">
+                @if (!products().length) {
+                  <p class="muted" style="padding:20px;text-align:center;font-size:13px;margin:0;">No products listed yet in this store. Add products first to include them.</p>
+                } @else {
+                  @for (prod of products(); track prod.id) {
+                    <label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line-soft);cursor:pointer;user-select:none;transition:background .1s;" [style.background]="isProductInCollection(prod.id) ? 'var(--canvas)' : 'transparent'">
+                      <input type="checkbox" [checked]="isProductInCollection(prod.id)" (change)="toggleProductInCollection(prod.id)" style="width:18px;height:18px;" />
+                      @if (prod.image) {
+                        <img [src]="prod.image" alt="" style="width:36px;height:36px;border-radius:4px;object-fit:cover;border:1px solid var(--line);" />
+                      }
+                      <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;font-weight:600;color:var(--ink-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ prod.name }}</div>
+                        <div style="font-size:11.5px;color:var(--ink-500);">{{ prod.category }} · {{ prod.price | currency }}</div>
+                      </div>
+                      @if (isProductInCollection(prod.id)) {
+                        <span class="pill" style="background:#dcfce7;color:#15803d;font-size:11px;font-weight:700;">Included</span>
+                      }
+                    </label>
+                  }
+                }
+              </div>
+            </div>
+
+            <div style="margin-top:14px;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="col-visible" [checked]="colForm().visible" (change)="colForm.set({...colForm(), visible: !colForm().visible})" style="width:18px;height:18px;" />
+              <label for="col-visible" style="font-size:13px;font-weight:600;cursor:pointer;margin:0;">Show this collection publicly on your storefront</label>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" (click)="closeCollectionModal()">Cancel</button>
+              <button type="button" class="btn btn-primary" [disabled]="!colForm().name.trim() || savingCollection()" (click)="submitCollection()">
+                {{ savingCollection() ? 'Saving Collection...' : (colForm().id ? 'Update Collection' : 'Create Collection') }}
               </button>
             </div>
           </div>
@@ -3994,6 +4188,27 @@ export class SellerDashboardPage implements OnInit {
     };
   });
 
+  // Store Collections
+  protected readonly collections = signal<StoreCollectionDTO[]>([]);
+  protected readonly loadingCollections = signal(false);
+  protected readonly showCollectionModal = signal(false);
+  protected readonly savingCollection = signal(false);
+  protected readonly collectionSaveError = signal('');
+  protected readonly colForm = signal<{
+    id?: string;
+    name: string;
+    description: string;
+    coverImage: string;
+    productIds: string[];
+    visible: boolean;
+  }>({
+    name: '',
+    description: '',
+    coverImage: '',
+    productIds: [],
+    visible: true,
+  });
+
   // Storefront & Profile
   protected readonly storeProfile = signal<any>({
     storeName: '', storeDescription: '', storeTagline: '', announcement: '', theme: 'FOREST', location: '', phoneNumber: '', slug: ''
@@ -4094,6 +4309,7 @@ export class SellerDashboardPage implements OnInit {
     else if (v === 'pos') this.loadPosData(storeId);
     else if (v === 'promotions') this.loadPromotions(storeId);
     else if (v === 'advertisements') this.loadAdvertisements(storeId);
+    else if (v === 'collections') this.loadCollections(storeId);
     else if (v === 'sales' || v === 'payments' || v === 'transactions') this.loadFinance(storeId);
     else if (v === 'analytics') this.loadAnalytics(storeId);
     else if (v === 'support') this.loadSupportCases(storeId);
@@ -4186,6 +4402,9 @@ export class SellerDashboardPage implements OnInit {
       next: (list) => this.notifications.set(list),
       error: () => this.notifications.set([]),
     });
+
+    // 4. Collections
+    this.loadCollections(storeId);
   }
 
   // ---------------------- Products Logic ----------------------
@@ -5373,6 +5592,181 @@ export class SellerDashboardPage implements OnInit {
         this.confirmNewPassword.set('');
       },
       error: (err) => alert('Failed to update password: ' + err.message),
+    });
+  }
+
+  // ---------------------- Artwork & Image Processing ----------------------
+  async processImageFile(file: File, maxWidth = 1200, maxHeight = 800): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, maxWidth / img.width, maxHeight / img.height);
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(url);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          URL.revokeObjectURL(url);
+          resolve(dataUrl);
+        } catch {
+          URL.revokeObjectURL(url);
+          resolve(url);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image file'));
+      };
+      img.src = url;
+    });
+  }
+
+  async onPromoArtworkFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      const dataUrl = await this.processImageFile(file, 1200, 500);
+      this.promoForm.update((f) => ({ ...f, imageUrl: dataUrl }));
+    } catch {
+      alert('Could not open image file. Please choose a valid image.');
+    }
+  }
+
+  clearPromoArtwork() {
+    this.promoForm.update((f) => ({ ...f, imageUrl: '' }));
+  }
+
+  // ---------------------- Collections Logic ----------------------
+  loadCollections(storeId?: string) {
+    const id = storeId || this.myStoreId();
+    if (!id) return;
+    this.loadingCollections.set(true);
+    this.sellerService.getStoreCollections(id).subscribe({
+      next: (cols) => {
+        this.collections.set(cols);
+        this.loadingCollections.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load collections', err);
+        this.loadingCollections.set(false);
+      },
+    });
+  }
+
+  openCreateCollectionModal() {
+    this.colForm.set({
+      name: '',
+      description: '',
+      coverImage: '',
+      productIds: [],
+      visible: true,
+    });
+    this.collectionSaveError.set('');
+    this.showCollectionModal.set(true);
+  }
+
+  editCollection(col: StoreCollectionDTO) {
+    this.colForm.set({
+      id: col.id,
+      name: col.name,
+      description: col.description || '',
+      coverImage: col.coverImage || '',
+      productIds: [...col.productIds],
+      visible: col.visible !== false,
+    });
+    this.collectionSaveError.set('');
+    this.showCollectionModal.set(true);
+  }
+
+  closeCollectionModal() {
+    this.showCollectionModal.set(false);
+    this.collectionSaveError.set('');
+  }
+
+  async onCollectionCoverSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      const dataUrl = await this.processImageFile(file, 1200, 600);
+      this.colForm.update((f) => ({ ...f, coverImage: dataUrl }));
+    } catch {
+      alert('Could not open image file. Please choose a valid image.');
+    }
+  }
+
+  isProductInCollection(productId: string): boolean {
+    return this.colForm().productIds.includes(productId);
+  }
+
+  toggleProductInCollection(productId: string) {
+    this.colForm.update((f) => {
+      const exists = f.productIds.includes(productId);
+      const updated = exists ? f.productIds.filter((id) => id !== productId) : [...f.productIds, productId];
+      return { ...f, productIds: updated };
+    });
+  }
+
+  selectAllProductsForCollection() {
+    const allIds = this.products().map((p) => p.id);
+    this.colForm.update((f) => ({ ...f, productIds: allIds }));
+  }
+
+  clearAllProductsForCollection() {
+    this.colForm.update((f) => ({ ...f, productIds: [] }));
+  }
+
+  submitCollection() {
+    const f = this.colForm();
+    const storeId = this.myStoreId();
+    if (!storeId || !f.name.trim()) return;
+
+    this.savingCollection.set(true);
+    this.collectionSaveError.set('');
+
+    const payload = {
+      name: f.name.trim(),
+      description: f.description.trim(),
+      coverImage: f.coverImage,
+      productIds: f.productIds,
+      visible: f.visible,
+    };
+
+    const request$ = f.id
+      ? this.sellerService.updateStoreCollection(storeId, f.id, payload)
+      : this.sellerService.createStoreCollection(storeId, payload);
+
+    request$.subscribe({
+      next: () => {
+        this.savingCollection.set(false);
+        this.closeCollectionModal();
+        this.loadCollections(storeId);
+      },
+      error: (err) => {
+        this.savingCollection.set(false);
+        this.collectionSaveError.set(err.error?.message || err.message || 'Failed to save collection');
+      },
+    });
+  }
+
+  deleteCollection(col: StoreCollectionDTO) {
+    const storeId = this.myStoreId();
+    if (!storeId || !confirm(`Are you sure you want to delete the "${col.name}" collection?`)) return;
+    this.sellerService.deleteStoreCollection(storeId, col.id).subscribe({
+      next: () => this.loadCollections(storeId),
+      error: (err) => alert(err.error?.message || 'Failed to delete collection'),
     });
   }
 

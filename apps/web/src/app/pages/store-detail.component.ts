@@ -3,7 +3,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
-import { SellerService } from '../core/api/seller.service';
+import { SellerService, StoreCollectionDTO } from '../core/api/seller.service';
 import { AuthService } from '../core/auth/auth.service';
 import { CatalogService } from '../core/catalog/catalog.service';
 import { Title } from '@angular/platform-browser';
@@ -133,11 +133,64 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
           </section>
         }
 
+        @if (storeCollections().length) {
+          <section class="container collections-section" style="margin-bottom:34px;">
+            <header class="products-head">
+              <div>
+                <span class="eyebrow">Curated Collections</span>
+                <h2>Explore By Collection</h2>
+              </div>
+              @if (activeCollection()) {
+                <button type="button" class="btn-clear-collection" (click)="clearCollectionFilter()">
+                  ✕ Show All Products
+                </button>
+              }
+            </header>
+            <div class="collections-grid">
+              @for (col of storeCollections(); track col.id) {
+                <div class="collection-pill-card" [class.selected]="activeCollection()?.id === col.id" (click)="selectCollection(col)">
+                  @if (col.coverImage) {
+                    <img [src]="col.coverImage" class="col-pill-img" alt="{{ col.name }}" />
+                  } @else {
+                    <div class="col-pill-fallback">✦</div>
+                  }
+                  <div class="col-pill-content">
+                    <div class="col-pill-top">
+                      <span class="col-pill-name">{{ col.name }}</span>
+                      <span class="col-pill-count">{{ col.productCount || col.productIds.length }} items</span>
+                    </div>
+                    @if (col.description) {
+                      <p class="col-pill-desc">{{ col.description }}</p>
+                    }
+                  </div>
+                  <span class="col-pill-indicator">
+                    {{ activeCollection()?.id === col.id ? 'Viewing ✓' : 'Explore →' }}
+                  </span>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
         <section class="container products-section" id="products">
+          @if (activeCollection(); as col) {
+            <div class="active-col-banner">
+              <div class="active-col-info">
+                <span class="col-badge">Active Collection</span>
+                <h3>{{ col.name }}</h3>
+                @if (col.description) {
+                  <p>{{ col.description }}</p>
+                }
+              </div>
+              <button type="button" class="btn-clear-collection" (click)="clearCollectionFilter()">
+                ← Show All Store Products
+              </button>
+            </div>
+          }
           <header class="products-head">
             <div>
-              <span class="eyebrow">Store collection</span>
-              <h2>Shop {{ s.name }}</h2>
+              <span class="eyebrow">{{ activeCollection() ? 'Filtered Showcase' : 'Store Catalog' }}</span>
+              <h2>{{ activeCollection() ? activeCollection()!.name : ('Shop ' + s.name) }}</h2>
             </div>
             <div class="products-head-controls">
               <span class="item-count">{{ filteredProducts().length }} items</span>
@@ -314,6 +367,36 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
       padding: 0 32px 0 12px;
     }
     .sort select::-ms-expand { display: none; }
+    .collections-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+    .collection-pill-card {
+      display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); cursor: pointer; transition: all .16s ease;
+    }
+    .collection-pill-card:hover { border-color: var(--color-accent); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+    .collection-pill-card.selected { border-color: var(--color-accent); background: var(--color-accent-soft); }
+    .col-pill-img { width: 64px; height: 64px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+    .col-pill-fallback { width: 64px; height: 64px; border-radius: var(--radius-sm); background: var(--color-accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .col-pill-content { flex: 1; min-width: 0; }
+    .col-pill-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+    .col-pill-name { font-size: 14px; font-weight: 700; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .col-pill-count { font-size: 11px; color: var(--color-muted); font-weight: 600; white-space: nowrap; }
+    .col-pill-desc { font-size: 12px; color: var(--color-text-secondary); margin: 3px 0 0; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .col-pill-indicator { font-size: 11.5px; font-weight: 700; color: var(--color-accent); white-space: nowrap; }
+    .btn-clear-collection {
+      background: none; border: 1px solid var(--color-border-strong); border-radius: var(--radius-full);
+      padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--color-accent); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px; transition: all .14s ease;
+    }
+    .btn-clear-collection:hover { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+    .active-col-banner {
+      display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
+      background: var(--color-accent-soft); border: 1px solid var(--color-accent-soft-strong);
+      border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 20px;
+    }
+    .active-col-info h3 { margin: 2px 0 0; font-size: 16px; font-weight: 700; color: var(--color-text); }
+    .active-col-info p { margin: 3px 0 0; font-size: 12.5px; color: var(--color-text-secondary); }
+    .col-badge { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--color-accent); }
     /* Still scrolls when it overflows — just without a visible scrollbar
        cluttering the row underneath it. */
     .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 3px; scrollbar-width: none; }
@@ -385,6 +468,8 @@ export class StoreDetailComponent {
   private readonly hostSlug = detectStoreSlugFromHost();
   protected readonly activeCategory = signal<string | null>(null);
   protected readonly activeSection = signal<'products' | 'about' | 'reviews'>('products');
+  protected readonly storeCollections = signal<StoreCollectionDTO[]>([]);
+  protected readonly activeCollection = signal<StoreCollectionDTO | null>(null);
   private readonly storeId = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('id') || this.hostSlug || '')),
     { initialValue: this.route.snapshot.paramMap.get('id') || this.hostSlug || '' }
@@ -400,8 +485,16 @@ export class StoreDetailComponent {
   protected readonly sorts = SORTS;
   protected readonly sort = signal<ProductSort>('featured');
   protected readonly filteredProducts = computed(() => {
+    let scoped = this.products();
+    const col = this.activeCollection();
+    if (col && col.productIds && col.productIds.length > 0) {
+      const colIdSet = new Set(col.productIds);
+      scoped = scoped.filter((product) => colIdSet.has(product.id));
+    }
     const category = this.activeCategory();
-    const scoped = category ? this.products().filter((product) => product.categoryName === category) : this.products();
+    if (category) {
+      scoped = scoped.filter((product) => product.categoryName === category);
+    }
     return sortProducts(scoped, this.sort());
   });
   /**
@@ -478,9 +571,38 @@ export class StoreDetailComponent {
         // Keep the safe partial catalogue already on screen; global catalogue
         // errors are rendered by the existing marketplace error state.
       });
+
+      this.sellers.getPublicStoreCollections(storeId).subscribe({
+        next: (cols) => {
+          this.storeCollections.set(cols);
+          const targetColId = this.route.snapshot.queryParamMap.get('collection');
+          if (targetColId) {
+            const found = cols.find((c) => c.id === targetColId || c.slug === targetColId);
+            if (found) this.activeCollection.set(found);
+          }
+        },
+        error: () => this.storeCollections.set([]),
+      });
     });
   }
   private ownedStoresRequested = false;
+
+  protected selectCollection(col: StoreCollectionDTO): void {
+    if (this.activeCollection()?.id === col.id) {
+      this.activeCollection.set(null);
+    } else {
+      this.activeCollection.set(col);
+      this.activeSection.set('products');
+      document.getElementById('products')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }
+  }
+
+  protected clearCollectionFilter(): void {
+    this.activeCollection.set(null);
+  }
 
   protected countCategory(category: string): number { return this.products().filter((product) => product.categoryName === category).length; }
   protected setSort(event: Event): void {
@@ -499,3 +621,4 @@ export class StoreDetailComponent {
     });
   }
 }
+
