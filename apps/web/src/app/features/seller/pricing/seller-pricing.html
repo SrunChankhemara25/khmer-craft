@@ -1,0 +1,165 @@
+<app-seller-portal-header />
+
+<main>
+  <section class="section tight tint-glow intro">
+    <div class="wrap narrow center">
+      <p class="eyebrow"><kc-icon name="percent" [size]="13" /> Plans & pricing</p>
+      <h1 class="display-1">Start free. <em>Grow at your pace.</em></h1>
+      <p class="lead">One flat monthly price per store. No listing fees, no setup fees, and no plan is ever charged without you confirming the payment yourself.</p>
+      <ul class="intro-chips">
+        <li class="chip sage"><kc-icon name="check" [size]="12" /> Starter is free forever</li>
+        <li class="chip sage"><kc-icon name="check" [size]="12" /> No card needed</li>
+        <li class="chip sage"><kc-icon name="check" [size]="12" /> Pay upgrades with KHQR</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ========================================================== PLANS -->
+  <section class="section plans-section">
+    <div class="wrap">
+      <div class="plans">
+        @for (plan of plans; track plan.key; let i = $index) {
+          <article class="plan" [class.featured]="plan.featured" [kcReveal]="i">
+            @if (plan.featured) { <span class="ribbon">{{ plan.badge }}</span> }
+            <p class="plan-tag">{{ plan.tagline }}</p>
+            <h2>{{ plan.name }}</h2>
+            <p class="plan-price"><strong>{{ '$' + plan.price }}</strong><small>per store / month</small></p>
+            <p class="plan-desc">{{ plan.description }}</p>
+            <a class="btn btn-wide" [class.btn-primary]="plan.featured" [class.btn-ghost]="!plan.featured" routerLink="/seller/onboarding" [queryParams]="{ plan: plan.key }">
+              {{ plan.price === 0 ? 'Start free' : 'Choose ' + plan.name }} <span class="arrow">→</span>
+            </a>
+            <ul>
+              @for (feature of plan.features; track feature) {
+                <li><kc-icon name="check" [size]="14" /> {{ feature }}</li>
+              }
+            </ul>
+            <p class="best-for"><strong>Best for</strong>{{ plan.bestFor }}</p>
+          </article>
+        }
+      </div>
+      <p class="fine center plans-note"><kc-icon name="info" [size]="13" /> Prices in US dollars. Every store starts on Starter; a paid plan activates only once ABA confirms your payment.</p>
+    </div>
+  </section>
+
+  <!-- ===================================================== COMPARISON -->
+  <section class="section tint-cream">
+    <div class="wrap medium">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Compare every feature</p>
+        <h2 class="display-2">What each plan <em>includes.</em></h2>
+      </div>
+      <div class="table-wrap" [kcReveal]="1">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col"><span class="sr-only">Feature</span></th>
+              @for (plan of plans; track plan.key) {
+                <th scope="col" [class.featured]="plan.featured">{{ plan.name }}<small>{{ '$' + plan.price }}/mo</small></th>
+              }
+            </tr>
+          </thead>
+          @for (group of comparison; track group.group) {
+            <tbody>
+              <tr class="group"><th colspan="4" scope="colgroup">{{ group.group }}</th></tr>
+              @for (row of group.rows; track row.label) {
+                <tr>
+                  <th scope="row">{{ row.label }}</th>
+                  @for (value of row.values; track $index) {
+                    <td [class.featured]="$index === 1">
+                      @if (value === true) { <span class="yes" aria-label="Included"><kc-icon name="check" [size]="14" /></span> }
+                      @else if (value === false) { <span class="no" aria-label="Not included">—</span> }
+                      @else { <span class="text">{{ value }}</span> }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          }
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== WHICH PLAN -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Not sure which to pick?</p>
+        <h2 class="display-2">Find the plan that <em>fits you today.</em></h2>
+        <p class="lead">Pick the sentence that sounds most like you. You can always change plan later.</p>
+      </div>
+      <div class="fit-grid">
+        @for (fit of fits; track fit.plan; let i = $index) {
+          <button type="button" class="fit" [class.active]="selectedFit() === i" (click)="selectedFit.set(i)" [kcReveal]="i">
+            <span class="fit-quote">“{{ fit.quote }}”</span>
+            <span class="fit-answer"><kc-icon name="chevron-right" [size]="14" /> {{ fit.plan }}</span>
+          </button>
+        }
+      </div>
+      @if (selectedFit() !== null) {
+        <div class="fit-result">
+          <span class="icon-badge sage"><kc-icon name="lightbulb" [size]="20" /></span>
+          <p><strong>We’d suggest {{ fits[selectedFit()!].plan }}.</strong> {{ fits[selectedFit()!].why }}</p>
+          <a class="btn btn-primary btn-small" routerLink="/seller/onboarding" [queryParams]="{ plan: fits[selectedFit()!].key }">Start with {{ fits[selectedFit()!].plan }}</a>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- ======================================================== BILLING -->
+  <section class="section tint-sage">
+    <div class="wrap billing-grid">
+      <div [kcReveal]="0">
+        <p class="eyebrow">How paying works</p>
+        <h2 class="display-2">Local payment. <em>No surprises.</em></h2>
+        <p class="lead">Paid plans are settled with ABA KHQR — the same QR payment you already use at shops and cafés. Nothing is charged automatically, and you can stay on Starter as long as you like.</p>
+        <div class="khqr-card" aria-hidden="true">
+          <div class="qr"><span></span><span></span><span></span><span></span></div>
+          <div><strong>KHQR</strong><small>Scan with ABA Mobile or any KHQR bank app</small></div>
+        </div>
+      </div>
+      <ol class="billing-steps">
+        @for (step of billing; track step.title; let i = $index) {
+          <li [kcReveal]="i">
+            <span class="num">{{ i + 1 }}</span>
+            <div><h3>{{ step.title }}</h3><p>{{ step.body }}</p></div>
+          </li>
+        }
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============================================================ FAQ -->
+  <section class="section">
+    <div class="wrap narrow">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Pricing questions</p>
+        <h2 class="display-2">Money matters, <em>answered.</em></h2>
+      </div>
+      <div class="faq-list">
+        @for (faq of pricingFaq; track faq.question; let i = $index) {
+          <details [kcReveal]="i">
+            <summary>{{ faq.question }}<span class="faq-icon"><kc-icon name="plus" [size]="15" /></span></summary>
+            <p>{{ faq.answer }}</p>
+          </details>
+        }
+      </div>
+      <div class="cta-row center"><a class="text-link" routerLink="/faq">See all seller questions <span class="arrow">→</span></a></div>
+    </div>
+  </section>
+
+  <section class="section tight">
+    <div class="wrap">
+      <div class="cta-band" [kcReveal]="0">
+        <h2 class="display-2">Your first store is <em>on us.</em></h2>
+        <p class="lead">Open it on Starter today and upgrade only when your orders say it’s time.</p>
+        <div class="cta-row center">
+          <a class="btn btn-primary" routerLink="/seller/onboarding">Start selling free <span class="arrow">→</span></a>
+          <a class="btn btn-ghost" routerLink="/explore">Tour the workspace</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<app-seller-footer />

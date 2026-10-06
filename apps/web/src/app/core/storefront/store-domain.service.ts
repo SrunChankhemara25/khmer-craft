@@ -46,7 +46,8 @@ export function detectStoreSlugFromHost(hostname?: string, search?: string): str
   const parts = host.split('.');
   if (parts.length >= 2) {
     const sub = parts[0];
-    const reserved = ['www', 'api', 'admin', 'mail', 'staging', 'dev', 'test', 'dashboard', 'gateway'];
+    // `seller` is the seller portal's own origin (see core/portal/portal.ts), not a store.
+    const reserved = ['www', 'api', 'admin', 'mail', 'staging', 'dev', 'test', 'dashboard', 'gateway', 'seller'];
     if (!reserved.includes(sub)) {
       return sub;
     }

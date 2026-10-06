@@ -12,7 +12,7 @@ import { IconComponent } from '../../ui/icon/icon.component';
   imports: [RouterLink, IconComponent],
   template: `
     <header class="flow-header">
-      <a class="brand" routerLink="/" aria-label="KhmerCraft marketplace home">
+      <a class="brand" routerLink="/" aria-label="KhmerCraft Seller home">
         <span class="brand-mark"><ui-icon name="leaf" [size]="17" /></span>
         <span>KhmerCraft <small>Seller</small></span>
       </a>

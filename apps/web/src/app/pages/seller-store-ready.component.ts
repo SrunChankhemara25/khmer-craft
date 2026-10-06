@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SellerService, SellerStore } from '../core/api/seller.service';
+import { marketplaceUrl } from '../core/portal/portal';
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
 import { SellerFlowHeaderComponent } from '../components/shared/layout/seller-flow-header/seller-flow-header.component';
 
@@ -45,7 +46,7 @@ const PLAN_NAMES: Record<string, string> = {
           </div>
 
           <div class="actions">
-            <a class="btn btn-primary btn-lg" [routerLink]="['/stores', s.slug || s.id]">
+            <a class="btn btn-primary btn-lg" [href]="storefrontUrl(s)" target="_blank" rel="noopener">
               View your store <ui-icon name="arrow-right" [size]="15" />
             </a>
             <a class="btn btn-outline btn-lg" routerLink="/seller/dashboard" [queryParams]="{ storeId: s.id }">
@@ -89,6 +90,11 @@ const PLAN_NAMES: Record<string, string> = {
   `],
 })
 export class SellerStoreReadyComponent {
+  /** The public storefront is a marketplace page, opened in its own tab. */
+  protected storefrontUrl(store: SellerStore): string {
+    return marketplaceUrl(`/stores/${store.slug || store.id}`);
+  }
+
   private readonly route = inject(ActivatedRoute);
   private readonly sellers = inject(SellerService);
 

@@ -1,0 +1,109 @@
+<app-seller-portal-header />
+
+<main>
+  <section class="section tight tint-glow intro">
+    <div class="wrap narrow center">
+      <p class="eyebrow"><kc-icon name="info" [size]="13" /> Seller FAQ</p>
+      <h1 class="display-1">Questions? <em>We’ve got answers.</em></h1>
+      <p class="lead">Everything new sellers ask before opening a store — about setup, products, orders, payments and keeping your account safe.</p>
+      <label class="search">
+        <kc-icon name="search" [size]="18" />
+        <span class="sr-only">Search questions</span>
+        <input type="search" placeholder="Search, e.g. “KHQR” or “delivery”" [value]="query()" (input)="query.set($any($event.target).value)" />
+        @if (query()) { <button type="button" (click)="query.set('')" aria-label="Clear search">✕</button> }
+      </label>
+    </div>
+  </section>
+
+  <section class="section faq-section">
+    <div class="wrap faq-layout">
+      <nav class="cats" aria-label="Question topics">
+        <button type="button" [class.active]="category() === 'all'" (click)="category.set('all')">
+          <kc-icon name="grid" [size]="15" /> All questions <span>{{ totalCount }}</span>
+        </button>
+        @for (cat of categories; track cat.id) {
+          <button type="button" [class.active]="category() === cat.id" (click)="category.set(cat.id)">
+            <kc-icon [name]="cat.icon" [size]="15" /> {{ cat.label }} <span>{{ cat.items.length }}</span>
+          </button>
+        }
+      </nav>
+
+      <div class="groups">
+        @for (group of visible(); track group.id) {
+          <section class="group" [attr.aria-labelledby]="'faq-' + group.id">
+            <h2 [id]="'faq-' + group.id"><span class="icon-badge"><kc-icon [name]="group.icon" [size]="18" /></span> {{ group.label }}</h2>
+            <div class="faq-list">
+              @for (faq of group.items; track faq.question) {
+                <details [open]="!!query()">
+                  <summary>{{ faq.question }}<span class="faq-icon"><kc-icon name="plus" [size]="15" /></span></summary>
+                  <p>{{ faq.answer }}</p>
+                </details>
+              }
+            </div>
+          </section>
+        } @empty {
+          <div class="empty">
+            <span class="icon-badge gold"><kc-icon name="search" [size]="20" /></span>
+            <h2 class="display-3">No question matches “{{ query() }}”.</h2>
+            <p>Try a simpler word, or browse all topics.</p>
+            <button type="button" class="btn btn-ghost btn-small" (click)="query.set(''); category.set('all')">Show all questions</button>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== STILL CURIOUS -->
+  <section class="section tint-cream">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Still curious?</p>
+        <h2 class="display-2">Three more ways to <em>find out.</em></h2>
+      </div>
+      <div class="grid-3">
+        @for (link of helpLinks; track link.title; let i = $index) {
+          <a class="card hover help-card" [routerLink]="link.path" [kcReveal]="i">
+            <span class="icon-badge" [class.sage]="i === 1" [class.gold]="i === 2"><kc-icon [name]="link.icon" [size]="20" /></span>
+            <h3>{{ link.title }}</h3>
+            <p>{{ link.body }}</p>
+            <span class="text-link">{{ link.cta }} <span class="arrow">→</span></span>
+          </a>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================================== THE SHORT VERSION -->
+  <section class="section">
+    <div class="wrap narrow">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">The short version</p>
+        <h2 class="display-2">What happens when you <em>sign up.</em></h2>
+      </div>
+      <ol class="recap">
+        @for (step of steps; track step.number; let i = $index) {
+          <li [kcReveal]="i">
+            <span class="recap-icon"><kc-icon [name]="step.icon" [size]="18" /></span>
+            <div><strong>{{ step.title }}</strong><p>{{ step.description }}</p></div>
+            <span class="chip">{{ step.time }}</span>
+          </li>
+        }
+      </ol>
+    </div>
+  </section>
+
+  <section class="section tight">
+    <div class="wrap">
+      <div class="cta-band" [kcReveal]="0">
+        <h2 class="display-2">Answered what you needed? <em>Let’s begin.</em></h2>
+        <p class="lead">Opening a store is free and takes about five minutes.</p>
+        <div class="cta-row center">
+          <a class="btn btn-primary" routerLink="/seller/onboarding">Start selling <span class="arrow">→</span></a>
+          <a class="btn btn-ghost" routerLink="/pricing">Check pricing</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<app-seller-footer />

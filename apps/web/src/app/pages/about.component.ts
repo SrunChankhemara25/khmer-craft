@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { NavbarComponent } from '../components/shared/layout/navbar/navbar.component';
 import { FooterComponent } from '../components/shared/layout/footer/footer.component';
 import { IconComponent } from '../components/shared/ui/icon/icon.component';
+import { sellerPortalUrl } from '../core/portal/portal';
 
 @Component({
   selector: 'app-about',
@@ -69,7 +70,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
     </div>
     <div class="cta-actions">
       <button class="btn btn-primary btn-lg" routerLink="/products">Shop the Collection</button>
-      <a class="btn btn-outline-light btn-lg" routerLink="/become-a-seller">Become a Seller</a>
+      <a class="btn btn-outline-light btn-lg" [href]="sellerPortalHome" target="_blank" rel="noopener">Become a Seller</a>
     </div>
   </section>
 
@@ -126,6 +127,8 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
   `]
 })
 export class AboutComponent {
+  protected readonly sellerPortalHome = sellerPortalUrl('/');
+
   timeline = [
     { year: '2021', title: 'A small idea in Siem Reap', desc: 'Founded to help three weaving families sell directly to travelers, skipping unfair middlemen.' },
     { year: '2023', title: 'Opening the marketplace nationwide', desc: 'Expanded to 25 provinces, onboarding potters, farmers, and woodworkers across Cambodia.' },

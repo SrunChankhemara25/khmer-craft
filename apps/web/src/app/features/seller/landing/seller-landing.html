@@ -1,0 +1,416 @@
+<app-seller-portal-header />
+
+<main>
+  <!-- ============================================================ HERO -->
+  <section class="hero tint-glow">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow"><kc-icon name="sparkles" [size]="13" /> KhmerCraft Seller</p>
+        <h1 class="display-1">Your craft deserves a <em>storefront</em> Cambodia can find.</h1>
+        <p class="lead">
+          Open a store in minutes, list what you make, and take orders from buyers
+          already shopping on KhmerCraft — from Phnom Penh to Preah Vihear. No
+          website to build, no chat threads to untangle.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" routerLink="/seller/onboarding">Start selling — it’s free <span class="arrow">→</span></a>
+          <a class="btn btn-ghost" routerLink="/explore">Take the tour</a>
+        </div>
+        <ul class="trust-row">
+          @for (item of trust; track item.label) {
+            <li><kc-icon [name]="item.icon" [size]="14" /> {{ item.label }}</li>
+          }
+        </ul>
+      </div>
+
+      <div class="showcase">
+        <div class="float-card order-card">
+          <span class="float-icon"><kc-icon name="bell" [size]="15" /></span>
+          <span><strong>New order</strong><small>Silk krama · $18.00 · Phnom Penh</small></span>
+        </div>
+        <div class="float-card publish-card">
+          <span class="float-icon sage"><kc-icon name="check" [size]="15" /></span>
+          <span><strong>Published</strong><small>Clay tea set is live</small></span>
+        </div>
+        <div class="devices">
+          <div class="laptop">
+            <div class="screen">
+              <div class="window-bar"><i></i><i></i><i></i><span>kampot-studio · khmercraft</span></div>
+              <div class="storefront-window">
+                <div class="store-cover"><img src="/assets/stores/khmer-style-hero.png" alt="" /></div>
+                <div class="storefront-profile">
+                  <div class="store-avatar">KS</div>
+                  <div><strong>Kampot Studio</strong><span>Fashion &amp; Accessories · Kampot</span></div>
+                  <button type="button" tabindex="-1">Follow</button>
+                </div>
+                <div class="storefront-nav"><span class="active">Home</span><span>Products</span><span>About</span></div>
+                <div class="storefront-products">
+                  <article><img src="/categories/fashion.png" alt="" /><strong>Silk krama</strong><span>$18.00</span></article>
+                  <article><img src="/categories/home-living.png" alt="" /><strong>Clay tea set</strong><span>$28.00</span></article>
+                  <article><img src="/categories/beauty-wellness.png" alt="" /><strong>Botanical balm</strong><span>$12.00</span></article>
+                </div>
+              </div>
+            </div>
+            <div class="base"></div>
+          </div>
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="phone-store">
+                <img src="/assets/stores/khmer-style-hero.png" alt="" />
+                <div class="phone-store-body"><i>KS</i><strong>Kampot Studio</strong><span>Fashion &amp; Accessories</span><b>Shop the collection</b></div>
+                <div class="phone-product"><img src="/categories/fashion.png" alt="" /><span><strong>Silk krama</strong><small>$18.00</small></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">A sample storefront. Yours gets your name, colors, logo and story.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== MADE FOR -->
+  <section class="made-for" aria-label="Who sells on KhmerCraft">
+    <div class="made-for-track">
+      @for (group of [0, 1]; track group) {
+        <div class="made-for-set" [attr.aria-hidden]="group === 1 ? 'true' : null">
+          @for (who of madeFor; track who) {
+            <span><kc-icon name="leaf" [size]="13" /> {{ who }}</span>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- ===================================================== MANIFESTO -->
+  <section class="section">
+    <div class="wrap manifesto">
+      <div [kcReveal]="0">
+        <p class="eyebrow plain">Why we built this</p>
+        <h2 class="display-2">Selling in Cambodia has always been <em>personal.</em> Online, it should stay that way.</h2>
+      </div>
+      <div class="manifesto-body" [kcReveal]="1">
+        <p class="body">
+          Most of the best things made in this country are sold the same way they
+          always have been — at a market stall, from a workshop door, or through
+          a long chat thread full of photos, prices and screenshots of bank
+          transfers. It works, but it does not grow. Every new buyer has to be
+          found one message at a time.
+        </p>
+        <p class="body">
+          KhmerCraft Seller gives that same personal business a proper home: a
+          storefront with your name on it, inside a marketplace people already
+          browse. Buyers find you through search and categories instead of
+          needing your link. Orders arrive complete. Stock keeps itself counted.
+        </p>
+        <p class="body">
+          You still decide everything — what to sell, what to charge, how your
+          store looks and what your story says. We just take care of the parts
+          that used to live in a notebook.
+        </p>
+        <p class="signature">— The KhmerCraft team</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= PILLARS -->
+  <section class="section tight tint-cream">
+    <div class="wrap grid-3">
+      @for (claim of claims; track claim.title; let i = $index) {
+        <article class="card pillar" [kcReveal]="i">
+          <span class="icon-badge" [class.sage]="i === 1" [class.gold]="i === 2"><kc-icon [name]="claim.icon" [size]="22" /></span>
+          <h3>{{ claim.title }}</h3>
+          <p>{{ claim.body }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <!-- ===================================================== HOW IT WORKS -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">How it works</p>
+        <h2 class="display-2">From idea to <em>first order</em> in five steps.</h2>
+        <p class="lead">No website to build and no developer to hire. If you can post a photo, you can run a store on KhmerCraft.</p>
+      </div>
+      <ol class="steps">
+        @for (step of steps; track step.number; let i = $index) {
+          <li [kcReveal]="i">
+            <span class="step-num">{{ step.number }}</span>
+            <span class="step-icon"><kc-icon [name]="step.icon" [size]="20" /></span>
+            <h3>{{ step.title }}</h3>
+            <p>{{ step.description }}</p>
+            <span class="chip"><kc-icon name="clock" [size]="12" /> {{ step.time }}</span>
+          </li>
+        }
+      </ol>
+      <div class="cta-row center" [kcReveal]="2">
+        <a class="btn btn-primary" routerLink="/seller/onboarding">Open my store <span class="arrow">→</span></a>
+        <a class="text-link" routerLink="/guide">Read the seller guide first <span class="arrow">→</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ A DAY WITH YOUR STORE -->
+  <section class="section tint-sage">
+    <div class="wrap day-grid">
+      <div class="day-intro" [kcReveal]="0">
+        <p class="eyebrow">A day with your store</p>
+        <h2 class="display-2">Less admin. <em>More making.</em></h2>
+        <p class="lead">Here is what an ordinary day looks like once your store is running. Every step happens in one workspace, on your phone or laptop.</p>
+        <a class="text-link" routerLink="/explore">See the workspace screens <span class="arrow">→</span></a>
+      </div>
+      <ol class="timeline">
+        @for (moment of day; track moment.time; let i = $index) {
+          <li [kcReveal]="i">
+            <span class="time">{{ moment.time }}</span>
+            <span class="dot"><kc-icon [name]="moment.icon" [size]="15" /></span>
+            <div>
+              <h3>{{ moment.title }}</h3>
+              <p>{{ moment.body }}</p>
+            </div>
+          </li>
+        }
+      </ol>
+    </div>
+  </section>
+
+  <!-- ========================================================== TOOLS -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Your seller workspace</p>
+        <h2 class="display-2">Everything a small shop needs. <em>Nothing it doesn’t.</em></h2>
+        <p class="lead">Every plan — including the free one — comes with the full set of tools to run a store day to day.</p>
+      </div>
+      <div class="grid-4">
+        @for (tool of tools; track tool.title; let i = $index) {
+          <article class="card hover tool" [kcReveal]="i">
+            <span class="icon-badge"><kc-icon [name]="tool.icon" [size]="20" /></span>
+            <h3>{{ tool.title }}</h3>
+            <p>{{ tool.description }}</p>
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== CATEGORIES -->
+  <section class="section tint-blush">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">What you can sell</p>
+        <h2 class="display-2">Sell <em>almost anything</em> made or grown here.</h2>
+        <p class="lead">Seven marketplace departments, with your own categories on top. Pick the ones that fit and arrange your shop your way.</p>
+      </div>
+    </div>
+    <div class="cat-marquee" aria-label="KhmerCraft product departments">
+      <div class="cat-track">
+        @for (group of [0, 1]; track group) {
+          <div class="cat-set" [attr.aria-hidden]="group === 1 ? 'true' : null">
+            @for (c of categories; track c.slug) {
+              <figure class="cat">
+                <img [src]="'/categories/' + c.slug + '.png'" alt="" loading="lazy" />
+                <figcaption><strong>{{ c.label }}</strong><span>{{ c.idea }}</span></figcaption>
+              </figure>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== COMPARISON -->
+  <section class="section">
+    <div class="wrap medium">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Already selling in chat?</p>
+        <h2 class="display-2">Why a storefront beats <em>a chat thread.</em></h2>
+        <p class="lead">Keep talking to your buyers — just stop doing the bookkeeping by hand.</p>
+      </div>
+      <div class="compare">
+        <div class="compare-head" aria-hidden="true">
+          <span></span><span>Selling in chat</span><span>On KhmerCraft</span>
+        </div>
+        @for (row of comparison; track row.point; let i = $index) {
+          <div class="compare-row" [kcReveal]="i">
+            <strong>{{ row.point }}</strong>
+            <p class="before"><kc-icon name="minus" [size]="14" /><span><small>Selling in chat</small>{{ row.before }}</span></p>
+            <p class="after"><kc-icon name="check" [size]="14" /><span><small>On KhmerCraft</small>{{ row.after }}</span></p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= JOURNEYS -->
+  <section class="section tint-cream">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Seller journeys</p>
+        <h2 class="display-2">Picture <em>your</em> business here.</h2>
+        <p class="lead">Three kinds of sellers, and what changes when they move from chat to a storefront.</p>
+      </div>
+      <div class="grid-3">
+        @for (journey of journeys; track journey.name; let i = $index) {
+          <article class="journey" [kcReveal]="i">
+            <div class="journey-image">
+              <img [src]="journey.image" alt="" loading="lazy" />
+              <span class="chip">{{ journey.tag }}</span>
+            </div>
+            <div class="journey-body">
+              <h3>{{ journey.name }}</h3>
+              <p class="journey-meta">{{ journey.trade }} · {{ journey.place }}</p>
+              <div class="journey-shift">
+                <p><small>Before</small>{{ journey.before }}</p>
+                <p class="now"><small>With a storefront</small>{{ journey.after }}</p>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+      <p class="fine center-note"><kc-icon name="info" [size]="13" /> Illustrative examples of how different businesses use KhmerCraft — not real sellers or results.</p>
+    </div>
+  </section>
+
+  <!-- ======================================================= PROMISES -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Our promise to sellers</p>
+        <h2 class="display-2">Fair from the <em>first day.</em></h2>
+      </div>
+      <div class="grid-4">
+        @for (promise of promises; track promise.title; let i = $index) {
+          <article class="promise" [kcReveal]="i">
+            <span class="icon-badge sage"><kc-icon [name]="promise.icon" [size]="20" /></span>
+            <h3>{{ promise.title }}</h3>
+            <p>{{ promise.body }}</p>
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== PRICING -->
+  <section class="section tint-glow">
+    <div class="wrap medium">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Simple pricing</p>
+        <h2 class="display-2">Start free. <em>Grow when you’re ready.</em></h2>
+        <p class="lead">One flat monthly price per store. No listing fees, and nothing is charged without you confirming it.</p>
+      </div>
+      <div class="grid-3">
+        @for (plan of plans; track plan.key; let i = $index) {
+          <article class="plan" [class.featured]="plan.featured" [kcReveal]="i">
+            <span class="plan-badge">{{ plan.badge }}</span>
+            <h3>{{ plan.name }}</h3>
+            <p class="plan-price"><strong>{{ '$' + plan.price }}</strong><small>/ month</small></p>
+            <p class="plan-desc">{{ plan.description }}</p>
+            <a class="btn btn-wide" [class.btn-primary]="plan.featured" [class.btn-ghost]="!plan.featured" routerLink="/seller/onboarding" [queryParams]="{ plan: plan.key }">Choose {{ plan.name }}</a>
+          </article>
+        }
+      </div>
+      <div class="cta-row center"><a class="text-link" routerLink="/pricing">Compare every feature <span class="arrow">→</span></a></div>
+    </div>
+  </section>
+
+  <!-- ======================================================= CHECKLIST -->
+  <section class="section">
+    <div class="wrap check-grid">
+      <div [kcReveal]="0">
+        <p class="eyebrow">Before you start</p>
+        <h2 class="display-2">Are you <em>ready</em> to open?</h2>
+        <p class="lead">Tick off what you already have. You don’t need all of it on day one — but the more you have, the faster your store goes live.</p>
+        <div class="ready-meter" role="status">
+          <div class="ready-bar"><span [style.width.%]="readyPercent()"></span></div>
+          <p><strong>{{ readyCount() }} of {{ checklist.length }}</strong> {{ readyMessage() }}</p>
+        </div>
+      </div>
+      <ul class="checklist" [kcReveal]="1">
+        @for (item of checklist; track item.title; let i = $index) {
+          <li>
+            <label [class.done]="checked()[i]">
+              <input type="checkbox" [checked]="checked()[i]" (change)="toggle(i)" />
+              <span class="box"><kc-icon name="check" [size]="13" /></span>
+              <span><strong>{{ item.title }}</strong><small>{{ item.detail }}</small></span>
+            </label>
+          </li>
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- ========================================================== GUIDE -->
+  <section class="section tint-sand">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Free seller guide</p>
+        <h2 class="display-2">Learn the craft of <em>selling online.</em></h2>
+        <p class="lead">Practical, plain-language chapters on photos, descriptions, pricing, packing and growth — written for small Cambodian businesses.</p>
+      </div>
+      <div class="grid-3">
+        @for (chapter of guide; track chapter.id; let i = $index) {
+          <a class="card hover guide-card" [routerLink]="'/guide'" [fragment]="chapter.id" [kcReveal]="i">
+            <span class="guide-top"><span class="icon-badge gold"><kc-icon [name]="chapter.icon" [size]="20" /></span><span class="chip">{{ chapter.readTime }}</span></span>
+            <h3>{{ chapter.title }}</h3>
+            <p>{{ chapter.intro }}</p>
+            <span class="text-link">Read chapter {{ chapter.number }} <span class="arrow">→</span></span>
+          </a>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ FAQ -->
+  <section class="section">
+    <div class="wrap faq-grid">
+      <div [kcReveal]="0">
+        <p class="eyebrow">Questions</p>
+        <h2 class="display-2">What sellers ask <em>first.</em></h2>
+        <p class="lead">Can’t find yours? The full FAQ has answers about stores, orders, payments and accounts.</p>
+        <a class="btn btn-ghost faq-all" routerLink="/faq">Read all questions <span class="arrow">→</span></a>
+      </div>
+      <div class="faq-list">
+        @for (item of faqPreview; track item.question; let i = $index) {
+          <details [kcReveal]="i" [open]="i === 0">
+            <summary>{{ item.question }}<span class="faq-icon"><kc-icon name="plus" [size]="15" /></span></summary>
+            <p>{{ item.answer }}</p>
+          </details>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== CLOSING -->
+  <section class="section tight">
+    <div class="wrap">
+      <div class="cta-band" [kcReveal]="0">
+        <p class="eyebrow">Your store is waiting</p>
+        <h2 class="display-2">Start with <em>one product.</em><br />See where it takes you.</h2>
+        <p class="lead">Opening a store is free and takes about five minutes. Nothing is published until you say so.</p>
+        <div class="cta-row center">
+          <a class="btn btn-primary" routerLink="/seller/onboarding">Start selling — it’s free <span class="arrow">→</span></a>
+          <a class="btn btn-ghost" routerLink="/pricing">See pricing</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Follows the reader down a long page, once the hero buttons have gone. -->
+<div class="sticky-cta" [class.show]="showStickyCta()">
+  <div class="sticky-inner">
+    <div class="sticky-copy">
+      <strong>Ready to open your shop?</strong>
+      <span>Free to start. Nothing goes live until you publish it.</span>
+    </div>
+    <div class="sticky-actions">
+      <a class="btn btn-ghost btn-small" routerLink="/pricing">Pricing</a>
+      <a class="btn btn-primary btn-small" routerLink="/seller/onboarding">Start selling</a>
+    </div>
+  </div>
+</div>
+
+<app-seller-footer />
