@@ -6,6 +6,8 @@ import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { finalize, firstValueFrom } from 'rxjs';
 import { API_URL } from '../../core/api/api.config';
 import { KcIcon } from '../../components/shared/ui/kc-icon/kc-icon';
+import { ShareDialogComponent, ShareItem } from '../../components/shared/share-dialog/share-dialog.component';
+import { productShareUrl, storeShareUrl } from '../../core/share/share-links';
 import { StoreCategoriesManagerComponent } from '../../features/seller/store-categories/store-categories-manager.component';
 import { WarehousesManagerComponent } from '../../features/seller/warehouses/warehouses-manager.component';
 import { SellerBillingComponent } from '../seller-billing.component';
@@ -94,7 +96,7 @@ interface DashboardMetric {
 
 @Component({
   selector: 'app-seller-dashboard',
-  imports: [KcIcon, RouterLink, FormsModule, CurrencyPipe, DatePipe, StoreCategoriesManagerComponent, WarehousesManagerComponent, SellerBillingComponent],
+  imports: [KcIcon, ShareDialogComponent, RouterLink, FormsModule, CurrencyPipe, DatePipe, StoreCategoriesManagerComponent, WarehousesManagerComponent, SellerBillingComponent],
   styles: [`
     /* ==========================================================
        KhmerCraft seller console - design tokens
@@ -889,7 +891,10 @@ interface DashboardMetric {
                 <h1>Products</h1>
                 <p class="muted">Manage and publish handcrafted items in your store catalogue.</p>
               </div>
-              <button class="btn btn-primary" type="button" (click)="startNewProduct()"><kc-icon name="plus" [size]="15" /> Add Product</button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-ghost" type="button" (click)="openCatalogShare()"><kc-icon name="share" [size]="15" /> Share store &amp; categories</button>
+                <button class="btn btn-primary" type="button" (click)="startNewProduct()"><kc-icon name="plus" [size]="15" /> Add Product</button>
+              </div>
             </div>
 
             <div class="filter-bar">
@@ -927,6 +932,7 @@ interface DashboardMetric {
                         </span>
                       </td>
                       <td style="text-align:right;">
+                        <button class="icon-btn" type="button" (click)="openProductShare(product)" title="Copy link / share" aria-label="Share link"><kc-icon name="share" [size]="14" /></button>
                         <button class="icon-btn" type="button" (click)="editProduct(product)" title="Edit"><kc-icon name="edit" [size]="14" /></button>
                         <button class="icon-btn" type="button" (click)="toggleProductStatus(product)" [title]="product.status === 'ACTIVE' ? 'Archive' : 'Activate'"><kc-icon [name]="product.status === 'ACTIVE' ? 'eye-off' : 'eye'" [size]="14" /></button>
                         <button class="icon-btn" type="button" (click)="deleteProduct(product.id)" title="Delete"><kc-icon name="trash" [size]="14" /></button>
@@ -2901,6 +2907,11 @@ interface DashboardMetric {
       </section>
     </div>
 
+    <!-- Share links (product / store / categories) -->
+    @if (shareDialog(); as dlg) {
+      <kc-share-dialog [heading]="dlg.heading" [intro]="dlg.intro" [items]="dlg.items" (closed)="shareDialog.set(null)" />
+    }
+
     <!-- 1. Order Detail Modal -->
     @if (selectedOrder(); as order) {
       <div class="backdrop" (click)="closeOrder()">
@@ -3944,6 +3955,9 @@ export class SellerDashboardPage implements OnInit {
     return plan === 'PREMIUM' ? 'Professional' : (plan === 'STANDARD' ? 'Growth' : 'Starter');
   });
 
+  // Share links
+  protected readonly shareDialog = signal<{ heading: string; intro: string; items: ShareItem[] } | null>(null);
+
   // Search & Filters
   protected readonly globalSearchQuery = signal('');
   protected readonly searchQuery = signal('');
@@ -4493,6 +4507,117 @@ export class SellerDashboardPage implements OnInit {
   }
 
   // ---------------------- Orders Logic ----------------------
+  /** Link + preview for one product. Only live products resolve for buyers. */
+  openProductShare(product: any) {
+    const storeName = this.activeStore()?.storeName ?? this.activeStore()?.name ?? 'KhmerCraft';
+    const live = product.status === 'ACTIVE';
+    this.shareDialog.set({
+      heading: 'Share this product',
+      intro: live
+        ? 'Paste the link into Telegram, Facebook or a message — whoever taps it lands on this product.'
+        : 'This product is not live, so its link will say "unavailable" until you activate it.',
+      items: [
+        {
+          id: String(product.id),
+          label: product.name,
+          title: product.name,
+          description: `$${Number(product.price).toFixed(2)} · ${storeName}`,
+          imageUrl: `${API_URL}/products/${encodeURIComponent(product.id)}/image`,
+          url: productShareUrl(product.id),
+        },
+      ],
+    });
+  }
+
+  /**
+   * Links for the store and for each category / sub-category it sells, built
+   * from the live products — "do you have a shirt?" → copy the Shirts link.
+   */
+  openCatalogShare() {
+    const store = this.activeStore();
+    const storeId = this.myStoreId();
+    if (!store || !storeId) return;
+    const storeName: string = store.storeName ?? store.name ?? 'Your store';
+
+    if (store.onboardingStatus !== 'COMPLETED') {
+      this.shareDialog.set({
+        heading: 'Share your store',
+        intro: 'Finish your store setup first — until then there is no public store page for a link to open.',
+        items: [],
+      });
+      return;
+    }
+
+    const live = this.products().filter((p) => p.status === 'ACTIVE');
+    if (!live.length) {
+      this.shareDialog.set({
+        heading: 'Share your store',
+        intro: 'Add and activate a product first, then you can share your store and its categories.',
+        items: [],
+      });
+      return;
+    }
+
+    const plural = (n: number) => `${n} product${n === 1 ? '' : 's'}`;
+    const tagline: string = store.storeTagline ?? store.tagline ?? '';
+    const describe = (n: number) => (tagline ? `${plural(n)} · ${tagline}` : `${plural(n)} from ${storeName} on KhmerCraft.`);
+    const coverOf = (list: any[]) => {
+      const first = list.find((p) => p.image) ?? list[0];
+      return first ? `${API_URL}/products/${encodeURIComponent(first.id)}/image` : null;
+    };
+
+    const items: ShareItem[] = [
+      {
+        id: 'store',
+        label: 'Whole store',
+        hint: plural(live.length),
+        title: storeName,
+        description: describe(live.length),
+        imageUrl: coverOf(live),
+        url: storeShareUrl(storeId),
+      },
+    ];
+
+    const categories = new Map<string, any[]>();
+    for (const product of live) {
+      const name = String(product.category ?? '').trim();
+      if (name) categories.set(name, [...(categories.get(name) ?? []), product]);
+    }
+    for (const [category, inCategory] of [...categories].sort((a, b) => a[0].localeCompare(b[0]))) {
+      items.push({
+        id: `cat:${category}`,
+        label: category,
+        hint: plural(inCategory.length),
+        title: `${category} at ${storeName}`,
+        description: describe(inCategory.length),
+        imageUrl: coverOf(inCategory),
+        url: storeShareUrl(storeId, category),
+      });
+      const subs = new Map<string, any[]>();
+      for (const product of inCategory) {
+        const name = String(product.subcategory ?? '').trim();
+        if (name) subs.set(name, [...(subs.get(name) ?? []), product]);
+      }
+      for (const [sub, inSub] of [...subs].sort((a, b) => a[0].localeCompare(b[0]))) {
+        items.push({
+          id: `sub:${category}:${sub}`,
+          label: sub,
+          hint: `in ${category} · ${plural(inSub.length)}`,
+          title: `${sub} at ${storeName}`,
+          description: describe(inSub.length),
+          imageUrl: coverOf(inSub),
+          url: storeShareUrl(storeId, category, sub),
+        });
+      }
+    }
+
+    this.shareDialog.set({
+      heading: 'Share your store',
+      intro: 'Pick the store or a category, then copy the link. Buyers who tap it open exactly that part of your store.',
+      items,
+    });
+  }
+
   openOrder(order: SellerOrder) {
     this.selectedOrder.set(order);
     this.statusChoice.set('');
