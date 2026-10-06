@@ -104,12 +104,18 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
     .value-card small { color: var(--color-muted); font-size: 12.5px; line-height: 1.5; }
 
     .cta-banner {
-      margin: 0 32px 56px; background: linear-gradient(135deg, #3a5a45, #1c261f); border-radius: var(--radius-lg);
+      margin: 0 auto 56px; width: calc(100% - 64px); box-sizing: border-box;
+      background: linear-gradient(135deg, #3a5a45, #1c261f); border-radius: var(--radius-lg);
       padding: 44px; display: flex; justify-content: space-between; align-items: center; gap: 28px; flex-wrap: wrap;
     }
     .cta-banner h2 { color: #fff; font-size: 24px; margin-bottom: 8px; }
     .cta-banner p { color: rgba(255,255,255,0.75); font-size: 14px; max-width: 420px; }
-    .cta-actions { display: flex; gap: 12px; }
+    .cta-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    @media (max-width: 640px) {
+      .cta-banner { width: calc(100% - 32px); padding: 28px 22px; margin-bottom: 40px; }
+      .cta-actions { width: 100%; }
+      .cta-actions .btn { flex: 1 1 140px; justify-content: center; }
+    }
     .btn-outline-light { border: 1px solid rgba(255,255,255,0.4); color: #fff; background: transparent; }
     .btn-outline-light:hover { background: rgba(255,255,255,0.1); }
 

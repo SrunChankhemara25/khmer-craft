@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { CatalogService } from '../../../../core/catalog/catalog.service';
 import { CartService } from '../../../../core/cart/cart.service';
 import { FlyToCartService } from '../../../../core/cart/fly-to-cart.service';
 import { WishlistService } from '../../../../core/wishlist/wishlist.service';
@@ -91,7 +92,8 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         <h3 class="name">{{ product().name }}</h3>
         <a
           class="seller"
-          [routerLink]="['/stores', product().storeId]"
+          [class.static]="!catalog.hasPublicStore(product().storeId)"
+          [routerLink]="catalog.hasPublicStore(product().storeId) ? ['/stores', product().storeId] : null"
           (click)="$event.stopPropagation()"
           >{{ product().sellerName }}</a
         >
@@ -415,6 +417,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
+      .seller.static { cursor: default; pointer-events: none; }
       .seller {
         color: var(--color-muted);
         overflow: hidden;
@@ -754,6 +757,7 @@ export class ProductCardComponent {
   readonly badge = input<'Best seller' | 'New' | null>(null);
   readonly variant = input<'default' | 'editorial'>('default');
 
+  protected readonly catalog = inject(CatalogService);
   private readonly cart = inject(CartService);
   private readonly wishlist = inject(WishlistService);
   private readonly router = inject(Router);

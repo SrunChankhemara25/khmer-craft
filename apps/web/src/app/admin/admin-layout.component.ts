@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AuthService } from '../core/auth/auth.service';
 import { AdminService } from './admin-data.service';
 import { IconComponent } from './ui/icon.component';
 import { ConfirmComponent } from './ui/confirm.component';
@@ -76,6 +77,7 @@ import { ConfirmComponent } from './ui/confirm.component';
 })
 export class AdminLayoutComponent {
   data = inject(AdminService); router = inject(Router);
+  private readonly auth = inject(AuthService);
   q = signal('');
   sidebarOpen = signal(false);
   sidebarCollapsed = signal(false);
@@ -118,5 +120,11 @@ export class AdminLayoutComponent {
   });
   go(r: { label: string; path: string }) { this.router.navigate([r.path], { queryParams: { q: r.label } }); this.q.set(''); }
   clearSoon() { setTimeout(() => this.q.set(''), 150); }
-  logout() { this.logoutOpen.set(false); this.data.log('Admin signed out', 'active'); this.router.navigate(['/']); }
+  logout() {
+    this.logoutOpen.set(false);
+    this.data.log('Admin signed out', 'active');
+    // End the real session first — navigating away alone left the admin signed in.
+    const leave = () => void this.router.navigate(['/admin/login']);
+    this.auth.logout().subscribe({ next: leave, error: leave });
+  }
 }

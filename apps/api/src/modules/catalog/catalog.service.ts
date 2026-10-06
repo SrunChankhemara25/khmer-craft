@@ -61,6 +61,27 @@ export const toProductListItem = (product: IProduct) => ({
   variants: [],
 });
 
+/**
+ * List cards cannot carry the photo itself, so the web fetches
+ * /products/:id/image per card. A product with no photo would 404 there and
+ * show a broken-image icon, so the list says which products have one. One
+ * extra query that returns only `_id`s — no photo bytes cross the network.
+ */
+const toListItemsWithImageFlag = async (documents: IProduct[]) => {
+  if (documents.length === 0) return [];
+  const withImage = await Product.find({
+    _id: { $in: documents.map((doc) => doc._id) },
+    $or: [{ image: { $type: 'string', $ne: '' } }, { 'images.0': { $exists: true } }],
+  })
+    .select('_id')
+    .lean();
+  const ids = new Set(withImage.map((doc) => String(doc._id)));
+  return documents.map((doc) => ({
+    ...toProductListItem(doc),
+    hasImage: ids.has(String(doc._id)),
+  }));
+};
+
 const SORT_ORDERS: Record<ProductSort, Record<string, 1 | -1>> = {
   newest: { createdAt: -1 },
   'price-low': { price: 1 },
@@ -185,7 +206,7 @@ export const listProducts = async (query: ListProductsQuery) => {
   ]);
 
   return {
-    products: documents.map(toProductListItem),
+    products: await toListItemsWithImageFlag(documents),
     total,
     page: query.page,
     limit: query.limit,
@@ -231,7 +252,7 @@ export const getProductDetail = async (idOrSlug: string) => {
 
   return {
     ...toProductResponse(product),
-    relatedProducts: related.map(toProductListItem),
+    relatedProducts: await toListItemsWithImageFlag(related),
   };
 };
 
@@ -418,7 +439,7 @@ export const listSellerProducts = async (
   ]);
 
   return {
-    products: documents.map(toProductListItem),
+    products: await toListItemsWithImageFlag(documents),
     total,
     page,
     limit,

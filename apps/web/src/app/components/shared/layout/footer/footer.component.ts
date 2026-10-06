@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { IconComponent } from '../../ui/icon/icon.component';
 
 @Component({
@@ -27,16 +28,24 @@ import { IconComponent } from '../../ui/icon/icon.component';
       </div>
       <div class="footer-col">
         <h4>Account</h4>
-        <a routerLink="/login">Sign in</a>
-        <a routerLink="/register">Create account</a>
+        @if (auth.isAuthenticated()) {
+          <a routerLink="/profile">My profile</a>
+        } @else {
+          <a routerLink="/login">Sign in</a>
+          <a routerLink="/register">Create account</a>
+        }
         <a routerLink="/orders">My orders</a>
         <a routerLink="/wishlist">Wishlist</a>
         <a routerLink="/cart">Cart</a>
       </div>
       <div class="footer-col">
         <h4>Sell</h4>
-        <a routerLink="/become-a-seller">Become a Seller</a>
-        <a routerLink="/seller/login">Seller login</a>
+        @if (auth.user()?.role === 'SELLER') {
+          <a routerLink="/seller/dashboard">Seller dashboard</a>
+        } @else {
+          <a routerLink="/become-a-seller">Become a Seller</a>
+          <a routerLink="/seller/login">Seller login</a>
+        }
       </div>
       <div class="footer-col">
         <h4>Assistance</h4>
@@ -94,4 +103,6 @@ import { IconComponent } from '../../ui/icon/icon.component';
     }
   `]
 })
-export class FooterComponent {}
+export class FooterComponent {
+  protected readonly auth = inject(AuthService);
+}
