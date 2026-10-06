@@ -51,6 +51,15 @@ export interface IStore extends Document {
   verificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
   verifiedAt?: Date | null;
   category?: string;
+  /**
+   * The seller's own Bakong account for in-store KHQR. POS sales are paid
+   * straight into it (see utils/khqr.ts) — they never pass through KhmerCraft.
+   */
+  posKhqr?: {
+    bakongAccountId: string;
+    merchantName: string;
+    city?: string;
+  } | null;
   /** Aggregated from approved reviews; recalculated on every new review. */
   rating: number;
   reviewCount: number;
@@ -108,6 +117,17 @@ const StoreSchema: Schema = new Schema(
     },
     verifiedAt: { type: Date, default: null },
     category: { type: String },
+    posKhqr: {
+      type: new Schema(
+        {
+          bakongAccountId: { type: String, required: true, trim: true, maxlength: 48 },
+          merchantName: { type: String, required: true, trim: true, maxlength: 25 },
+          city: { type: String, trim: true, maxlength: 15 },
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
     rating: { type: Number, default: 0, min: 0, max: 5 },
     reviewCount: { type: Number, default: 0, min: 0 },
   },

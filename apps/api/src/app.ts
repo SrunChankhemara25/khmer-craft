@@ -16,6 +16,8 @@ import {
   preventOperatorInjection,
 } from './middleware/security';
 import { AppError } from './errors/app-error';
+import adminRoutes from './modules/admin/admin.routes';
+import payoutRoutes from './modules/payouts/payouts.routes';
 import authRoutes from './modules/auth/auth.routes';
 import cartRoutes from './modules/cart/cart.routes';
 import catalogRoutes from './modules/catalog/catalog.routes';
@@ -128,6 +130,8 @@ export const createApp = () => {
   app.use('/api/promotions', promotionRoutes);
   app.use('/api/store-collections', storeCollectionRoutes);
   app.use('/api/share', shareRoutes);
+  app.use('/api/admin', adminRoutes);
+  app.use('/api/payouts', payoutRoutes);
 
   // Interactive API docs. Disabled in production so the schema is not public.
   if (isDocsEnabled) {

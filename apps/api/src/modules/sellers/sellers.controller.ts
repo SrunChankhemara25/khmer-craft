@@ -44,6 +44,8 @@ import {
   generatePosKhqr,
   checkPosKhqr,
   simulatePosKhqrPayment,
+  getPosKhqrSettings,
+  updatePosKhqrSettings,
 } from './sellers.service';
 import {
   CreateSellerApplicationInput,
@@ -377,3 +379,11 @@ export const simulatePosKhqrHandler = async (request: Request, response: Respons
   );
 };
 
+
+export const getPosKhqrSettingsHandler = async (request: Request, response: Response) => {
+  response.json(await getPosKhqrSettings(param(request, 'storeId'), request.auth!.userId));
+};
+
+export const updatePosKhqrSettingsHandler = async (request: Request, response: Response) => {
+  response.json(await updatePosKhqrSettings(param(request, 'storeId'), request.auth!.userId, request.body.bakongAccountId ? request.body : null));
+};

@@ -137,3 +137,14 @@ export const replyToReviewSchema = z
   .strict();
 
 export type ReplyToReviewInput = z.infer<typeof replyToReviewSchema>;
+
+/** Empty bakongAccountId clears the setting (falls back to PayWay, if configured). */
+export const posKhqrSettingsSchema = z.object({
+  bakongAccountId: z
+    .string()
+    .trim()
+    .max(48)
+    .refine((value) => value === '' || /^[a-z0-9._-]{1,32}@[a-z0-9]{2,12}$/i.test(value), 'Use your Bakong account ID, like sokdara@aba'),
+  merchantName: z.string().trim().min(1, 'Enter the name customers will see').max(25),
+  city: z.string().trim().max(15).optional(),
+});

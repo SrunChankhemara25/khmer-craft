@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../../middleware/authenticate';
 import { authorize } from '../../middleware/authorize';
+import { validate } from '../../middleware/validate';
 import {
   listActiveSlides,
   listCampaigns,
@@ -14,14 +15,26 @@ import {
   deleteSlide,
   listAdminSlides,
   reviewSlide,
+  createHouseSlide,
+  adminUpdateSlide,
+  setSlideStatus,
+  adminDeleteSlide,
+  reorderSlides,
 } from './promotions.service';
+import {
+  createHouseSlideSchema,
+  reorderSlidesSchema,
+  reviewSlideSchema,
+  setSlideStatusSchema,
+  updateSlideSchema,
+} from './promotions.validation';
 
 const router = Router();
 
 // ------------------------------------------------------------------ Public
-router.get('/active', async (_req: Request, res: Response, next: NextFunction) => {
+router.get('/active', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json(await listActiveSlides());
+    res.json(await listActiveSlides(req.query.placement === 'HERO' ? 'HERO' : 'BRAND_ADS'));
   } catch (err) {
     next(err);
   }
@@ -118,7 +131,7 @@ router.get(
   authorize('ADMIN'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      res.json(await listAdminSlides(req.query.status as string));
+      res.json(await listAdminSlides(req.query.status as string, req.query.placement as string));
     } catch (err) {
       next(err);
     }
@@ -129,10 +142,81 @@ router.patch(
   '/admin/slides/:id/review',
   authenticate,
   authorize('ADMIN'),
+  validate(reviewSlideSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { status, rejectionReason } = req.body;
       res.json(await reviewSlide(req.params.id as string, status, rejectionReason));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// Literal path before '/admin/slides/:id' so "reorder" is never read as an id.
+router.put(
+  '/admin/slides/reorder',
+  authenticate,
+  authorize('ADMIN'),
+  validate(reorderSlidesSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await reorderSlides(req.body.placement, req.body.ids));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  '/admin/slides',
+  authenticate,
+  authorize('ADMIN'),
+  validate(createHouseSlideSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.status(201).json(await createHouseSlide(req.body));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.patch(
+  '/admin/slides/:id',
+  authenticate,
+  authorize('ADMIN'),
+  validate(updateSlideSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await adminUpdateSlide(req.params.id as string, req.body));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.patch(
+  '/admin/slides/:id/status',
+  authenticate,
+  authorize('ADMIN'),
+  validate(setSlideStatusSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await setSlideStatus(req.params.id as string, req.body.status));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.delete(
+  '/admin/slides/:id',
+  authenticate,
+  authorize('ADMIN'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await adminDeleteSlide(req.params.id as string));
     } catch (err) {
       next(err);
     }

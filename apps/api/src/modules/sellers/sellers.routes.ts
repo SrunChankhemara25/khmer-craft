@@ -44,10 +44,13 @@ import {
   generatePosKhqrHandler,
   checkPosKhqrHandler,
   simulatePosKhqrHandler,
+  getPosKhqrSettingsHandler,
+  updatePosKhqrSettingsHandler,
 } from './sellers.controller';
 import {
   createSellerApplicationSchema,
   createStoreSchema,
+  posKhqrSettingsSchema,
   replyToReviewSchema,
   reviewSellerApplicationSchema,
   updateStoreProfileSchema,
@@ -96,6 +99,8 @@ router.post('/my-stores/:storeId/pos/orders/:orderId/refund', createPosRefundHan
 router.post('/my-stores/:storeId/pos/orders/:orderId/void', voidPosOrderHandler);
 router.get('/my-stores/:storeId/pos/refunds', listPosRefundsHandler);
 router.get('/my-stores/:storeId/pos/reports', getPosReportsHandler);
+router.get('/my-stores/:storeId/pos/khqr/settings', getPosKhqrSettingsHandler);
+router.put('/my-stores/:storeId/pos/khqr/settings', validate(posKhqrSettingsSchema), updatePosKhqrSettingsHandler);
 router.post('/my-stores/:storeId/pos/khqr/generate', generatePosKhqrHandler);
 router.get('/my-stores/:storeId/pos/khqr/check/:tranId', checkPosKhqrHandler);
 router.post('/my-stores/:storeId/pos/khqr/simulate/:tranId', simulatePosKhqrHandler);
