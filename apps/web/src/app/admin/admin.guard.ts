@@ -12,7 +12,7 @@ import { AuthService } from '../core/auth/auth.service';
  *
  * Flip back to `true` before demo/grading/deployment.
  */
-const ADMIN_GUARD_ENABLED = false;
+const ADMIN_GUARD_ENABLED = true;
 
 export const adminGuard: CanActivateFn = (_route, state) => {
   if (!ADMIN_GUARD_ENABLED) {
