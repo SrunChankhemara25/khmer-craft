@@ -816,6 +816,32 @@ app-store-detail .product-grid app-product-card:nth-child(3n + 3) .product-photo
   }
 }
 
+/* The category page turns its filter rail into a slide-out drawer at 1050px
+   (see category-detail.component.ts), which takes the rail out of the grid.
+   The two-column rule above is !important, so it has to be switched off at
+   the same width — otherwise the products land in the narrow rail column
+   and show one card per row between 901px and 1050px. */
+@media (max-width: 1050px) {
+  app-category-detail .body { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* The !important card-grid rule above needs 210px per column, so on a phone
+   it left a single full-width card per row. Phones get two columns, the way
+   the components themselves intended; only very narrow screens drop to one. */
+@media (max-width: 560px) {
+  app-category-detail .product-grid,
+  app-products .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+}
+@media (max-width: 340px) {
+  app-category-detail .product-grid,
+  app-products .product-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
 @media (max-width: 900px) {
   app-home .features-strip { grid-template-columns: 1fr 1fr; }
   app-home .feature-item:nth-child(2) { border-right: 0; }
