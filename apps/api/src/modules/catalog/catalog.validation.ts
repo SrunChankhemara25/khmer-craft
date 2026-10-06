@@ -86,12 +86,12 @@ export const createProductSchema = z
   .object({
     name: z.string().trim().min(2).max(200),
     description: z.string().trim().max(4000).optional(),
-    price: z.number().positive().max(1_000_000),
+    price: z.coerce.number().positive().max(1_000_000),
     compareAtPrice: z
-      .union([z.number().positive().max(1_000_000), z.literal(''), z.null()])
+      .union([z.coerce.number().positive().max(1_000_000), z.literal(''), z.null()])
       .optional()
       .transform((val) => (typeof val === 'number' && val > 0 ? val : null)),
-    category: z.string().trim().min(2).max(80),
+    category: z.string().trim().min(2, { message: 'Category is required' }).max(80),
     subcategory: z
       .string()
       .trim()
@@ -101,7 +101,12 @@ export const createProductSchema = z
       .transform((val) => (val && val.length > 0 ? val : undefined)),
     sellerName: z.string().trim().max(120).optional(),
     storeName: z.string().trim().max(120).optional(),
-    storeId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
+    storeId: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .transform((val) => (val && /^[a-f\d]{24}$/i.test(val) ? val : undefined)),
     location: z.string().trim().max(80).optional(),
     image: z.string().trim().max(5_000_000).optional(),
     images: z.array(z.string().trim().max(5_000_000)).max(10).optional(),
@@ -114,7 +119,7 @@ export const createProductSchema = z
       )
       .max(12)
       .optional(),
-    stock: z.number().int().min(0).max(1_000_000).default(0),
+    stock: z.coerce.number().int().min(0).max(1_000_000).default(0),
     /** Which stock location holds this — see models/Warehouse.ts. */
     warehouseId: z
       .string()
@@ -141,9 +146,9 @@ export const updateProductSchema = z
   .object({
     name: z.string().trim().min(2).max(200).optional(),
     description: z.string().trim().max(4000).optional(),
-    price: z.number().positive().max(1_000_000).optional(),
+    price: z.coerce.number().positive().max(1_000_000).optional(),
     compareAtPrice: z
-      .union([z.number().positive().max(1_000_000), z.literal(''), z.null()])
+      .union([z.coerce.number().positive().max(1_000_000), z.literal(''), z.null()])
       .optional()
       .transform((val) => (typeof val === 'number' && val > 0 ? val : null)),
     category: z.string().trim().min(2).max(80).optional(),
@@ -168,7 +173,7 @@ export const updateProductSchema = z
       )
       .max(12)
       .optional(),
-    stock: z.number().int().min(0).max(1_000_000).optional(),
+    stock: z.coerce.number().int().min(0).max(1_000_000).optional(),
     warehouseId: z
       .string()
       .trim()

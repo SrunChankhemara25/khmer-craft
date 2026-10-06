@@ -543,8 +543,28 @@ interface DashboardMetric {
       color: var(--ink-900); font-weight: 700; font-size: 11.5px; padding: 6px 0; cursor: pointer; text-align: center;
     }
     .cash-preset-btn:hover { background: var(--brand-50); border-color: var(--brand-600); }
+    .pos-summary-panel { min-height: 0; }
+    .pos-summary-title { font-size: 16px; margin: 0 0 14px; }
+    .pos-summary-line {
+      align-items: center; display: flex; gap: 12px; justify-content: space-between;
+      min-height: 36px; padding: 5px 0;
+    }
+    .pos-summary-line > span:first-child { color: var(--ink-600); font-size: 13px; }
+    .pos-summary-line > strong, .pos-summary-line > span:last-child { color: var(--ink-900); font-size: 14px; font-weight: 750; }
+    .pos-adjustment-input { flex: 0 0 88px; height: 34px !important; padding: 4px 10px !important; text-align: right; }
+    .pos-adjustment-select { flex: 0 0 112px; height: 34px !important; padding: 4px 32px 4px 10px !important; }
+    .pos-payment-section { margin: 14px 0 8px; }
+    .pos-payment-label, .pos-cash-label { color: var(--ink-600); display: block; font-size: 11.5px; font-weight: 700; margin-bottom: 6px; }
+    .pos-payment-options { display: flex; gap: 8px; }
+    .pos-payment-options .tab-pill { min-height: 40px; }
+    .pos-cash-section { margin-top: 10px; }
+    .pos-cash-input { box-sizing: border-box; height: 42px; width: 100%; }
+    .pos-change-due {
+      align-items: center; background: var(--brand-50); border-radius: var(--r-sm); color: var(--brand-700);
+      display: flex; font-size: 13px; font-weight: 750; justify-content: space-between; margin-top: 8px; padding: 9px 12px;
+    }
     .total-display-card {
-      background: var(--brand-900); color: #fff; border-radius: var(--r-md); padding: 12px; text-align: center; margin: 10px 0;
+      background: var(--brand-900); color: #fff; border-radius: var(--r-md); padding: 16px 12px; text-align: center; margin: 14px 0;
     }
     .total-display-val { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
 
@@ -613,14 +633,21 @@ interface DashboardMetric {
       display: flex; height: 34px; justify-content: center; width: 34px;
     }
     .stock-item {
-      align-items: center; border-top: 1px solid var(--line-soft); display: grid; gap: 12px;
+      align-items: start; border-top: 1px solid var(--line-soft); display: grid; gap: 12px;
       grid-template-columns: 44px minmax(0, 1fr); padding: 10px 0;
     }
     .stock-item img { aspect-ratio: 1; border-radius: var(--r-sm); object-fit: cover; width: 44px; }
+    .stock-item > div { min-width: 0; }
+    .stock-item strong {
+      display: block; font-size: 13px; line-height: 1.35; overflow-wrap: anywhere;
+    }
+    .stock-item span { display: block; line-height: 1.35; margin-top: 3px; }
     .small-green {
       background: var(--brand-700); border: 0; border-radius: var(--r-sm); color: #fff;
-      cursor: pointer; font-size: 11px; font-weight: 650; margin-top: 4px; padding: 4px 10px;
+      cursor: pointer; display: block; font-size: 11px; font-weight: 650; margin-top: 6px; padding: 5px 10px;
     }
+    .low-stock-heading { align-items: center; display: flex; gap: 8px; justify-content: space-between; margin-bottom: 10px; }
+    .low-stock-heading .status { flex: 0 0 auto; white-space: nowrap; }
 
     /* ============================ campaigns & ads ============================ */
     .campaigns-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-top: 14px; }
@@ -658,6 +685,18 @@ interface DashboardMetric {
       .two-cols { grid-template-columns: 1fr; }
       table { min-width: 650px; }
       .table-card { overflow-x: auto; }
+      .low-stock-heading { align-items: flex-start; flex-wrap: wrap; }
+      .stock-item { gap: 10px; grid-template-columns: 58px minmax(0, 1fr); padding: 12px 0; }
+      .stock-item img { width: 58px; }
+      .stock-item strong { font-size: 14px; line-height: 1.35; }
+      .stock-item span { font-size: 12px !important; }
+      .small-green { font-size: 12px; padding: 7px 11px; }
+      .pos-summary-panel { padding: 16px; }
+      .pos-summary-line { min-height: 40px; }
+      .pos-summary-line > span:first-child { font-size: 14px; }
+      .pos-adjustment-input { flex-basis: 104px; }
+      .pos-adjustment-select { flex-basis: 126px; }
+      .cash-preset-btn { font-size: 12px; min-height: 42px; padding: 6px 4px; }
     }
 
     img[src=''], img:not([src]) { visibility: hidden; }
@@ -943,7 +982,7 @@ interface DashboardMetric {
 
               <aside style="display:flex;flex-direction:column;gap:16px;">
                 <article class="info-card" style="padding:16px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                  <div class="low-stock-heading">
                     <h2 style="font-size:15px;margin:0;">Low Stock Alerts</h2>
                     @if (lowStock().length > 0) {
                       <span class="status cancelled">{{ lowStock().length }} Critical</span>
@@ -952,7 +991,7 @@ interface DashboardMetric {
                   @if (lowStock().length > 0) {
                     @for (item of lowStock(); track item.id) {
                       <div class="stock-item">
-                        <img [src]="img(item.image)" [alt]="item.name" (error)="imgFallback($event)" />
+                        <img [src]="img(item.image, item.category)" [alt]="item.name" (error)="imgFallback($event)" />
                         <div>
                           <strong>{{ item.name }}</strong>
                           <span style="color:var(--danger);font-size:12px;font-weight:600;">{{ item.stock }} left in stock</span>
@@ -1015,7 +1054,7 @@ interface DashboardMetric {
                   @for (product of filteredProducts(); track product.id) {
                     <tr>
                       <td style="width:60px;">
-                        <img [src]="img(product.image)" [alt]="product.name" (error)="imgFallback($event)" style="width:40px;height:40px;border-radius:6px;object-fit:cover;" />
+                        <img [src]="img(product.image, product.category)" [alt]="product.name" (error)="imgFallback($event)" style="width:40px;height:40px;border-radius:6px;object-fit:cover;" />
                       </td>
                       <td>
                         <strong>{{ product.name }}</strong>
@@ -1389,7 +1428,7 @@ interface DashboardMetric {
                   <div class="pos-product-grid">
                     @for (p of posFilteredProducts(); track p.id) {
                       <div class="pos-tile" (click)="addToPosCart(p)">
-                        <img [src]="img(p.image)" [alt]="p.name" (error)="imgFallback($event)" />
+                          <img [src]="img(p.image, p.category)" [alt]="p.name" (error)="imgFallback($event)" />
                         <strong>{{ p.name }}</strong>
                         <div class="pos-tile-price">\${{ p.price }}</div>
                         <div class="pos-tile-stock" [style.color]="p.stock <= 3 ? 'var(--danger)' : 'var(--ink-400)'">
@@ -1460,7 +1499,7 @@ interface DashboardMetric {
 
                 <!-- 3. RIGHT: Summary & Tender -->
                 <div class="pos-summary-panel">
-                  <h3 style="font-size:14px;margin:0 0 10px;">Order Summary</h3>
+                  <h3 class="pos-summary-title">Order Summary</h3>
                   
                   <div class="pos-summary-line">
                     <span>Subtotal</span>
@@ -1468,11 +1507,11 @@ interface DashboardMetric {
                   </div>
                   <div class="pos-summary-line">
                     <span>Discount ($)</span>
-                    <input class="dash-input" style="width:75px;padding:3px 6px;height:24px;text-align:right" type="number" [ngModel]="posDiscount()" (ngModelChange)="posDiscount.set(+$event)" placeholder="0.00" />
+                    <input class="dash-input pos-adjustment-input" type="number" [ngModel]="posDiscount()" (ngModelChange)="posDiscount.set(+$event)" placeholder="0.00" />
                   </div>
                   <div class="pos-summary-line">
                     <span>Tax Rate</span>
-                    <select class="dash-select" style="width:85px;padding:2px 6px;height:24px" [ngModel]="posTaxRate()" (ngModelChange)="posTaxRate.set(+$event)">
+                    <select class="dash-select pos-adjustment-select" [ngModel]="posTaxRate()" (ngModelChange)="posTaxRate.set(+$event)">
                       <option [value]="0">0% (None)</option>
                       <option [value]="10">10% (VAT)</option>
                     </select>
@@ -1490,9 +1529,9 @@ interface DashboardMetric {
                   </div>
 
                   <!-- Payment Method Toggle -->
-                  <div style="margin:10px 0 6px;">
-                    <label style="font-size:11.5px;font-weight:700;color:var(--ink-700);display:block;margin-bottom:4px;">Payment Method</label>
-                    <div style="display:flex;gap:6px;">
+                  <div class="pos-payment-section">
+                    <label class="pos-payment-label">Payment Method</label>
+                    <div class="pos-payment-options">
                       <button type="button" class="tab-pill" style="flex:1;" [class.active]="posPaymentMethod() === 'CASH'" (click)="setPosPaymentMethod('CASH')">Cash Tender</button>
                       <button type="button" class="tab-pill" style="flex:1;" [class.active]="posPaymentMethod() === 'KHQR'" (click)="setPosPaymentMethod('KHQR')">Bakong KHQR</button>
                     </div>
@@ -1500,8 +1539,8 @@ interface DashboardMetric {
 
                   <!-- Cash Tender Section -->
                   @if (posPaymentMethod() === 'CASH') {
-                    <div style="margin-top:6px;">
-                      <label style="font-size:11px;color:var(--ink-500);display:block;margin-bottom:3px;">Quick Tender Presets</label>
+                    <div class="pos-cash-section">
+                      <label class="pos-cash-label">Quick Tender Presets</label>
                       <div class="cash-presets">
                         <button type="button" class="cash-preset-btn" (click)="setCashPreset('EXACT')">Exact (\${{ posTotal().toFixed(2) }})</button>
                         <button type="button" class="cash-preset-btn" (click)="setCashPreset(5)">$5</button>
@@ -1511,10 +1550,10 @@ interface DashboardMetric {
                         <button type="button" class="cash-preset-btn" (click)="setCashPreset(100)">$100</button>
                       </div>
 
-                      <label style="font-size:11px;color:var(--ink-500);display:block;margin-top:8px;margin-bottom:3px;">Cash Received ($)</label>
-                      <input class="dash-input" type="number" [ngModel]="posCashReceived()" (ngModelChange)="posCashReceived.set(+$event)" placeholder="0.00" />
+                      <label class="pos-cash-label" style="margin-top:12px;">Cash Received ($)</label>
+                      <input class="dash-input pos-cash-input" type="number" [ngModel]="posCashReceived()" (ngModelChange)="posCashReceived.set(+$event)" placeholder="0.00" />
                       
-                      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:13px;font-weight:700;color:var(--brand-700);background:var(--brand-50);padding:6px 10px;border-radius:var(--r-sm);">
+                      <div class="pos-change-due">
                         <span>Change Due:</span>
                         <span>\${{ posChange().toFixed(2) }}</span>
                       </div>
@@ -1810,7 +1849,7 @@ interface DashboardMetric {
                       <tr>
                         <td>
                           <div style="display:flex;align-items:center;gap:10px;">
-                            <img [src]="img(p.image)" [alt]="p.name" style="width:36px;height:36px;border-radius:4px;object-fit:cover;" (error)="imgFallback($event)" />
+                            <img [src]="img(p.image, p.category)" [alt]="p.name" style="width:36px;height:36px;border-radius:4px;object-fit:cover;" (error)="imgFallback($event)" />
                             <strong>{{ p.name }}</strong>
                           </div>
                         </td>
@@ -3389,8 +3428,44 @@ interface DashboardMetric {
             </div>
 
             <div class="field-group">
-              <label>Product Image URL</label>
-              <input class="dash-input" placeholder="https://..." [ngModel]="newProduct().image" (ngModelChange)="newProduct.set({...newProduct(), image: $event})" />
+              <label>Product Image <span class="muted" style="font-size:12px;font-weight:400;">(Choose image file or enter URL)</span></label>
+              <div
+                style="display:flex;gap:8px;align-items:center;"
+                (dragover)="$event.preventDefault()"
+                (drop)="onProductFileDrop($event)"
+              >
+                <input
+                  class="dash-input"
+                  style="flex:1;"
+                  [placeholder]="newProduct().image ? (newProduct().image.startsWith('data:') ? 'Image uploaded from device' : newProduct().image) : 'Choose an image file from device or paste URL...'"
+                  [ngModel]="newProduct().image?.startsWith('data:') ? 'Image file uploaded' : newProduct().image"
+                  (ngModelChange)="onProductImageUrlChange($event)"
+                />
+                <button
+                  type="button"
+                  class="btn btn-ghost"
+                  style="white-space:nowrap;display:inline-flex;align-items:center;gap:6px;height:44px;flex-shrink:0;cursor:pointer;"
+                  (click)="productFileInput.click()"
+                >
+                  <kc-icon name="upload" [size]="15" /> Choose File
+                </button>
+                <input #productFileInput type="file" hidden accept="image/*" (change)="onProductFileSelected($event)" />
+              </div>
+
+              @if (newProduct().image) {
+                <div style="margin-top:8px;display:flex;align-items:center;gap:12px;background:var(--canvas);padding:8px 12px;border-radius:var(--r-md);border:1px solid var(--line);">
+                  <div style="width:44px;height:44px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--line);background:#1a1a1a;flex-shrink:0;">
+                    <img [src]="newProduct().image" alt="Product Image Preview" style="width:100%;height:100%;object-fit:cover;display:block;" />
+                  </div>
+                  <div style="flex:1;min-width:0;">
+                    <p style="font-size:12px;font-weight:650;margin:0;color:var(--ink-900);">Product Image Ready</p>
+                    <span style="font-size:11px;color:var(--ink-500);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                      {{ newProduct().image.startsWith('data:') ? 'Loaded from your computer' : newProduct().image }}
+                    </span>
+                  </div>
+                  <button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger);font-size:12px;" (click)="clearProductImage()">Remove</button>
+                </div>
+              }
             </div>
 
             <div class="modal-actions">
@@ -4257,8 +4332,28 @@ export class SellerDashboardPage implements OnInit {
     "<circle cx='36' cy='36' r='7' fill='%23c4d0ca'/>" +
     "<path d='M20 68l19-22 14 17 11-13 12 18z' fill='%23c4d0ca'/></svg>";
 
-  protected img(src?: string | null): string {
-    return src && src.trim() ? src : this.imagePlaceholder;
+  protected img(src?: string | null, category?: string | null): string {
+    if (src && src.trim()) return src;
+
+    // Older products can legitimately predate file uploads. Show a relevant
+    // category visual in that case instead of repeating the empty-image icon
+    // throughout inventory and the point-of-sale catalogue.
+    const categoryImages: Record<string, string> = {
+      'Fashion & Accessories': '/categories/fashion.png',
+      'Food & Groceries': '/categories/food-groceries.png',
+      'Home & Living': '/categories/home-living.png',
+      'Beauty & Wellness': '/categories/beauty-wellness.png',
+      Electronics: '/categories/electronics.png',
+      'Kids & Family': '/categories/kids-family.png',
+      'Arts & Culture': '/categories/arts-culture.png',
+      'Silk & Textiles': '/categories/fashion.png',
+      'Silver & Metalware': '/categories/arts-culture.png',
+      'Ceramics & Pottery': '/categories/home-living.png',
+      'Wood & Stone Carvings': '/categories/arts-culture.png',
+      'Kampot Pepper & Spices': '/categories/food-groceries.png',
+      'Natural Wellness & Spa': '/categories/beauty-wellness.png',
+    };
+    return categoryImages[category ?? ''] ?? '/categories/fashion.png';
   }
 
   protected imgFallback(event: Event): void {
@@ -4751,7 +4846,13 @@ protected readonly notifications = signal<any[]>([]);
           price: p.price,
           stock: p.stock ?? 10,
           status: p.status || 'ACTIVE',
-          image: p.image || (p.images && p.images[0]) || '',
+          // List responses intentionally exclude the base64 image payload.
+          // Always use the lightweight image endpoint for a product that has
+          // a photo, so the POS grid does not mistake an omitted list field
+          // for a missing product picture.
+          image: p.hasImage === false
+            ? ''
+            : p.image || `${API_URL}/products/${encodeURIComponent(p.id || p._id)}/image`,
           material: p.material || '',
           description: p.description || '',
         }));
@@ -4835,18 +4936,88 @@ protected readonly notifications = signal<any[]>([]);
     this.productSaveError.set('');
   }
 
+  async onProductFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      const dataUrl = await this.processImageFile(file, 1200, 1200);
+      this.newProduct.update((p: any) => ({ ...p, image: dataUrl }));
+      this.productSaveError.set('');
+    } catch {
+      alert('Could not open image file. Please choose a valid image.');
+    }
+  }
+
+  async onProductFileDrop(event: DragEvent) {
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await this.processImageFile(file, 1200, 1200);
+      this.newProduct.update((p: any) => ({ ...p, image: dataUrl }));
+      this.productSaveError.set('');
+    } catch {
+      alert('Could not open dropped image file. Please choose a valid image.');
+    }
+  }
+
+  clearProductImage() {
+    this.newProduct.update((p: any) => ({ ...p, image: '' }));
+  }
+
+  onProductImageUrlChange(url: string) {
+    this.newProduct.update((p: any) => ({ ...p, image: url }));
+  }
+
   submitProduct() {
     const p = this.newProduct();
-    if (!p.name || !p.price) {
-      this.productSaveError.set('Title and Price are required.');
+    if (!p.name?.trim() || !p.price) {
+      this.productSaveError.set('Product Title and Price are required.');
+      return;
+    }
+    if (!p.category?.trim()) {
+      this.productSaveError.set('Please select a Category for this product.');
       return;
     }
     const storeId = this.myStoreId();
-    if (!storeId) return;
+    if (!storeId) {
+      this.productSaveError.set('No active store selected.');
+      return;
+    }
+
+    const payload: any = {
+      name: p.name.trim(),
+      category: p.category.trim(),
+      price: Number(p.price),
+      stock: p.stock !== null && p.stock !== undefined && p.stock !== '' ? Number(p.stock) : 0,
+      description: p.description?.trim() || '',
+      status: p.status || 'ACTIVE',
+      image: p.image?.trim() || undefined,
+    };
+
+    if (p.compareAtPrice) {
+      payload.compareAtPrice = Number(p.compareAtPrice);
+    }
+    if (storeId && /^[a-f\d]{24}$/i.test(storeId)) {
+      payload.storeId = storeId;
+    }
 
     this.savingProduct.set(true);
+    this.productSaveError.set('');
+
+    const formatError = (err: any, fallback: string) => {
+      const details = err.error?.error?.details || err.error?.details;
+      if (details && typeof details === 'object') {
+        const msgs = Object.entries(details).map(([field, errList]) => `${field}: ${Array.isArray(errList) ? errList.join(', ') : errList}`);
+        return msgs.join(' | ');
+      }
+      return err.error?.error?.message || err.error?.message || err.message || fallback;
+    };
+
     if (p.id) {
-      this.sellerService.updateProduct(p.id, p).subscribe({
+      this.sellerService.updateProduct(p.id, payload).subscribe({
         next: () => {
           this.savingProduct.set(false);
           this.showProductModal.set(false);
@@ -4854,11 +5025,11 @@ protected readonly notifications = signal<any[]>([]);
         },
         error: (err) => {
           this.savingProduct.set(false);
-          this.productSaveError.set(err.message || 'Failed to update product');
+          this.productSaveError.set(formatError(err, 'Failed to update product'));
         },
       });
     } else {
-      this.sellerService.createProduct({ ...p, storeId }).subscribe({
+      this.sellerService.createProduct(payload).subscribe({
         next: () => {
           this.savingProduct.set(false);
           this.showProductModal.set(false);
@@ -4866,7 +5037,7 @@ protected readonly notifications = signal<any[]>([]);
         },
         error: (err) => {
           this.savingProduct.set(false);
-          this.productSaveError.set(err.message || 'Failed to create product');
+          this.productSaveError.set(formatError(err, 'Failed to create product'));
         },
       });
     }
