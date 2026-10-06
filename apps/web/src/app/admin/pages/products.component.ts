@@ -10,11 +10,12 @@ import { MenuComponent, MenuItem } from '../ui/menu.component';
 import { StateComponent } from '../ui/state.component';
 import { dstr, initials, money } from '../ui/format';
 
+// Values must match PRODUCT_SORTS in the API's catalog.validation.ts — anything else is a 422.
 const SORTS = [
-  { value: 'featured', label: 'Featured' },
   { value: 'newest', label: 'Newest' },
-  { value: 'price-asc', label: 'Price: low to high' },
-  { value: 'price-desc', label: 'Price: high to low' },
+  { value: 'popular', label: 'Most popular' },
+  { value: 'price-low', label: 'Price: low to high' },
+  { value: 'price-high', label: 'Price: high to low' },
   { value: 'rating', label: 'Top rated' },
 ];
 
@@ -185,7 +186,7 @@ export class ProductsComponent {
   sorts = SORTS;
   searchInput = signal('');
   search = signal('');
-  sort = signal('featured');
+  sort = signal('newest');
   page = signal(1);
   private readonly limit = 10;
   loading = signal(true);

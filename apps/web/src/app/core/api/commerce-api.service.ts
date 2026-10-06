@@ -69,7 +69,10 @@ export class CommerceApiService {
         ...response,
         products: response.products.map((product) => ({
           ...product,
-          image: `${API_URL}/products/${encodeURIComponent(product.id)}/image`,
+          image:
+            product.hasImage === false
+              ? null
+              : `${API_URL}/products/${encodeURIComponent(product.id)}/image`,
         })),
       })),
     );

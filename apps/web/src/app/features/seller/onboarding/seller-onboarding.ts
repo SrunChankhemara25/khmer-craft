@@ -136,11 +136,20 @@ export class SellerOnboardingPage implements OnInit {
   };
 
   protected readonly progress = [
-    { step: 1 as const, label: 'Store essentials' },
-    { step: 2 as const, label: 'Your storefront' },
-    { step: 3 as const, label: 'Choose a plan' },
-    { step: 4 as const, label: 'Review & create' },
+    { step: 1 as const, label: 'Store essentials', hint: 'Name, category & contact' },
+    { step: 2 as const, label: 'Your storefront', hint: 'Style, color & story' },
+    { step: 3 as const, label: 'Choose a plan', hint: 'Start free, grow later' },
+    { step: 4 as const, label: 'Review & launch', hint: 'One last look' },
   ];
+
+  /** A short, encouraging note for the side panel that follows the seller through each step. */
+  private readonly guides: Record<number, { title: string; message: string }> = {
+    1: { title: 'Every great store starts here', message: 'A clear, specific name helps buyers remember you and come back again.' },
+    2: { title: 'Show buyers who you are', message: 'Stores with a logo, cover and short story feel more trustworthy and get more visits.' },
+    3: { title: 'No pressure, start free', message: 'Most sellers begin on Starter. You can upgrade the moment your store is ready to grow.' },
+    4: { title: 'You’re one click away', message: 'Your storefront goes live right after you create it. Then add your first product.' },
+  };
+  protected readonly guide = computed(() => this.guides[this.step()] ?? this.guides[1]);
 
   protected readonly categoryQuery = signal('');
   protected readonly categoryMenuOpen = signal(false);

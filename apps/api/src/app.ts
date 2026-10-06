@@ -16,6 +16,8 @@ import {
   preventOperatorInjection,
 } from './middleware/security';
 import { AppError } from './errors/app-error';
+import adminRoutes from './modules/admin/admin.routes';
+import payoutRoutes from './modules/payouts/payouts.routes';
 import authRoutes from './modules/auth/auth.routes';
 import cartRoutes from './modules/cart/cart.routes';
 import catalogRoutes from './modules/catalog/catalog.routes';
@@ -29,6 +31,7 @@ import storeCategoryRoutes from './modules/store-categories/store-categories.rou
 import warehouseRoutes from './modules/warehouses/warehouses.routes';
 import promotionRoutes from './modules/promotions/promotions.routes';
 import storeCollectionRoutes from './modules/store-collections/store-collections.routes';
+import shareRoutes from './modules/share/share.routes';
 
 export const createApp = () => {
   const app = express();
@@ -126,6 +129,9 @@ export const createApp = () => {
   app.use('/api/warehouses', warehouseRoutes);
   app.use('/api/promotions', promotionRoutes);
   app.use('/api/store-collections', storeCollectionRoutes);
+  app.use('/api/share', shareRoutes);
+  app.use('/api/admin', adminRoutes);
+  app.use('/api/payouts', payoutRoutes);
 
   // Interactive API docs. Disabled in production so the schema is not public.
   if (isDocsEnabled) {

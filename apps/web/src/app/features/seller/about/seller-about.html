@@ -1,0 +1,118 @@
+<app-seller-portal-header />
+
+<main>
+  <section class="section tint-glow hero">
+    <div class="wrap narrow center">
+      <p class="eyebrow"><kc-icon name="leaf" [size]="13" /> About KhmerCraft Seller</p>
+      <h1 class="display-1">A marketplace built <em>with</em> Cambodia’s makers, not just for them.</h1>
+      <p class="lead">We believe the people who weave, cook, carve, grow and design in this country deserve tools as good as their work — simple enough to use between everything else, and fair enough to trust.</p>
+    </div>
+  </section>
+
+  <!-- ========================================================== STORY -->
+  <section class="section">
+    <div class="wrap story">
+      <figure class="story-image" [kcReveal]="0">
+        <img src="/assets/promos/khmer-fashion.webp" alt="Hand-woven Khmer textiles" loading="lazy" />
+        <figcaption>Every product on KhmerCraft starts with someone’s hands.</figcaption>
+      </figure>
+      <div [kcReveal]="1">
+        <p class="eyebrow plain">Our story</p>
+        <h2 class="display-2">It started with a <em>simple question.</em></h2>
+        <p class="body">Why is it so hard for a talented maker in Takeo or Kampong Chhnang to sell to someone in Phnom Penh — or across the country?</p>
+        <p class="body">The products were never the problem. The problem was everything around them: being found, showing what you make, taking orders without losing details in a chat, knowing what is in stock, and getting paid without chasing screenshots.</p>
+        <p class="body">KhmerCraft Seller is our answer. A storefront that is yours, inside a marketplace that buyers already visit, with a workspace that handles the admin so you can get back to the work you love.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================= MISSION -->
+  <section class="section tight tint-sage">
+    <div class="wrap narrow center mission" [kcReveal]="0">
+      <span class="quote-mark" aria-hidden="true">“</span>
+      <p class="mission-text">Our mission is to help every Cambodian business — however small — open a <em>trusted</em> online store in minutes, and grow it on its own terms.</p>
+      <p class="fine">— The KhmerCraft team</p>
+    </div>
+  </section>
+
+  <!-- ========================================================== VALUES -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">What we believe</p>
+        <h2 class="display-2">Six things that <em>guide every decision.</em></h2>
+      </div>
+      <div class="grid-3">
+        @for (value of values; track value.title; let i = $index) {
+          <article class="card value" [kcReveal]="i">
+            <span class="value-num">{{ (i + 1).toString().padStart(2, '0') }}</span>
+            <span class="icon-badge" [class.sage]="i % 3 === 1" [class.gold]="i % 3 === 2"><kc-icon [name]="value.icon" [size]="20" /></span>
+            <h3>{{ value.title }}</h3>
+            <p>{{ value.body }}</p>
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== TWO SITES -->
+  <section class="section tint-cream">
+    <div class="wrap two-sites">
+      <div [kcReveal]="0">
+        <p class="eyebrow">Two sites, one account</p>
+        <h2 class="display-2">A home for <em>buyers.</em> A home for <em>sellers.</em></h2>
+        <p class="lead">KhmerCraft is split in two on purpose. Buyers shop on the marketplace; you run your business here, on the seller portal. The same account works on both — so you can still shop, and see your store exactly as buyers do.</p>
+      </div>
+      <div class="sites" [kcReveal]="1">
+        <a class="site" [href]="marketplaceHome" target="_blank" rel="noopener">
+          <span class="icon-badge sage"><kc-icon name="cart" [size]="20" /></span>
+          <strong>KhmerCraft Marketplace</strong>
+          <span>Where buyers browse, search and order from every store.</span>
+          <em>Open in a new tab <kc-icon name="external" [size]="12" /></em>
+        </a>
+        <div class="site current">
+          <span class="icon-badge"><kc-icon name="store" [size]="20" /></span>
+          <strong>KhmerCraft Seller</strong>
+          <span>Where you open stores, manage products and handle orders.</span>
+          <em>You are here</em>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== BUILDING -->
+  <section class="section">
+    <div class="wrap medium">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">What we’re working on</p>
+        <h2 class="display-2">Built <em>in the open,</em> with sellers.</h2>
+        <p class="lead">KhmerCraft Seller is young and growing. Here is where we are focusing — shaped by what sellers tell us they need.</p>
+      </div>
+      <div class="roadmap">
+        @for (item of roadmap; track item.title; let i = $index) {
+          <article [kcReveal]="i">
+            <span class="status" [class.live]="item.status === 'Available now'">{{ item.status }}</span>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.body }}</p>
+          </article>
+        }
+      </div>
+      <p class="fine center roadmap-note">Directions, not dated promises — we will only call something a plan benefit once it is live.</p>
+    </div>
+  </section>
+
+  <section class="section tight">
+    <div class="wrap">
+      <div class="cta-band" [kcReveal]="0">
+        <h2 class="display-2">Bring your work <em>to more people.</em></h2>
+        <p class="lead">Join KhmerCraft Seller today. It’s free to start, and you’re never on your own.</p>
+        <div class="cta-row center">
+          <a class="btn btn-primary" routerLink="/seller/onboarding">Start your store <span class="arrow">→</span></a>
+          <a class="btn btn-ghost" routerLink="/guide">Read the seller guide</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<app-seller-footer />

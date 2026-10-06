@@ -4,17 +4,146 @@ import { adminGuard } from './admin/admin.guard';
 import { sellerGuard } from './core/auth/seller.guard';
 import { onboardingGuard } from './core/auth/onboarding.guard';
 import { storeDomainMatchGuard } from './core/storefront/store-domain.service';
+import { LEGACY_SELLER_ROUTES, onPortal, sellerPortalHostMatch } from './core/portal/portal';
 
 /**
  * Everything is lazy-loaded. The storefront branch imported all 19 page
  * components eagerly, which put the whole site in the initial bundle.
+ *
+ * The routes are split by which site they belong to — the marketplace or the
+ * seller portal (see core/portal/portal.ts). `onPortal` sends a page opened on
+ * the wrong origin over to the right one, so the two sites never overlap.
  */
-export const routes: Routes = [
+
+// ------------------------------------------------------------ seller portal
+// The seller portal's public pages sit at the root of its own origin. Matched
+// only on that origin, so on the marketplace `/` and `/about` stay the
+// marketplace's own pages.
+const sellerPortalPages: Routes = [
+  {
+    path: '',
+    pathMatch: 'full',
+    canMatch: [sellerPortalHostMatch],
+    loadComponent: () =>
+      import('./features/seller/landing/seller-landing').then((m) => m.SellerPage),
+    title: 'Sell on KhmerCraft | KhmerCraft Seller',
+  },
+  {
+    path: 'explore',
+    canMatch: [sellerPortalHostMatch],
+    loadComponent: () =>
+      import('./features/seller/explore/seller-explore').then((m) => m.SellerExplore),
+    title: 'Tour the seller workspace | KhmerCraft Seller',
+  },
+  {
+    path: 'pricing',
+    canMatch: [sellerPortalHostMatch],
+    loadComponent: () =>
+      import('./features/seller/pricing/seller-pricing').then((m) => m.SellerPricing),
+    title: 'Plans & pricing | KhmerCraft Seller',
+  },
+  {
+    path: 'guide',
+    canMatch: [sellerPortalHostMatch],
+    loadComponent: () =>
+      import('./features/seller/guide/seller-guide').then((m) => m.SellerGuide),
+    title: 'Seller guide | KhmerCraft Seller',
+  },
+  {
+    path: 'faq',
+    canMatch: [sellerPortalHostMatch],
+    loadComponent: () =>
+      import('./features/seller/faq/seller-faq').then((m) => m.SellerFaq),
+    title: 'Seller FAQ | KhmerCraft Seller',
+  },
+  {
+    path: 'about',
+    canMatch: [sellerPortalHostMatch],
+    loadComponent: () =>
+      import('./features/seller/about/seller-about').then((m) => m.SellerAbout),
+    title: 'About KhmerCraft Seller | KhmerCraft Seller',
+  },
+];
+
+// Signed-in seller workspace — always served from the seller portal origin.
+const sellerWorkspace: Routes = onPortal('seller', [
+  {
+    path: 'seller/login',
+    loadComponent: () =>
+      import('./features/authentication/seller/login/seller-login').then(
+        (m) => m.SellerLogin,
+      ),
+    title: 'Seller sign in | KhmerCraft Seller',
+  },
+  {
+    path: 'seller/onboarding',
+    canActivate: [onboardingGuard],
+    loadComponent: () =>
+      import('./features/seller/onboarding/seller-onboarding').then(
+        (m) => m.SellerOnboardingPage,
+      ),
+    title: 'Create your store | KhmerCraft Seller',
+  },
+  {
+    path: 'seller/dashboard',
+    canActivate: [sellerGuard],
+    loadComponent: () =>
+      import('./pages/seller-dashboard/seller-dashboard').then(
+        (m) => m.SellerDashboardPage,
+      ),
+    title: 'Seller dashboard | KhmerCraft Seller',
+  },
+  {
+    // Plan & billing: what the store is on, when it lapses, and the KHQR to
+    // renew it with.
+    path: 'seller/billing',
+    canActivate: [sellerGuard],
+    loadComponent: () =>
+      import('./pages/seller-billing.component').then(
+        (m) => m.SellerBillingComponent,
+      ),
+    title: 'Plan & billing | KhmerCraft Seller',
+  },
+  {
+    // Guarded by buyerGuard, not sellerGuard: a seller who has only ever been
+    // on Starter may still be a BUYER when they come to pay for their first
+    // paid plan, and a sellerGuard would bounce them off their own checkout.
+    path: 'seller/plan/pay',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./pages/plan-payment.component').then(
+        (m) => m.PlanPaymentComponent,
+      ),
+    title: 'Activate your plan | KhmerCraft Seller',
+  },
+  {
+    // Last step of store setup — after the plan is paid, or straight after
+    // creating a store on the free plan.
+    path: 'seller/store-ready',
+    canActivate: [buyerGuard],
+    loadComponent: () =>
+      import('./pages/seller-store-ready.component').then(
+        (m) => m.SellerStoreReadyComponent,
+      ),
+    title: 'Your store is live | KhmerCraft Seller',
+  },
+  {
+    path: 'seller/orders',
+    canActivate: [sellerGuard],
+    loadComponent: () =>
+      import('./features/seller/orders/seller-orders').then(
+        (m) => m.SellerOrders,
+      ),
+    title: 'Incoming orders | KhmerCraft Seller',
+  },
+]);
+
+// --------------------------------------------------------------- marketplace
+const marketplace: Routes = onPortal('marketplace', [
   // The visual fixture used to mock SellerService, so attempting to finish
   // onboarding here could never create a store. Keep old bookmarks useful by
   // sending them to the real, authenticated onboarding flow.
   { path: '__storefront-design-test', pathMatch: 'full', redirectTo: 'seller/onboarding' },
-  // ---------------------------------------------------------------- storefront
   // If visited via a dedicated store domain/subdomain (e.g. `seoul-2.localhost:4200` or `?store=seoul-2`),
   // immediately render that store's standalone website as the homepage!
   {
@@ -127,50 +256,6 @@ export const routes: Routes = [
       import('./pages/about.component').then((m) => m.AboutComponent),
     title: 'About | KhmerCraft',
   },
-  {
-    // Seller landing, onboarding and dashboard are Seypa47's work from
-    // origin/prototype, ported into this tree's structure.
-    //
-    // Why Sell / Explore / Pricing / FAQ are separate routes rather than
-    // anchors on one long page — clicking a nav item takes you to that
-    // page, not to a spot further down whatever page you were already on.
-    path: 'become-a-seller',
-    loadComponent: () =>
-      import('./features/seller/landing/seller-landing').then(
-        (m) => m.SellerPage,
-      ),
-    title: 'Become a seller | KhmerCraft',
-  },
-  {
-    path: 'become-a-seller/explore',
-    loadComponent: () =>
-      import('./features/seller/explore/seller-explore').then(
-        (m) => m.SellerExplore,
-      ),
-    title: 'See KhmerCraft in action | KhmerCraft',
-  },
-  {
-    path: 'become-a-seller/pricing',
-    loadComponent: () =>
-      import('./features/seller/pricing/seller-pricing').then(
-        (m) => m.SellerPricing,
-      ),
-    title: 'Seller pricing | KhmerCraft',
-  },
-  {
-    path: 'become-a-seller/faq',
-    loadComponent: () =>
-      import('./features/seller/faq/seller-faq').then((m) => m.SellerFaq),
-    title: 'Seller FAQ | KhmerCraft',
-  },
-  {
-    path: 'become-a-seller/about',
-    loadComponent: () =>
-      import('./features/seller/about/seller-about').then((m) => m.SellerAbout),
-    title: 'About KhmerCraft Seller | KhmerCraft',
-  },
-  // The spec uses /become-seller; keep both spellings working.
-  { path: 'become-seller', pathMatch: 'full', redirectTo: 'become-a-seller' },
 
   // ------------------------------------------------------------------- account
   {
@@ -188,78 +273,31 @@ export const routes: Routes = [
     title: 'My orders | KhmerCraft',
   },
 
-  // ------------------------------------------------------------------- seller
+  // --------------------------------------------------------------------- admin
   {
-    path: 'seller/login',
+    // Listed BEFORE the guarded 'admin' tree below, so the login page itself
+    // stays reachable without a session.
+    path: 'admin/login',
     loadComponent: () =>
-      import('./features/authentication/seller/login/seller-login').then(
-        (m) => m.SellerLogin,
+      import('./features/admin/authentication/login/admin-login').then(
+        (module) => module.AdminLogin,
       ),
-    title: 'Seller sign in | KhmerCraft',
+    title: 'Admin sign in | KhmerCraft',
   },
   {
-    path: 'seller/onboarding',
-    canActivate: [onboardingGuard],
-    loadComponent: () =>
-      import('./features/seller/onboarding/seller-onboarding').then(
-        (m) => m.SellerOnboardingPage,
-      ),
-    title: 'Seller onboarding | KhmerCraft',
+    // Khemara's admin area, lazily loaded as a child route tree behind
+    // adminGuard.
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadChildren: () => import('./admin/admin.routes').then((m) => m.ADMIN_ROUTES),
+    title: 'Administration | KhmerCraft',
   },
-  {
-    path: 'seller/dashboard',
-    canActivate: [sellerGuard],
-    loadComponent: () =>
-      import('./pages/seller-dashboard/seller-dashboard').then(
-        (m) => m.SellerDashboardPage,
-      ),
-    title: 'Seller dashboard | KhmerCraft',
-  },
-  {
-    // Plan & billing: what the store is on, when it lapses, and the KHQR to
-    // renew it with.
-    path: 'seller/billing',
-    canActivate: [sellerGuard],
-    loadComponent: () =>
-      import('./pages/seller-billing.component').then(
-        (m) => m.SellerBillingComponent,
-      ),
-    title: 'Plan & billing | KhmerCraft',
-  },
-  {
-    // Guarded by buyerGuard, not sellerGuard: a seller who has only ever been
-    // on Starter may still be a BUYER when they come to pay for their first
-    // paid plan, and a sellerGuard would bounce them off their own checkout.
-    path: 'seller/plan/pay',
-    canActivate: [buyerGuard],
-    loadComponent: () =>
-      import('./pages/plan-payment.component').then(
-        (m) => m.PlanPaymentComponent,
-      ),
-    title: 'Activate your plan | KhmerCraft',
-  },
-  {
-    // Last step of store setup — after the plan is paid, or straight after
-    // creating a store on the free plan.
-    path: 'seller/store-ready',
-    canActivate: [buyerGuard],
-    loadComponent: () =>
-      import('./pages/seller-store-ready.component').then(
-        (m) => m.SellerStoreReadyComponent,
-      ),
-    title: 'Your store is live | KhmerCraft',
-  },
-  {
-    path: 'seller/orders',
-    canActivate: [sellerGuard],
-    loadComponent: () =>
-      import('./features/seller/orders/seller-orders').then(
-        (m) => m.SellerOrders,
-      ),
-    title: 'Incoming orders | KhmerCraft',
-  },
+]);
 
-  // ---------------------------------------------------------------------- auth
+// -------------------------------------------------------------------- shared
+// One account works on both sites, so sign-in, help and legal pages are
+// served on whichever origin the visitor is already on.
+const shared: Routes = onPortal('shared', [
   {
     path: 'login',
     loadComponent: () =>
@@ -321,24 +359,6 @@ export const routes: Routes = [
       ),
     title: 'Change password | KhmerCraft',
   },
-  {
-    // Listed BEFORE the guarded 'admin' tree below, so the login page itself
-    // stays reachable without a session.
-    path: 'admin/login',
-    loadComponent: () =>
-      import('./features/admin/authentication/login/admin-login').then(
-        (module) => module.AdminLogin,
-      ),
-    title: 'Admin sign in | KhmerCraft',
-  },
-  {
-    // Khemara's admin area, lazily loaded as a child route tree behind
-    // adminGuard.
-    path: 'admin',
-    canActivate: [adminGuard],
-    loadChildren: () => import('./admin/admin.routes').then((m) => m.ADMIN_ROUTES),
-    title: 'Administration | KhmerCraft',
-  },
 
   // ------------------------------------------------------------- support pages
   // One component driven by route data — these differ only in copy.
@@ -386,4 +406,12 @@ export const routes: Routes = [
       import('./pages/not-found.component').then((m) => m.NotFoundComponent),
     title: 'Page not found | KhmerCraft',
   },
+]);
+
+export const routes: Routes = [
+  ...sellerPortalPages,
+  ...LEGACY_SELLER_ROUTES,
+  ...sellerWorkspace,
+  ...marketplace,
+  ...shared,
 ];

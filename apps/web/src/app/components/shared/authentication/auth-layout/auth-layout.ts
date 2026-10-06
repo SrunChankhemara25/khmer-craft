@@ -11,6 +11,7 @@ export type AuthVariant =
   | 'signin'
   | 'create'
   | 'recover'
+  | 'security'
   | 'verify'
   | 'seller'
   | 'admin';
@@ -41,6 +42,12 @@ const STORIES: Record<AuthVariant, Story> = {
     headline: 'Let us get you back in.',
     body: 'We will email you a single-use link. Your orders, saved addresses and store stay exactly where you left them.',
     marks: ['One-time link', 'Expires quickly', 'Nothing else changes'],
+  },
+  security: {
+    kicker: 'Account security',
+    headline: 'Keep your account yours.',
+    body: 'Pick a password you do not use anywhere else. Changing it signs you out of other devices.',
+    marks: ['Use 8+ characters', 'Not reused elsewhere', 'Takes effect now'],
   },
   verify: {
     kicker: 'One last step',

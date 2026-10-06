@@ -32,7 +32,11 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
                from different artisans ship separately. -->
           @for (group of groups(); track group.storeId) {
             <div class="store-group card">
-              <a class="store-label" [routerLink]="['/stores', group.storeId]">
+              <a
+                class="store-label"
+                [class.static]="!catalog.hasPublicStore(group.storeId)"
+                [routerLink]="catalog.hasPublicStore(group.storeId) ? ['/stores', group.storeId] : null"
+              >
                 <ui-icon name="store" [size]="14" /> {{ group.sellerName }}
                 <span>Separate shipment</span>
               </a>
@@ -218,6 +222,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
         padding: 16px 18px;
         margin-bottom: 14px;
       }
+      .store-label.static { cursor: default; pointer-events: none; }
       .store-label {
         font-size: 12.5px;
         color: var(--color-muted);
@@ -449,7 +454,7 @@ import { IconComponent } from '../components/shared/ui/icon/icon.component';
 })
 export class CartComponent {
   protected readonly cart = inject(CartService);
-  private readonly catalog = inject(CatalogService);
+  protected readonly catalog = inject(CatalogService);
   protected readonly wishlist = inject(WishlistService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);

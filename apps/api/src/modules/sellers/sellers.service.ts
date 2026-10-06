@@ -1,3 +1,5 @@
+import { buildKhqrString, khqrImage } from '../../utils/khqr';
+import { getSettings as getPayoutSettings } from '../payouts/payouts.service';
 import mongoose, { QueryFilter } from 'mongoose';
 import Order, { IOrder } from '../../../models/Order';
 import Review, { IReview } from '../../../models/Review';
@@ -1706,9 +1708,13 @@ export const getStoreFinance = async (storeId: string, userId: string) => {
     };
   });
 
-  const commission = grossSales * 0.1;
+  // The commission rate and payout schedule are admin settings; the real
+  // payable balance (hold window, COD commission owed) lives in /api/payouts.
+  const settings = await getPayoutSettings();
+  const commission = (grossSales * settings.commissionRate) / 100;
   const netEarnings = grossSales - commission;
-  const availableForPayout = grossSales * 0.9;
+  const availableForPayout = netEarnings;
+  const weekday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][settings.payoutWeekday];
 
   return {
     summary: {
@@ -1716,8 +1722,9 @@ export const getStoreFinance = async (storeId: string, userId: string) => {
       netEarnings: `$${netEarnings.toFixed(2)}`,
       platformCommission: `$${commission.toFixed(2)}`,
       availableForPayout: `$${availableForPayout.toFixed(2)}`,
-      payoutThreshold: '$1,000.00',
-      nextPayoutDay: 'Every Friday',
+      commissionRate: settings.commissionRate,
+      payoutThreshold: `$${settings.minimumPayout.toFixed(2)}`,
+      nextPayoutDay: settings.payoutSchedule === 'MONTHLY' ? `First ${weekday} of the month` : settings.payoutSchedule === 'BIWEEKLY' ? `Every other ${weekday}` : `Every ${weekday}`,
       payoutAccount: store.phoneNumber ? `ABA Bank · ${store.phoneNumber}` : 'Not linked',
     },
     paymentMethods: [
@@ -1918,6 +1925,43 @@ export const generatePosKhqr = async (
         }))
       : [{ name: 'In-Store POS Sale', quantity: 1, price: amount }];
 
+  // Preferred: a KHQR for the seller's own Bakong account, built locally —
+  // works with every Cambodian banking app and needs no gateway.
+  if (store.posKhqr?.bakongAccountId) {
+    const payload = buildKhqrString({
+      bakongAccountId: store.posKhqr.bakongAccountId,
+      merchantName: store.posKhqr.merchantName || store.storeName,
+      merchantCity: store.posKhqr.city,
+      amount,
+      currency: 'USD',
+      billNumber: tranId,
+      storeLabel: store.storeName,
+    });
+    return {
+      mode: 'BAKONG' as const,
+      tranId,
+      amount: Number(amount.toFixed(2)),
+      currency: 'USD',
+      qrString: payload,
+      qrImage: await khqrImage(payload),
+      payTo: store.posKhqr.bakongAccountId,
+      merchantName: store.posKhqr.merchantName || store.storeName,
+      // A Bakong KHQR stays valid; the POS still expires the screen so an
+      // old QR is not left showing for the next customer.
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      storeId: String(store._id),
+      storeName: store.storeName,
+    };
+  }
+
+  if (!env.paywayMerchantId || !env.paywayApiKey) {
+    throw new AppError(
+      409,
+      'Add your Bakong account (e.g. yourname@aba) in POS settings to accept KHQR',
+      'KHQR_NOT_SET_UP',
+    );
+  }
+
   const transaction = await payway.createTransaction({
     tranId,
     amount,
@@ -1930,6 +1974,7 @@ export const generatePosKhqr = async (
   });
 
   return {
+    mode: 'PAYWAY' as const,
     ...transaction,
     storeId: String(store._id),
     storeName: store.storeName,
@@ -1941,8 +1986,14 @@ export const checkPosKhqr = async (
   userId: string,
   tranId: string
 ) => {
-  await findOwnedStore(storeId, userId);
+  const store = await findOwnedStore(storeId, userId);
   if (!tranId) throw new AppError(400, 'Transaction ID is required', 'INVALID_TRAN_ID');
+
+  // A direct Bakong KHQR pays the seller's own account; there is no gateway
+  // to ask, so the cashier confirms from their banking app instead.
+  if (store.posKhqr?.bakongAccountId || !env.paywayMerchantId) {
+    return { tranId, status: 'MANUAL_CONFIRMATION', paid: false, manual: true };
+  }
 
   const status = await payway.checkTransaction(tranId);
   return {
@@ -1950,6 +2001,30 @@ export const checkPosKhqr = async (
     status,
     paid: status === 'PAID',
   };
+};
+
+export const getPosKhqrSettings = async (storeId: string, userId: string) => {
+  const store = await findOwnedStore(storeId, userId);
+  return {
+    bakongAccountId: store.posKhqr?.bakongAccountId ?? '',
+    merchantName: store.posKhqr?.merchantName ?? store.storeName.slice(0, 25),
+    city: store.posKhqr?.city ?? '',
+    configured: !!store.posKhqr?.bakongAccountId,
+    paywayAvailable: !!(env.paywayMerchantId && env.paywayApiKey),
+  };
+};
+
+export const updatePosKhqrSettings = async (
+  storeId: string,
+  userId: string,
+  input: { bakongAccountId: string; merchantName: string; city?: string } | null,
+) => {
+  const store = await findOwnedStore(storeId, userId);
+  (store as IStore).posKhqr = input && input.bakongAccountId
+    ? { bakongAccountId: input.bakongAccountId.toLowerCase(), merchantName: input.merchantName, city: input.city || undefined }
+    : null;
+  await store.save();
+  return getPosKhqrSettings(storeId, userId);
 };
 
 export const simulatePosKhqrPayment = async (

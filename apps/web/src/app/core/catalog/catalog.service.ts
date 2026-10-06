@@ -54,6 +54,20 @@ export class CatalogService {
     return this._stores();
   }
 
+  /**
+   * False only when we positively know the store has no public page — a
+   * store whose onboarding is unfinished still owns live products, but its
+   * page 404s. When the directory is unloaded, failed or possibly truncated
+   * we can't tell, so the link stays.
+   */
+  hasPublicStore(storeId: string | null | undefined): boolean {
+    if (!storeId) return false;
+    if (!this.storesLoaded() || this.storeError()) return true;
+    const stores = this._stores();
+    if (stores.length >= 60) return true;
+    return stores.some((store) => store.id === storeId);
+  }
+
   /** Fetch the whole catalog once. It is small; pagination is a UI concern. */
   async load(): Promise<void> {
     this.loaded.set(false);
@@ -380,6 +394,7 @@ const toProduct = (api: ApiProduct): Product => {
     price: api.price,
     compareAtPrice: api.compareAtPrice ?? undefined,
     ...classification,
+    sellerCategory: api.category,
     subcategory,
     subcategorySlug: subcategory ? subcategorySlug(subcategory) : null,
     sellerName: api.sellerName,

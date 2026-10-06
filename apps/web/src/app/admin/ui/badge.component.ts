@@ -1,8 +1,8 @@
 import { Component, input } from '@angular/core';
 
-const GREEN = ['active', 'approved', 'completed', 'verified', 'resolved', 'visible', 'paid', 'available'];
-const AMBER = ['pending', 'processing', 'investigating', 'refunded', 'refund requested', 'submitted', 'under review'];
-const RED = ['suspended', 'rejected', 'failed', 'cancelled', 'hidden', 'open', 'deactivated', 'unavailable'];
+const GREEN = ['active', 'approved', 'completed', 'verified', 'resolved', 'visible', 'paid', 'available', 'paying', 'live'];
+const AMBER = ['pending', 'processing', 'investigating', 'refunded', 'refund requested', 'submitted', 'under review', 'expiring', 'paused', 'pending approval', 'due'];
+const RED = ['suspended', 'rejected', 'failed', 'cancelled', 'hidden', 'open', 'deactivated', 'unavailable', 'lapsed'];
 
 @Component({ selector: 'kc-badge', standalone: true,
   template: `<span [class]="'badge t-' + tone">{{value()}}</span>` })

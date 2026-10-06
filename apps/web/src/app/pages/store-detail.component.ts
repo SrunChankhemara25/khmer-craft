@@ -207,13 +207,20 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
 
           @if (categories().length > 1) {
             <div class="category-tabs" aria-label="Product categories">
-              <button [class.active]="!activeCategory()" (click)="activeCategory.set(null)">All products <span>{{ products().length }}</span></button>
+              <button [class.active]="!activeCategory()" (click)="selectCategory(null)">All products <span>{{ products().length }}</span></button>
               @for (category of categories(); track category) {
-                <button [class.active]="activeCategory() === category" (click)="activeCategory.set(category)">
+                <button [class.active]="activeCategory() === category" (click)="selectCategory(category)">
                   {{ category }} <span>{{ countCategory(category) }}</span>
                 </button>
               }
             </div>
+          }
+
+          @if (activeSellerCategory(); as shared) {
+            <p class="sub-filter">
+              Showing <strong>{{ activeSub() ? shared + ' › ' + activeSub() : shared }}</strong>
+              <button type="button" (click)="clearSharedFilter()" aria-label="Show everything in this store">Show all ✕</button>
+            </p>
           }
 
           @if (groupedProducts().length) {
@@ -399,6 +406,8 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
     .col-badge { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--color-accent); }
     /* Still scrolls when it overflows — just without a visible scrollbar
        cluttering the row underneath it. */
+    .sub-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; font-size: 13px; color: var(--color-text-secondary); }
+    .sub-filter button { border: 0; background: none; color: var(--color-accent); font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 2px 4px; }
     .category-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 3px; scrollbar-width: none; }
     .category-tabs::-webkit-scrollbar { display: none; }
     .category-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 11px; border: 1px solid var(--color-border); border-radius: var(--radius-full); background: #fff; color: var(--color-text-secondary); font-size: 11.5px; white-space: nowrap; }
@@ -467,6 +476,13 @@ export class StoreDetailComponent {
   protected readonly isDomainMode = signal<boolean>(isStoreDomainActive());
   private readonly hostSlug = detectStoreSlugFromHost();
   protected readonly activeCategory = signal<string | null>(null);
+  /**
+   * Set from a shared link, e.g. ?category=Pottery&sub=Plates. These use the
+   * seller's own wording (what the link preview and the Share window show),
+   * which is finer than the marketplace-wide category tabs above.
+   */
+  protected readonly activeSellerCategory = signal<string | null>(null);
+  protected readonly activeSub = signal<string | null>(null);
   protected readonly activeSection = signal<'products' | 'about' | 'reviews'>('products');
   protected readonly storeCollections = signal<StoreCollectionDTO[]>([]);
   protected readonly activeCollection = signal<StoreCollectionDTO | null>(null);
@@ -494,6 +510,14 @@ export class StoreDetailComponent {
     const category = this.activeCategory();
     if (category) {
       scoped = scoped.filter((product) => product.categoryName === category);
+    }
+    const shared = this.activeSellerCategory();
+    if (shared) {
+      scoped = scoped.filter((product) => product.sellerCategory?.toLowerCase() === shared.toLowerCase());
+    }
+    const sub = this.activeSub();
+    if (sub) {
+      scoped = scoped.filter((product) => product.subcategory === sub);
     }
     return sortProducts(scoped, this.sort());
   });
@@ -539,6 +563,36 @@ export class StoreDetailComponent {
   private readonly ownedStoreIds = signal<string[]>([]);
 
   constructor() {
+    // A shared link such as /stores/:id?category=Pottery&sub=Cups%20%26%20Mugs
+    // opens straight onto that part of the store. Matching is by name, ignoring
+    // case, and only against what this store really lists: a value that does
+    // not match is simply ignored rather than trusted. The product list may
+    // arrive in two steps (partial, then complete), so keep waiting until the
+    // category shows up.
+    const wanted = {
+      category: this.route.snapshot.queryParamMap.get('category'),
+      sub: this.route.snapshot.queryParamMap.get('sub'),
+      applied: false,
+    };
+    effect(() => {
+      if (!wanted.category || wanted.applied) return;
+      const match = this.products().find(
+        (product) => product.sellerCategory?.toLowerCase() === wanted.category!.toLowerCase(),
+      )?.sellerCategory;
+      if (!match) return;
+      wanted.applied = true;
+      this.activeSellerCategory.set(match);
+      const sub = wanted.sub
+        ? this.products().find(
+            (product) =>
+              product.sellerCategory === match &&
+              product.subcategory?.toLowerCase() === wanted.sub!.toLowerCase(),
+          )?.subcategory
+        : null;
+      if (sub) this.activeSub.set(sub);
+      setTimeout(() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    });
+
     effect(() => {
       const s = this.store();
       if (s?.name) {
@@ -602,6 +656,16 @@ export class StoreDetailComponent {
 
   protected clearCollectionFilter(): void {
     this.activeCollection.set(null);
+  }
+
+  protected selectCategory(category: string | null): void {
+    this.activeCategory.set(category);
+    this.clearSharedFilter();
+  }
+
+  protected clearSharedFilter(): void {
+    this.activeSellerCategory.set(null);
+    this.activeSub.set(null);
   }
 
   protected countCategory(category: string): number { return this.products().filter((product) => product.categoryName === category).length; }

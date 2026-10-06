@@ -7,11 +7,51 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
+import { API_URL } from '../../../../core/api/api.config';
 import { PROMOTIONS, Promotion } from '../../../../core/data/promotions.data';
 import { IconComponent } from '../../../shared/ui/icon/icon.component';
 
 const AUTOPLAY_MS = 5000;
+
+/** A slide an admin published to the hero carousel (GET /api/promotions/active?placement=HERO). */
+interface HeroSlideDto {
+  id: string;
+  badge: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  targetUrl: string;
+  buttonText: string;
+  storeName?: string;
+}
+
+/** Split "/products?category=Textiles" into what routerLink + queryParams expect. */
+const splitLink = (url: string): { route: string; params?: Record<string, string> } => {
+  const [route, query] = url.split('?');
+  if (!query) return { route };
+  return { route, params: Object.fromEntries(new URLSearchParams(query)) };
+};
+
+const toPromotion = (slide: HeroSlideDto): Promotion => {
+  const link = splitLink(slide.targetUrl || '/');
+  const byKhmerCraft = !slide.storeName || slide.storeName === 'KhmerCraft';
+  return {
+    id: `live-${slide.id}`,
+    eyebrow: slide.badge,
+    headline: slide.title,
+    subtitle: slide.subtitle,
+    ctaLabel: slide.buttonText || 'Explore now',
+    ctaRoute: link.route,
+    ctaParams: link.params,
+    theme: 'brand',
+    visual: slide.title,
+    image: slide.imageUrl,
+    sponsoredLabel: byKhmerCraft ? 'Curated by KhmerCraft' : `Sponsored · ${slide.storeName}`,
+    offer: slide.subtitle || slide.title,
+  };
+};
 
 /**
  * Promotion carousel for the top of the homepage.
@@ -37,14 +77,14 @@ const AUTOPLAY_MS = 5000;
       (focusout)="paused.set(false)"
     >
       <div #track class="track" (scroll)="onScroll()">
-        @for (promo of promotions; track promo.id; let i = $index) {
+        @for (promo of promotions(); track promo.id; let i = $index) {
           <article
             class="slide"
             [class]="'slide theme-' + promo.theme"
             [class.active]="i === index()"
             role="group"
             aria-roledescription="slide"
-            [attr.aria-label]="i + 1 + ' of ' + promotions.length"
+            [attr.aria-label]="i + 1 + ' of ' + promotions().length"
           >
             @if (promo.imageOnly && promo.image) {
               <!-- Banner artwork with its own baked-in copy: show it whole and
@@ -129,7 +169,7 @@ const AUTOPLAY_MS = 5000;
       </div>
 
       <div class="dots" role="tablist" aria-label="Choose slide">
-        @for (promo of promotions; track promo.id; let i = $index) {
+        @for (promo of promotions(); track promo.id; let i = $index) {
           <button
             type="button"
             role="tab"
@@ -656,7 +696,13 @@ const AUTOPLAY_MS = 5000;
   ],
 })
 export class HeroSliderComponent implements OnInit {
-  protected readonly promotions: Promotion[] = PROMOTIONS;
+  /**
+   * Admin-published hero slides lead, in the order set on the admin Homepage
+   * Slides page; the built-in campaign banners follow. If the API is down the
+   * carousel simply shows the built-ins.
+   */
+  protected readonly promotions = signal<Promotion[]>(PROMOTIONS);
+  private readonly http = inject(HttpClient);
 
   private readonly track = viewChild.required<ElementRef<HTMLElement>>('track');
   private readonly destroyRef = inject(DestroyRef);
@@ -665,6 +711,15 @@ export class HeroSliderComponent implements OnInit {
   protected readonly paused = signal(false);
 
   ngOnInit(): void {
+    this.http.get<HeroSlideDto[]>(`${API_URL}/promotions/active`, { params: { placement: 'HERO' } }).subscribe({
+      next: (slides) => {
+        if (slides?.length) this.promotions.set([...slides.map(toPromotion), ...PROMOTIONS]);
+      },
+      error: () => {
+        /* keep the built-in banners */
+      },
+    });
+
     // Honour the OS "reduce motion" setting — an auto-advancing carousel is
     // exactly the kind of movement that setting exists to stop.
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -680,7 +735,7 @@ export class HeroSliderComponent implements OnInit {
       // Advance from where the track actually is, not from a counter. If a
       // scroll was interrupted (or never ran, as happens in a background tab),
       // a counter would drift and the dots would point at the wrong slide.
-      this.goTo((this.currentSlide() + 1) % this.promotions.length);
+      this.goTo((this.currentSlide() + 1) % this.promotions().length);
     }, AUTOPLAY_MS);
 
     this.destroyRef.onDestroy(() => clearInterval(timer));

@@ -41,11 +41,39 @@ const PromotionCampaignSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+export const SLIDE_PLACEMENTS = ['HERO', 'BRAND_ADS'] as const;
+export type SlidePlacement = (typeof SLIDE_PLACEMENTS)[number];
+
+export const SLIDE_STATUSES = [
+  'DRAFT',
+  'PENDING_APPROVAL',
+  'APPROVED',
+  'PAUSED',
+  'REJECTED',
+  'EXPIRED',
+] as const;
+export type SlideStatus = (typeof SLIDE_STATUSES)[number];
+
+/**
+ * One homepage slide.
+ *
+ * Two kinds share this collection: seller-requested slides (owned by a store,
+ * reviewed by an admin) and KhmerCraft "house" slides an admin creates
+ * directly. A house slide has no store and no seller, which is why those
+ * fields are optional — `isHouse` is the switch, not their absence.
+ *
+ * `placement` picks the carousel: HERO is the full-width banner at the top of
+ * the homepage, BRAND_ADS the featured-brands rail further down. Within a
+ * placement, `sortOrder` ascending decides the order shoppers see.
+ */
 export interface IPromotionSlide extends Document {
-  storeId: mongoose.Types.ObjectId;
+  isHouse: boolean;
+  placement: SlidePlacement;
+  sortOrder: number;
+  storeId?: mongoose.Types.ObjectId;
   storeName: string;
-  storeSlug: string;
-  sellerUserId: mongoose.Types.ObjectId;
+  storeSlug?: string;
+  sellerUserId?: mongoose.Types.ObjectId;
   campaignId?: mongoose.Types.ObjectId;
   campaignTitle?: string;
   theme: string;
@@ -66,18 +94,22 @@ export interface IPromotionSlide extends Document {
   totalPrice: number;
   isPaid: boolean;
   paidAt?: Date;
-  status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+  status: SlideStatus;
   rejectionReason?: string;
+  reviewedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const PromotionSlideSchema: Schema = new Schema(
   {
-    storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
+    isHouse: { type: Boolean, default: false },
+    placement: { type: String, enum: SLIDE_PLACEMENTS, default: 'BRAND_ADS', index: true },
+    sortOrder: { type: Number, default: 0 },
+    storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: function (this: IPromotionSlide) { return !this.isHouse; } },
     storeName: { type: String, required: true },
-    storeSlug: { type: String, required: true },
-    sellerUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    storeSlug: { type: String },
+    sellerUserId: { type: Schema.Types.ObjectId, ref: 'User', required: function (this: IPromotionSlide) { return !this.isHouse; } },
     campaignId: { type: Schema.Types.ObjectId, ref: 'PromotionCampaign' },
     campaignTitle: { type: String },
     theme: { type: String, default: 'pchum-ben' },
@@ -100,13 +132,17 @@ const PromotionSlideSchema: Schema = new Schema(
     paidAt: { type: Date },
     status: {
       type: String,
-      enum: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'EXPIRED'],
+      enum: SLIDE_STATUSES,
       default: 'PENDING_APPROVAL',
     },
     rejectionReason: { type: String },
+    reviewedAt: { type: Date },
   },
   { timestamps: true }
 );
+
+// The homepage query: live slides for one carousel, in display order.
+PromotionSlideSchema.index({ placement: 1, status: 1, sortOrder: 1 });
 
 export const PromotionCampaign = mongoose.model<IPromotionCampaign>(
   'PromotionCampaign',

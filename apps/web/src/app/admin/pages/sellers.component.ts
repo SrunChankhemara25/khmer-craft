@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AdminService } from '../admin-data.service';
-import { AdminApiService, LiveProduct, SellerApplication } from '../admin-api.service';
+import { AdminApiService, AdminOverview, LiveProduct, SellerApplication } from '../admin-api.service';
 import { ApiStore } from '../../core/api/api.models';
 import { apiErrorMessage } from '../../core/auth/auth.service';
 import { BadgeComponent } from '../ui/badge.component';
@@ -12,7 +12,8 @@ import { StateComponent } from '../ui/state.component';
 import { StatComponent } from '../ui/stat.component';
 import { dstr, initials, money } from '../ui/format';
 
-type AccountStatus = 'active' | 'suspended' | 'deactivated';
+type AccountStatus = 'active' | 'suspended' | 'unknown';
+interface Owner { id: string; name: string; email: string; status: 'ACTIVE' | 'SUSPENDED'; role: string }
 interface ConfirmRequest { title: string; msg: string; label: string; requireReason: boolean; fn: (reason: string) => void }
 type StoreExt = ApiStore & {
   isVerified?: boolean;
@@ -21,16 +22,14 @@ type StoreExt = ApiStore & {
   description?: string | null;
 };
 
-const STATUS_KEY = 'khmercraft.admin.store-status';
-
 /**
  * Sellers = seller accounts and their stores (one and the same here).
  * Signup is open — no approval gate; the request queue only grants the
  * verified badge (real API writes).
  *
- * Account status (active / suspended / deactivated) is an audited admin
- * decision stored in this workspace until the backend gains
- * PATCH /api/admin/users/:id/status — see the note under the table.
+ * Account status is the owner's real User.status, changed through
+ * PATCH /api/admin/users/:id/status — a suspended seller is signed out and
+ * cannot sign back in until reactivated.
  */
 @Component({
   standalone: true,
@@ -57,10 +56,10 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
       </div>
     </div>
 
-    @if (acct(s) !== 'active') {
+    @if (acct(s) === 'suspended') {
       <div class="notice-row" role="status">
         <kc-icon name="alert" [size]="14"></kc-icon>
-        This account is {{acct(s)}} in the admin workspace. Public enforcement (hiding the storefront) activates when the admin user-status API is connected.
+        This seller's account is suspended — they are signed out and cannot sign in or manage this store until reactivated.
       </div>
     }
 
@@ -74,6 +73,7 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
       <div class="card card-pad">
         <h3 class="card-title" style="margin-bottom:10px">Account & store details</h3>
         <div class="kv"><span class="k">Store slug</span>{{s.slug}}</div>
+        <div class="kv"><span class="k">Owner</span>{{owners()[s.id]?.name || '—'}} <span class="cell-sub">{{owners()[s.id]?.email}}</span></div>
         <div class="kv"><span class="k">Account status</span><kc-badge [value]="acct(s)"></kc-badge></div>
         <div class="kv">
           <span class="k">Subscription plan</span>
@@ -133,12 +133,14 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
       <p class="page-sub">Seller accounts and their stores — signup is open; verification is reviewed here and account status is managed here</p></div>
   </div>
 
-  <div class="grid g4 mb">
-    <kc-stat label="Total stores" icon="store" [value]="totalCount()"></kc-stat>
-    <kc-stat label="Paid subscribers" icon="check" [value]="paidCount()" hint="Growth & Pro plans"></kc-stat>
-    <kc-stat label="Free sellers" icon="user" [value]="freeCount()" hint="Starter plan"></kc-stat>
-    <kc-stat label="Verified stores" icon="award" [value]="verifiedCount()"></kc-stat>
-  </div>
+  @if (ov(); as o) {
+    <div class="grid stats mb">
+      <kc-stat label="Seller accounts" icon="users" [value]="o.sellers.accounts" [hint]="o.sellers.stores + ' stores · +' + o.sellers.newThisMonth + ' this month'"></kc-stat>
+      <kc-stat label="Paying for a plan" icon="check" [value]="o.subscriptions.paying" hint="Growth & Pro plans"></kc-stat>
+      <kc-stat label="Not paying" icon="ban" [value]="o.subscriptions.free + o.subscriptions.lapsed" [hint]="o.subscriptions.free + ' free · ' + o.subscriptions.lapsed + ' lapsed'"></kc-stat>
+      <kc-stat label="Verified stores" icon="shield" [value]="o.sellers.verified" [hint]="o.requests.verification + ' waiting for review'"></kc-stat>
+    </div>
+  }
 
   <div class="toolbar">
     <div class="tabs">
@@ -154,7 +156,7 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
       </select>
       <select class="input" [value]="acctFilter()" (change)="acctFilter.set($any($event.target).value)">
         <option value="all">All account statuses</option><option value="active">Active</option>
-        <option value="suspended">Suspended</option><option value="deactivated">Deactivated</option>
+        <option value="suspended">Suspended</option>
       </select>
       <span class="grow"></span>
       <button class="btn btn-sm" (click)="loadStores()">Refresh</button>
@@ -165,6 +167,10 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
   </div>
 
   @if (tab() === 'stores') {
+    @if (actionError()) {
+      <div class="notice-row" role="alert"><kc-icon name="alert" [size]="14"></kc-icon> {{actionError()}}
+        <button class="link" (click)="actionError.set('')">Dismiss</button></div>
+    }
     <div class="card">
       @if (storesLoading()) { <kc-state mode="loading" message="Loading seller accounts…"></kc-state> }
       @else if (storesError()) { <kc-state mode="error" [message]="storesError()" (retry)="loadStores()"></kc-state> }
@@ -206,7 +212,7 @@ const STATUS_KEY = 'khmercraft.admin.store-status';
           <span class="muted">Page {{page()}} of {{totalPages()}}</span>
           <button class="btn btn-sm" [disabled]="page() >= totalPages()" (click)="go(page() + 1)">Next</button>
         </div>
-        <p class="sim-note">Account status decisions are recorded in the audit log with actor, reason and timestamp, and persist in this admin workspace. Storefront enforcement (hiding suspended stores from buyers) switches on automatically once PATCH /api/admin/users/:id/status exists in the backend.</p>
+        <p class="sim-note live-note">Filters apply to this page of results. For billing filters across every seller, use <a routerLink="/admin/subscriptions">Subscriptions</a>.</p>
       }
     </div>
   }
@@ -299,12 +305,9 @@ export class SellersComponent {
   totalPages = signal(1);
   acctFilter = signal<'all' | AccountStatus>('all');
   planFilter = signal<'all' | 'paid' | 'free'>('all');
-  override = signal<Record<string, AccountStatus>>({});
-
-  totalCount = computed(() => this.stores().length);
-  paidCount = computed(() => this.stores().filter((s) => s.isPaidPlan).length);
-  freeCount = computed(() => this.stores().filter((s) => !s.isPaidPlan).length);
-  verifiedCount = computed(() => this.stores().filter((s) => this.ext(s).isVerified).length);
+  /** storeId → owner account, looked up from /api/admin/sellers for the loaded page. */
+  owners = signal<Record<string, Owner>>({});
+  ov = signal<AdminOverview | null>(null);
 
   profile = signal<StoreExt | null>(null);
   profileProducts = signal<LiveProduct[]>([]);
@@ -321,16 +324,36 @@ export class SellersComponent {
 
   dstr = dstr; money = money; initials = initials;
   ext = (s: ApiStore): StoreExt => s as StoreExt;
-  acct = (s: ApiStore): AccountStatus => this.override()[s.id] ?? 'active';
+  acct = (s: ApiStore): AccountStatus => {
+    const owner = this.owners()[s.id];
+    return !owner ? 'unknown' : owner.status === 'SUSPENDED' ? 'suspended' : 'active';
+  };
   label = (status: string) => ({ DRAFT: 'Draft', SUBMITTED: 'Submitted', UNDER_REVIEW: 'Under review', APPROVED: 'Verified', REJECTED: 'Rejected', SUSPENDED: 'Suspended' } as Record<string, string>)[status] ?? status;
 
+  private readonly route = inject(ActivatedRoute);
+
   constructor() {
-    try {
-      const raw = localStorage.getItem(STATUS_KEY);
-      if (raw) this.override.set(JSON.parse(raw));
-    } catch { localStorage.removeItem(STATUS_KEY); }
+    if (this.route.snapshot.queryParamMap.get('tab') === 'requests') this.tab.set('requests');
     this.loadStores();
     this.loadApps();
+    this.loadOverview();
+  }
+
+  loadOverview() {
+    this.api.overview().subscribe({ next: (o) => this.ov.set(o), error: () => this.ov.set(null) });
+  }
+
+  private loadOwners(storeIds: string[]) {
+    if (!storeIds.length) { this.owners.set({}); return; }
+    this.api.sellerAccounts({ storeIds, limit: storeIds.length }).subscribe({
+      next: (res) => {
+        const map: Record<string, Owner> = {};
+        for (const row of res.sellers) if (row.owner) map[row.storeId] = row.owner;
+        this.owners.set(map);
+      },
+      // Not an admin session: statuses stay 'unknown' rather than guessed.
+      error: () => this.owners.set({}),
+    });
   }
 
   storeRows = computed(() => {
@@ -355,6 +378,7 @@ export class SellersComponent {
     this.api.stores(this.page(), 10).subscribe({
       next: (res) => {
         this.stores.set(res.stores as StoreExt[]);
+        this.loadOwners(res.stores.map((s) => s.id));
         this.totalPages.set(Math.max(1, res.pagination.totalPages));
         this.storesLoading.set(false);
       },
@@ -375,43 +399,51 @@ export class SellersComponent {
   // ---------------------------------------------------- account status control
   menuForStore(s: StoreExt): MenuItem[] {
     const m: MenuItem[] = [{ label: 'Open storefront', icon: 'store', action: 'storefront' }];
-    const status = this.acct(s);
-    if (status === 'active') {
-      m.push({ label: 'Suspend account', icon: 'ban', danger: true, action: 'suspended' });
-      m.push({ label: 'Deactivate account', icon: 'x', danger: true, action: 'deactivated' });
-    } else {
-      m.push({ label: 'Reactivate account', icon: 'refresh', action: 'active' });
+    m.push({ label: 'Billing & payments', icon: 'card', action: 'billing' });
+    const owner = this.owners()[s.id];
+    if (owner && owner.role !== 'ADMIN') {
+      m.push(owner.status === 'ACTIVE'
+        ? { label: 'Suspend account', icon: 'ban', danger: true, action: 'suspended' }
+        : { label: 'Reactivate account', icon: 'refresh', action: 'active' });
     }
     return m;
   }
 
   storeAct(action: string, s: StoreExt) {
     if (action === 'storefront') { void this.router.navigate(['/stores', s.id]); return; }
+    if (action === 'billing') { void this.router.navigate(['/admin/subscriptions'], { queryParams: { q: s.slug } }); return; }
     if (action === 'active') {
       this.confirmReq.set({
         title: `Reactivate ${s.name}?`, label: 'Reactivate', requireReason: false,
-        msg: 'The account returns to good standing in the admin workspace.',
+        msg: 'The seller can sign in and manage their store again.',
         fn: () => this.applyStatus(s, 'active'),
       });
       return;
     }
-    const verb = action === 'suspended' ? 'Suspend' : 'Deactivate';
     this.confirmReq.set({
-      title: `${verb} ${s.name}?`, label: verb, requireReason: true,
-      msg: `${verb === 'Suspend' ? 'Suspending blocks the account pending investigation' : 'Deactivating closes the account'} in the admin workspace. A written reason is required and stored in the audit log.`,
-      fn: (reason) => this.applyStatus(s, action as AccountStatus, reason),
+      title: `Suspend ${s.name}?`, label: 'Suspend', requireReason: true,
+      msg: 'The owner is signed out everywhere and cannot sign in or manage this store until reactivated. A written reason is required and stored in the activity log.',
+      fn: (reason) => this.applyStatus(s, 'suspended', reason),
     });
   }
 
-  private applyStatus(s: StoreExt, status: AccountStatus, reason?: string) {
-    this.override.update(o => ({ ...o, [s.id]: status }));
-    try { localStorage.setItem(STATUS_KEY, JSON.stringify(this.override())); } catch {}
-    this.d.log(
-      `${status === 'active' ? 'Reactivated' : status === 'suspended' ? 'Suspended' : 'Deactivated'} seller account ${s.name}`,
-      status === 'active' ? 'approved' : 'suspended',
-      { target: s.id, reason },
-    );
-    this.d.toast(`Account ${status}`);
+  private applyStatus(s: StoreExt, status: 'active' | 'suspended', reason?: string) {
+    const owner = this.owners()[s.id];
+    if (!owner) return;
+    this.actionError.set('');
+    this.api.setUserStatus(owner.id, status === 'active' ? 'ACTIVE' : 'SUSPENDED', reason || undefined).subscribe({
+      next: (res) => {
+        this.owners.update((o) => ({ ...o, [s.id]: { ...owner, status: res.status } }));
+        this.d.log(
+          `${status === 'active' ? 'Reactivated' : 'Suspended'} seller account ${owner.email} (${s.name})`,
+          status === 'active' ? 'approved' : 'suspended',
+          { target: owner.id, reason },
+        );
+        this.d.toast(status === 'active' ? 'Account reactivated' : 'Account suspended');
+        this.loadOverview();
+      },
+      error: (e) => this.actionError.set(apiErrorMessage(e, 'The server refused that change.')),
+    });
   }
 
   // -------------------------------------------------- verification requests

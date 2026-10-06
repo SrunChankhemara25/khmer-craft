@@ -1,0 +1,197 @@
+<app-seller-portal-header />
+
+<main>
+  <section class="section tight tint-glow intro">
+    <div class="wrap narrow center">
+      <p class="eyebrow"><kc-icon name="eye" [size]="13" /> Tour the workspace</p>
+      <h1 class="display-1">See exactly what you get <em>before you sign up.</em></h1>
+      <p class="lead">
+        Click through the screens you will use every day. No account needed, nothing
+        to install — this is the same seller workspace you get on the free plan.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================================== INTERACTIVE DEMO -->
+  <section class="section demo-section">
+    <div class="wrap">
+      <div class="tabs" role="tablist" aria-label="Seller workspace screens">
+        @for (item of screens; track item.id) {
+          <button type="button" role="tab" [attr.aria-selected]="screen() === item.id" [class.active]="screen() === item.id" (click)="screen.set(item.id)">
+            <kc-icon [name]="item.icon" [size]="16" /><span>{{ item.label }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="demo-layout">
+        <div class="demo-frame" role="tabpanel">
+          <div class="frame-bar"><i></i><i></i><i></i><span>seller.khmercraft · {{ current().label }}</span></div>
+          <div class="frame-body">
+            @switch (screen()) {
+              @case ('storefront') {
+                <div class="store-demo enter">
+                  <div class="store-cover"><img src="/assets/stores/khmer-style-hero.png" alt="" /></div>
+                  <div class="store-profile">
+                    <div class="store-mark">KS</div>
+                    <div><strong>Kampot Studio</strong><span>Fashion &amp; Accessories · Kampot</span></div>
+                    <button tabindex="-1" aria-hidden="true">Follow</button>
+                  </div>
+                  <p class="store-bio">Hand-woven silk and cotton from our family loom in Kampot. Every piece is a little different.</p>
+                  <div class="mini-products">
+                    <div><img src="/categories/fashion.png" alt="" /><small>Silk krama</small><b>$18.00</b></div>
+                    <div><img src="/categories/home-living.png" alt="" /><small>Clay tea set</small><b>$28.00</b></div>
+                    <div><img src="/categories/arts-culture.png" alt="" /><small>Painted bowl</small><b>$16.00</b></div>
+                  </div>
+                </div>
+              }
+              @case ('products') {
+                <div class="table-demo enter">
+                  <div class="demo-head"><div><small>Products</small><strong>Your catalogue</strong></div><span class="fake-btn">+ Add product</span></div>
+                  <div class="table-row header"><span>Product</span><span>Price</span><span>Stock</span><span>Status</span></div>
+                  <div class="table-row"><span><img src="/categories/fashion.png" alt="" /> Hand-woven krama</span><span>$18.00</span><span>18</span><b>Active</b></div>
+                  <div class="table-row"><span><img src="/categories/home-living.png" alt="" /> Palm-leaf basket</span><span>$12.00</span><span>4</span><b class="warning">Low stock</b></div>
+                  <div class="table-row"><span><img src="/categories/beauty-wellness.png" alt="" /> Coconut body oil</span><span>$9.50</span><span>0</span><b class="danger">Sold out</b></div>
+                  <div class="table-row"><span><img src="/categories/arts-culture.png" alt="" /> Ceramic cup</span><span>$7.00</span><span>12</span><b class="muted">Draft</b></div>
+                </div>
+              }
+              @case ('orders') {
+                <div class="table-demo enter">
+                  <div class="demo-head"><div><small>Incoming orders</small><strong>What needs you today</strong></div><span class="status-dot">2 new</span></div>
+                  <div class="order-line"><div><i>01</i><span><strong>Order KC-1042</strong><small>2 products · Phnom Penh · Paid</small></span></div><span class="fake-btn small">Confirm</span></div>
+                  <div class="order-line"><div><i>02</i><span><strong>Order KC-1041</strong><small>1 product · Siem Reap · Paid</small></span></div><span class="fake-btn small">Confirm</span></div>
+                  <div class="order-line"><div><i>03</i><span><strong>Order KC-1038</strong><small>1 product · Battambang</small></span></div><b class="pill">Ready</b></div>
+                  <div class="order-line"><div><i>04</i><span><strong>Order KC-1029</strong><small>3 products · Kampong Cham</small></span></div><b class="pill sage">Shipped</b></div>
+                </div>
+              }
+              @case ('reviews') {
+                <div class="table-demo enter">
+                  <div class="demo-head"><div><small>Reviews</small><strong>What buyers are saying</strong></div></div>
+                  <div class="review">
+                    <div class="review-top"><span class="avatar">S</span><span><strong>Sample buyer</strong><small>Silk krama</small></span><span class="stars">★★★★★</span></div>
+                    <p>“Beautiful colours and very soft. Packed carefully with a thank-you note.”</p>
+                    <div class="reply"><strong>Your reply</strong><span>Thank you so much! This pattern takes my mother two days on the loom.</span></div>
+                  </div>
+                  <div class="review">
+                    <div class="review-top"><span class="avatar">D</span><span><strong>Sample buyer</strong><small>Clay tea set</small></span><span class="stars">★★★★☆</span></div>
+                    <p>“Lovely set. One cup was slightly different in colour, but that’s handmade.”</p>
+                    <div class="reply empty"><kc-icon name="edit" [size]="12" /> Write a reply…</div>
+                  </div>
+                </div>
+              }
+              @case ('billing') {
+                <div class="table-demo enter">
+                  <div class="demo-head"><div><small>Plan &amp; billing</small><strong>Kampot Studio</strong></div><b class="pill sage">Starter · Free</b></div>
+                  <div class="bill-grid">
+                    <div><small>Current plan</small><strong>Starter</strong><span>$0 / month, no expiry</span></div>
+                    <div><small>Products</small><strong>No cap</strong><span>On every plan</span></div>
+                  </div>
+                  <div class="upgrade">
+                    <span><strong>Upgrade to Growth — $12 / month</strong><small>Pay with ABA KHQR. Activates once ABA confirms.</small></span>
+                    <span class="fake-btn small">Show KHQR</span>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+        <aside class="demo-notes">
+          <span class="icon-badge"><kc-icon [name]="current().icon" [size]="22" /></span>
+          <h2 class="display-3">{{ current().title }}</h2>
+          <p>{{ current().detail }}</p>
+          <ul>
+            @for (point of current().points; track point) {
+              <li><kc-icon name="check" [size]="14" /> {{ point }}</li>
+            }
+          </ul>
+        </aside>
+      </div>
+      <p class="fine center demo-note">Sample data for illustration — your workspace starts empty and fills with your own store.</p>
+    </div>
+  </section>
+
+  <!-- ====================================================== ORDER FLOW -->
+  <section class="section tint-cream">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">The life of an order</p>
+        <h2 class="display-2">From “add to cart” to <em>“delivered.”</em></h2>
+        <p class="lead">Every order follows the same clear path, and both you and the buyer can see where it is.</p>
+      </div>
+      <ol class="flow">
+        @for (stage of orderFlow; track stage.title; let i = $index) {
+          <li [kcReveal]="i">
+            <span class="flow-icon"><kc-icon [name]="stage.icon" [size]="18" /></span>
+            <span class="flow-who" [class.you]="stage.who === 'You'">{{ stage.who }}</span>
+            <h3>{{ stage.title }}</h3>
+            <p>{{ stage.body }}</p>
+          </li>
+        }
+      </ol>
+    </div>
+  </section>
+
+  <!-- ========================================================= MOBILE -->
+  <section class="section">
+    <div class="wrap mobile-grid">
+      <div class="mobile-phone" [kcReveal]="0" aria-hidden="true">
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="phone-screen">
+            <p class="phone-title">Today</p>
+            <div class="phone-stat"><span>New orders</span><strong>2</strong></div>
+            <div class="phone-stat"><span>Low stock</span><strong>1</strong></div>
+            <div class="phone-order"><i>KC</i><span><strong>KC-1042</strong><small>Phnom Penh · Paid</small></span></div>
+            <div class="phone-order"><i>KC</i><span><strong>KC-1041</strong><small>Siem Reap · Paid</small></span></div>
+            <span class="phone-btn">+ Add product</span>
+          </div>
+        </div>
+      </div>
+      <div [kcReveal]="1">
+        <p class="eyebrow">Works on your phone</p>
+        <h2 class="display-2">Run your store from <em>anywhere.</em></h2>
+        <p class="lead">The workspace is built for the phone already in your pocket. Check orders at the market, add a product from the workshop, reply to a review on the bus home.</p>
+        <ul class="mobile-points">
+          @for (point of mobilePoints; track point.title) {
+            <li><span class="icon-badge sage"><kc-icon [name]="point.icon" [size]="18" /></span><span><strong>{{ point.title }}</strong><small>{{ point.body }}</small></span></li>
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== ALL TOOLS -->
+  <section class="section tint-sage">
+    <div class="wrap">
+      <div class="section-head" [kcReveal]="0">
+        <p class="eyebrow">Beyond these screens</p>
+        <h2 class="display-2">The <em>whole</em> toolkit.</h2>
+        <p class="lead">Everything below is included on every plan, including the free one.</p>
+      </div>
+      <div class="grid-4">
+        @for (tool of tools; track tool.title; let i = $index) {
+          <article class="card hover" [kcReveal]="i">
+            <span class="icon-badge"><kc-icon [name]="tool.icon" [size]="20" /></span>
+            <h3>{{ tool.title }}</h3>
+            <p>{{ tool.description }}</p>
+          </article>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section tight">
+    <div class="wrap">
+      <div class="cta-band" [kcReveal]="0">
+        <h2 class="display-2">Like what you see? <em>It’s yours, free.</em></h2>
+        <p class="lead">Open a store in about five minutes, or check what the paid plans add first.</p>
+        <div class="cta-row center">
+          <a class="btn btn-primary" routerLink="/seller/onboarding">Start selling <span class="arrow">→</span></a>
+          <a class="btn btn-ghost" routerLink="/pricing">Compare plans</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<app-seller-footer />

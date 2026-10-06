@@ -76,7 +76,11 @@ import { Product } from '../core/catalog/catalog.models';
             <span class="badge badge-soft">{{ p.categoryName }}</span>
             <h1>{{ p.name }}</h1>
 
-            <a class="store-link" [routerLink]="['/stores', p.storeId]">
+            <a
+              class="store-link"
+              [class.static]="!catalog.hasPublicStore(p.storeId)"
+              [routerLink]="catalog.hasPublicStore(p.storeId) ? ['/stores', p.storeId] : null"
+            >
               @if (store()?.logoUrl) {
                 <img class="store-logo" [src]="store()!.logoUrl" [alt]="p.sellerName + ' logo'" />
               } @else {
@@ -319,6 +323,11 @@ import { Product } from '../core/catalog/catalog.models';
       }
       .store-link:hover {
         color: var(--color-accent);
+      }
+      /* The store has no public page (onboarding unfinished), so don't offer a dead link. */
+      .store-link.static {
+        cursor: default;
+        pointer-events: none;
       }
       .store-logo {
         width: 24px;

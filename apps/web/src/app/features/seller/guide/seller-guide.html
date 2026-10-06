@@ -1,0 +1,90 @@
+<app-seller-portal-header />
+
+<main>
+  <section class="section tight tint-glow intro">
+    <div class="wrap narrow center">
+      <p class="eyebrow"><kc-icon name="lightbulb" [size]="13" /> The KhmerCraft seller guide</p>
+      <h1 class="display-1">The craft of <em>selling online,</em> in six short chapters.</h1>
+      <p class="lead">
+        Practical advice for small Cambodian businesses — from taking a good photo
+        with your phone to pricing your work fairly and keeping buyers coming back.
+        Read it in one sitting, or one chapter at a time.
+      </p>
+      <p class="meta">
+        <span class="chip"><kc-icon name="file" [size]="12" /> {{ chapters.length }} chapters</span>
+        <span class="chip"><kc-icon name="clock" [size]="12" /> About {{ totalMinutes }} minutes</span>
+        <span class="chip sage"><kc-icon name="check" [size]="12" /> Free, no sign-up</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="section guide-section">
+    <div class="wrap guide-layout">
+      <aside class="toc" aria-label="Guide chapters">
+        <p class="toc-title">Chapters</p>
+        <nav>
+          @for (chapter of chapters; track chapter.id) {
+            <a routerLink="/guide" [fragment]="chapter.id" [class.active]="activeChapter() === chapter.id">
+              <span class="toc-num">{{ chapter.number }}</span>
+              <span>{{ chapter.title }}</span>
+            </a>
+          }
+        </nav>
+        <div class="toc-card">
+          <strong>Ready to try it?</strong>
+          <span>Everything here works on the free Starter plan.</span>
+          <a class="btn btn-primary btn-small btn-wide" routerLink="/seller/onboarding">Open my store</a>
+        </div>
+      </aside>
+
+      <div class="chapters">
+        @for (chapter of chapters; track chapter.id; let last = $last) {
+          <article class="chapter" [id]="chapter.id" [attr.data-chapter]="chapter.id">
+            <header class="chapter-head">
+              <span class="icon-badge gold"><kc-icon [name]="chapter.icon" [size]="22" /></span>
+              <div>
+                <p class="chapter-meta">Chapter {{ chapter.number }} · {{ chapter.readTime }}</p>
+                <h2 class="display-2">{{ chapter.title }}</h2>
+              </div>
+            </header>
+            <p class="chapter-intro">{{ chapter.intro }}</p>
+
+            <ol class="tips">
+              @for (tip of chapter.tips; track tip.title; let i = $index) {
+                <li>
+                  <span class="tip-num">{{ i + 1 }}</span>
+                  <div><h3>{{ tip.title }}</h3><p>{{ tip.body }}</p></div>
+                </li>
+              }
+            </ol>
+
+            <div class="chapter-check">
+              <p><kc-icon name="clipboard" [size]="15" /> Before you move on</p>
+              <ul>
+                @for (item of chapter.checklist; track item) {
+                  <li><kc-icon name="check" [size]="13" /> {{ item }}</li>
+                }
+              </ul>
+            </div>
+
+            @if (!last) {
+              <hr class="chapter-divider" />
+            }
+          </article>
+        }
+
+        <div class="cta-band finish">
+          <span class="icon-badge sage big"><kc-icon name="sparkles" [size]="26" /></span>
+          <h2 class="display-2">You’ve read the whole guide. <em>Now make it real.</em></h2>
+          <p class="lead">Open your store, add one product using chapter one and two, and see how it feels. You can change everything later.</p>
+          <div class="cta-row center">
+            <a class="btn btn-primary" routerLink="/seller/onboarding">Start selling free <span class="arrow">→</span></a>
+            <a class="btn btn-ghost" routerLink="/faq">Read the FAQ</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<app-seller-footer />

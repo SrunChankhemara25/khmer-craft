@@ -24,6 +24,8 @@ export interface ApiProduct {
   storeName: string | null;
   location: string;
   image: string | null;
+  /** Set by list endpoints, which omit the photo itself: false = no photo to fetch. */
+  hasImage?: boolean;
   images: string[];
   variants?: { label: string; image: string }[];
   rating: number;

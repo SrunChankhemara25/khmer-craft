@@ -1,82 +1,141 @@
-import { Component, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { KcIcon } from '../../../components/shared/ui/kc-icon/kc-icon';
+import { AuthService } from '../../../core/auth/auth.service';
+import { marketplaceUrl } from '../../../core/portal/portal';
 
 /**
- * Every nav item here is a real route, not a same-page anchor — clicking
- * "Pricing" takes you to the pricing page, not to a spot further down
- * whatever page you happened to be on. `routerLinkActive` highlights
- * whichever one you're currently on.
+ * Header for the seller portal's public pages.
+ *
+ * The seller portal is its own site (see core/portal/portal.ts), so this is the
+ * only navigation a prospective seller sees — the marketplace is one link away,
+ * in its own tab, rather than mixed into the menu.
  */
 @Component({
   selector: 'app-seller-portal-header',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, KcIcon],
   template: `
-    <header class="seller-header">
+    <div class="ribbon">
+      <span><kc-icon name="sparkles" [size]="12" /> Free to start</span>
+      <span class="dot" aria-hidden="true"></span>
+      <span>No card needed</span>
+      <span class="dot" aria-hidden="true"></span>
+      <span>Set up in about five minutes</span>
+    </div>
+    <header class="seller-header" [class.scrolled]="scrolled()">
       <div class="header-inner">
-        <a class="brand" routerLink="/become-a-seller" aria-label="KhmerCraft Seller home">
+        <a class="brand" routerLink="/" aria-label="KhmerCraft Seller home">
+          <span class="brand-mark"><kc-icon name="leaf" [size]="16" /></span>
           <span>KhmerCraft</span><small>Seller</small>
         </a>
 
         <nav class="desktop-nav" aria-label="Seller navigation">
-          <a routerLink="/become-a-seller" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: true }">Why Sell</a>
-          <a routerLink="/become-a-seller/explore" routerLinkActive="current">Explore</a>
-          <a routerLink="/become-a-seller/pricing" routerLinkActive="current">Pricing</a>
-          <a routerLink="/become-a-seller/faq" routerLinkActive="current">FAQ</a>
-          <a routerLink="/become-a-seller/about" routerLinkActive="current">About us</a>
+          @for (link of links; track link.path) {
+            <a [routerLink]="link.path" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: link.path === '/' }">{{ link.label }}</a>
+          }
         </nav>
 
         <div class="desktop-actions">
-          <a class="sign-in" routerLink="/seller/login">Seller Sign In</a>
-          <a class="start" routerLink="/seller/onboarding">Start Selling</a>
+          <a class="market-link" [href]="marketplaceHome" target="_blank" rel="noopener">Marketplace <kc-icon name="external" [size]="12" /></a>
+          @if (isSeller()) {
+            <a class="start" routerLink="/seller/dashboard">Open dashboard <span aria-hidden="true">→</span></a>
+          } @else {
+            <a class="sign-in" routerLink="/seller/login">Sign in</a>
+            <a class="start" routerLink="/seller/onboarding">Start selling <span aria-hidden="true">→</span></a>
+          }
         </div>
 
         <button type="button" class="menu-button" (click)="menuOpen.set(!menuOpen())" aria-label="Toggle seller navigation" [attr.aria-expanded]="menuOpen()" aria-controls="seller-mobile-nav">
-          {{ menuOpen() ? 'Close' : 'Menu' }}
+          <span></span><span></span><span></span>
         </button>
       </div>
 
       @if (menuOpen()) {
         <nav id="seller-mobile-nav" class="mobile-nav" aria-label="Mobile seller navigation">
-          <a routerLink="/become-a-seller" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)">Why Sell</a>
-          <a routerLink="/become-a-seller/explore" routerLinkActive="current" (click)="menuOpen.set(false)">Explore</a>
-          <a routerLink="/become-a-seller/pricing" routerLinkActive="current" (click)="menuOpen.set(false)">Pricing</a>
-          <a routerLink="/become-a-seller/faq" routerLinkActive="current" (click)="menuOpen.set(false)">FAQ</a>
-          <a routerLink="/become-a-seller/about" routerLinkActive="current" (click)="menuOpen.set(false)">About us</a>
-          <a routerLink="/seller/login" (click)="menuOpen.set(false)">Seller Sign In</a>
-          <a class="start" routerLink="/seller/onboarding" (click)="menuOpen.set(false)">Start Selling</a>
+          @for (link of links; track link.path) {
+            <a [routerLink]="link.path" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: link.path === '/' }" (click)="menuOpen.set(false)">
+              <kc-icon [name]="link.icon" [size]="16" /> {{ link.label }}
+            </a>
+          }
+          <a [href]="marketplaceHome" target="_blank" rel="noopener"><kc-icon name="external" [size]="16" /> Go to the marketplace</a>
+          <div class="mobile-actions">
+            @if (isSeller()) {
+              <a class="start" routerLink="/seller/dashboard" (click)="menuOpen.set(false)">Open dashboard</a>
+            } @else {
+              <a class="sign-in" routerLink="/seller/login" (click)="menuOpen.set(false)">Sign in</a>
+              <a class="start" routerLink="/seller/onboarding" (click)="menuOpen.set(false)">Start selling</a>
+            }
+          </div>
         </nav>
       }
     </header>
   `,
   styles: [`
-    :host { display: block; position: sticky; top: 0; z-index: 60; }
-    .seller-header { background: rgba(252,250,245,.94); border-bottom: 1px solid #e4dbce; backdrop-filter: blur(14px); }
-    .header-inner { align-items: center; display: flex; justify-content: space-between; margin: 0 auto; max-width: 1210px; min-height: 72px; padding: 0 32px; }
-    .brand { align-items: baseline; color: #213b30; display: inline-flex; font-family: var(--font-heading); font-size: 21px; font-weight: 700; gap: 7px; letter-spacing: -.025em; text-decoration: none; }
-    .brand small { color: #9b3827; font-family: var(--font-body); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-    .desktop-nav, .desktop-actions { align-items: center; display: flex; }
-    .desktop-nav { gap: 34px; }
-    .desktop-actions { gap: 22px; }
-    a { color: #625b53; font-size: 12px; font-weight: 700; text-decoration: none; transition: color .2s ease; }
-    a:hover { color: #9b3827; }
-    .desktop-nav a.current { color: #213b30; }
-    .desktop-nav a { position: relative; padding-bottom: 4px; }
-    .desktop-nav a.current::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: #bd8a42; border-radius: 2px; }
-    a:focus-visible, button:focus-visible { outline: 3px solid #bd8a42; outline-offset: 4px; }
-    .sign-in { color: #213b30; font-weight: 800; }
-    .start { background: #213b30; border-radius: 7px; color: white; padding: 11px 22px; transition: background .2s ease, transform .2s ease; }
-    .start:hover { background: #2f5543; color: white; transform: translateY(-1px); }
-    .menu-button { background: none; border: 0; color: #213b30; display: none; font: inherit; font-size: 13px; font-weight: 800; }
-    .mobile-nav { background: #fcfaf5; border-top: 1px solid #e4dbce; display: flex; flex-direction: column; gap: 15px; padding: 18px 24px 22px; }
-    .mobile-nav a.current { color: #213b30; }
-    .mobile-nav .start { text-align: center; }
-    @media (max-width: 860px) {
+    :host { display: block; position: sticky; top: -34px; z-index: 60; font-family: var(--font-body, Inter, sans-serif); }
+    .ribbon { height: 34px; display: flex; align-items: center; justify-content: center; gap: 12px; color: #fff; background: linear-gradient(90deg, #b9523a, #c9663f 50%, #b9523a); font-size: 12px; font-weight: 600; letter-spacing: .01em; }
+    .ribbon span { display: inline-flex; align-items: center; gap: 6px; }
+    .ribbon .dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.6); }
+    .seller-header { background: rgba(255, 253, 249, .9); border-bottom: 1px solid transparent; backdrop-filter: blur(16px); transition: border-color .25s, box-shadow .25s; }
+    .seller-header.scrolled { border-bottom-color: #efe5d7; box-shadow: 0 10px 30px rgba(120, 80, 45, .06); }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: min(1240px, calc(100% - 48px)); min-height: 74px; margin: 0 auto; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; color: #2b221c; font: 600 22px/1 'Fraunces', Georgia, serif; letter-spacing: -.02em; text-decoration: none; }
+    .brand-mark { width: 36px; height: 36px; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, #d8704f, #c0573b); border-radius: 11px; box-shadow: 0 6px 14px rgba(192, 87, 59, .25); }
+    .brand small { padding: 4px 8px; color: #c0573b; background: #fbece5; border-radius: 999px; font: 800 9.5px/1 var(--font-body, Inter, sans-serif); letter-spacing: .1em; text-transform: uppercase; }
+    .desktop-nav { display: flex; align-items: center; gap: 4px; }
+    .desktop-nav a { padding: 9px 14px; color: #5f544a; border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; transition: background .2s, color .2s; }
+    .desktop-nav a:hover { color: #2b221c; background: #f6efe4; }
+    .desktop-nav a.current { color: #a3452c; background: #fbece5; }
+    .desktop-actions { display: flex; align-items: center; gap: 16px; }
+    .market-link { display: inline-flex; align-items: center; gap: 5px; color: #776b60; font-size: 13.5px; font-weight: 600; text-decoration: none; }
+    .market-link:hover { color: #2b221c; }
+    .sign-in { color: #2b221c; font-size: 14px; font-weight: 700; text-decoration: none; }
+    .start { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; color: #fff; background: linear-gradient(135deg, #d26a4b, #c0573b); border-radius: 999px; box-shadow: 0 10px 22px rgba(192, 87, 59, .25); font-size: 14px; font-weight: 700; text-decoration: none; transition: transform .2s, box-shadow .2s; }
+    .start:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(192, 87, 59, .3); }
+    a:focus-visible, button:focus-visible { outline: 3px solid rgba(192, 87, 59, .45); outline-offset: 3px; }
+    .menu-button { display: none; width: 44px; height: 44px; padding: 12px 11px; flex-direction: column; justify-content: space-between; background: #fff; border: 1px solid #ece2d3; border-radius: 12px; cursor: pointer; }
+    .menu-button span { display: block; height: 2px; background: #2b221c; border-radius: 2px; }
+    .mobile-nav { display: grid; gap: 4px; padding: 12px 20px 22px; background: #fffdf9; border-top: 1px solid #efe5d7; }
+    .mobile-nav > a { display: flex; align-items: center; gap: 12px; padding: 13px 12px; color: #4d4239; border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; }
+    .mobile-nav > a kc-icon { color: #c0573b; }
+    .mobile-nav > a.current { color: #a3452c; background: #fbece5; }
+    .mobile-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .mobile-actions a { justify-content: center; text-align: center; }
+    .mobile-actions .sign-in { padding: 12px; border: 1px solid #e6d9c7; border-radius: 999px; }
+    .mobile-actions .start:only-child { grid-column: 1 / -1; }
+    @media (max-width: 1080px) { .market-link { display: none; } }
+    @media (max-width: 920px) {
       .desktop-nav, .desktop-actions { display: none; }
-      .menu-button { display: block; }
+      .menu-button { display: flex; }
     }
-    @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
+    @media (max-width: 520px) {
+      .ribbon span:nth-child(n+4) { display: none; }
+      .header-inner { width: calc(100% - 32px); min-height: 64px; }
+    }
   `],
 })
 export class SellerPortalHeader {
+  private readonly auth = inject(AuthService);
+
   protected readonly menuOpen = signal(false);
+  protected readonly scrolled = signal(false);
+  protected readonly isSeller = computed(() => this.auth.user()?.role === 'SELLER');
+  protected readonly marketplaceHome = marketplaceUrl('/');
+
+  protected readonly links = [
+    { path: '/', label: 'Why sell', icon: 'heart' },
+    { path: '/explore', label: 'Explore tools', icon: 'grid' },
+    { path: '/pricing', label: 'Pricing', icon: 'percent' },
+    { path: '/guide', label: 'Seller guide', icon: 'lightbulb' },
+    { path: '/faq', label: 'FAQ', icon: 'info' },
+    { path: '/about', label: 'About', icon: 'leaf' },
+  ];
+
+  constructor() {
+    this.auth.loadCurrentUser().subscribe();
+  }
+
+  @HostListener('window:scroll')
+  protected onScroll(): void {
+    this.scrolled.set(window.scrollY > 40);
+  }
 }

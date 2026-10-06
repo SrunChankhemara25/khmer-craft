@@ -19,7 +19,8 @@
   --weave-accent: #f7d89a;
 }
 
-:host([data-variant='recover']) {
+:host([data-variant='recover']),
+:host([data-variant='security']) {
   --weave-top: #2f5b46;
   --weave-mid: #21432f;
   --weave-deep: #11261c;

@@ -52,6 +52,10 @@ export interface SellerStore {
   phoneNumber?: string;
   subscriptionPlan?: SellerPlan;
   verificationStatus?: string;
+  /** Store profile picture (data URL or link); null until the seller adds one. */
+  logoUrl?: string | null;
+  /** Store cover image; null until the seller adds one. */
+  bannerUrl?: string | null;
 }
 
 export type StoreTheme = 'FOREST' | 'CLAY' | 'GOLD' | 'MIDNIGHT';
@@ -165,6 +169,82 @@ export interface StoreCollectionPayload {
   coverImage?: string;
   productIds?: string[];
   visible?: boolean;
+}
+
+export interface PosKhqrSettings {
+  bakongAccountId: string;
+  merchantName: string;
+  city: string;
+  configured: boolean;
+  paywayAvailable: boolean;
+}
+
+// ------------------------------------------------------------ payouts
+export type PayoutMethod = 'ABA' | 'ACLEDA' | 'WING' | 'OTHER_BANK';
+
+export interface PayoutAccountForm {
+  method: PayoutMethod;
+  bankName?: string;
+  accountName: string;
+  accountNumber: string;
+  phone?: string;
+  khqrImage?: string | null;
+}
+
+export interface SellerPayoutAccount extends PayoutAccountForm {
+  id: string;
+  status: 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED';
+  verifiedAt: string | null;
+  rejectionReason: string | null;
+}
+
+export interface PayoutSettings {
+  commissionRate: number;
+  payoutSchedule: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
+  payoutWeekday: number;
+  holdDays: number;
+  minimumPayout: number;
+  nextPayoutDate: string;
+}
+
+export interface PayoutLine {
+  orderId: string;
+  orderNumber: string;
+  paymentMethod: string;
+  collectedBy: 'KHMERCRAFT' | 'SELLER';
+  deliveredAt: string;
+  releasesAt: string | null;
+  gross: number;
+  refunded: number;
+  commission: number;
+  net: number;
+  status?: 'AVAILABLE' | 'ON_HOLD';
+}
+
+export interface SellerPayoutRecord {
+  id: string;
+  payoutNumber: string;
+  amount: number;
+  commissionRate: number;
+  grossSales: number;
+  commissionTotal: number;
+  orderCount: number;
+  account: { method: PayoutMethod; bankName?: string; accountName: string; accountNumber: string };
+  status: 'PENDING' | 'PAID' | 'CANCELLED';
+  reference: string | null;
+  hasProof: boolean;
+  note: string | null;
+  paidAt: string | null;
+  cancelReason: string | null;
+  createdAt: string;
+}
+
+export interface SellerPayoutSummary {
+  settings: PayoutSettings;
+  account: SellerPayoutAccount | null;
+  balance: { available: number; onHold: number; pendingDelivery: number; paidOut: number; inProcessing: number };
+  lines: PayoutLine[];
+  payouts: SellerPayoutRecord[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -494,6 +574,28 @@ export class SellerService {
     return this.http.get<{ tranId: string; status: string; paid: boolean }>(
       `${API_URL}/sellers/my-stores/${storeId}/pos/khqr/check/${encodeURIComponent(tranId)}`
     );
+  }
+
+  /** The seller's own Bakong account that in-store KHQR pays into. */
+  getPosKhqrSettings(storeId: string) {
+    return this.http.get<PosKhqrSettings>(`${API_URL}/sellers/my-stores/${storeId}/pos/khqr/settings`);
+  }
+
+  updatePosKhqrSettings(storeId: string, body: { bakongAccountId: string; merchantName: string; city?: string }) {
+    return this.http.put<PosKhqrSettings>(`${API_URL}/sellers/my-stores/${storeId}/pos/khqr/settings`, body);
+  }
+
+  // ------------------------------------------------------------- Payouts
+  getPayoutSummary(storeId: string) {
+    return this.http.get<SellerPayoutSummary>(`${API_URL}/payouts/my-stores/${storeId}`);
+  }
+
+  savePayoutAccount(storeId: string, body: PayoutAccountForm) {
+    return this.http.put<SellerPayoutAccount>(`${API_URL}/payouts/my-stores/${storeId}/account`, body);
+  }
+
+  getPayout(payoutId: string) {
+    return this.http.get<SellerPayoutRecord & { proofUrl: string | null; lines: PayoutLine[] }>(`${API_URL}/payouts/${payoutId}`);
   }
 
   simulatePosKhqr(storeId: string, tranId: string) {

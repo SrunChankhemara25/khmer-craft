@@ -165,7 +165,8 @@ import { SellerService, StoreCategoryDTO } from '../../../core/api/seller.servic
 
       .add-row { display: flex; gap: 8px; }
       .add-row.small { margin-top: 10px; }
-      .add-row input { flex: 1; }
+      .add-row input { flex: 1; min-width: 0; }
+      .add-row .btn { flex-shrink: 0; }
 
       .category-list, .subcategory-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 

@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AdminApiService } from '../admin-api.service';
 import { BadgeComponent } from '../ui/badge.component';
 import { IconComponent } from '../ui/icon.component';
@@ -10,154 +11,35 @@ import { dstr, money } from '../ui/format';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, BadgeComponent, IconComponent, StateComponent, StatComponent],
+  imports: [CommonModule, FormsModule, RouterLink, BadgeComponent, IconComponent, StateComponent, StatComponent],
   template: `
     <div class="page-head">
       <div>
-        <h1 class="page-title">Marketplace Promotions & Slides</h1>
+        <h1 class="page-title">Seasonal Campaigns</h1>
         <p class="page-sub">
-          Control seasonal event themes (Pchum Ben, Festivals) and approve seller slide placements on the homepage
+          Seasonal event themes (Pchum Ben, festivals) sellers can book homepage slides under
         </p>
       </div>
       <div class="cell-actions">
-        @if (tab() === 'campaigns') {
-          <button class="btn btn-primary" (click)="openCreateCampaign()">
-            <kc-icon name="plus" [size]="14"></kc-icon> Drop Seasonal Event
-          </button>
-        }
+        <button class="btn btn-primary" (click)="openCreateCampaign()">
+          <kc-icon name="plus" [size]="14"></kc-icon> Drop Seasonal Event
+        </button>
         <button class="btn btn-sm" (click)="refresh()">Refresh</button>
       </div>
     </div>
 
-    <!-- Top Stats -->
-    <div class="grid g4 mb">
+    <div class="grid stats mb">
       <kc-stat label="Active seasonal events" icon="tag" [value]="activeCampaignCount()"></kc-stat>
-      <kc-stat label="Pending slides" icon="clock" [value]="pendingSlideCount()" hint="Awaiting approval"></kc-stat>
-      <kc-stat label="Live approved slides" icon="check" [value]="approvedSlideCount()"></kc-stat>
-      <kc-stat label="Total slide slots" icon="box" [value]="slides().length"></kc-stat>
+      <kc-stat label="All events" icon="box" [value]="campaigns().length"></kc-stat>
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="toolbar">
-      <div class="tabs">
-        <button class="tab" [class.active]="tab() === 'slides'" (click)="tab.set('slides')">
-          Seller Slide Applications ({{ slides().length }})
-        </button>
-        <button class="tab" [class.active]="tab() === 'campaigns'" (click)="tab.set('campaigns')">
-          Seasonal Theme Events ({{ campaigns().length }})
-        </button>
-      </div>
-      <span class="grow"></span>
-      @if (tab() === 'slides') {
-        <select class="input" [value]="slideFilter()" (change)="onFilterChange($any($event.target).value)">
-          <option value="ALL">All slide statuses</option>
-          <option value="PENDING_APPROVAL">Pending review</option>
-          <option value="APPROVED">Approved & Live</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
-      }
-    </div>
+    <p class="hint-row">
+      <kc-icon name="image" [size]="13"></kc-icon>
+      Seller slide requests, KhmerCraft slides and carousel order are managed on
+      <a routerLink="/admin/slides">Homepage Slides</a>.
+    </p>
 
-    <!-- ============ TAB 1: SELLER SLIDES ============ -->
-    @if (tab() === 'slides') {
-      <div class="card">
-        @if (loading()) {
-          <kc-state mode="loading" message="Loading promotional slide submissions…"></kc-state>
-        } @else if (error()) {
-          <kc-state mode="error" [message]="error()" (retry)="loadSlides()"></kc-state>
-        } @else if (!filteredSlides().length) {
-          <kc-state mode="empty" message="No promotional slides in this filter."></kc-state>
-        } @else {
-          <table class="tbl">
-            <thead>
-              <tr>
-                <th>Slide Preview & Creative</th>
-                <th>Store</th>
-                <th>Destination</th>
-                <th>Event & Theme</th>
-                <th>Schedule</th>
-                <th>Pricing</th>
-                <th>Status</th>
-                <th class="right">Moderation</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (s of filteredSlides(); track s._id) {
-                <tr>
-                  <td>
-                    <div class="cell-flex" style="align-items:flex-start">
-                      <img
-                        [src]="s.imageUrl"
-                        alt="Creative preview"
-                        style="width:84px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:var(--paper)"
-                      />
-                      <div>
-                        <div style="font-size:10px;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.05em">
-                          {{ s.badge || 'PROMOTION' }}
-                        </div>
-                        <div class="cell-main" style="font-size:13px">{{ s.title }}</div>
-                        <div class="cell-sub" style="max-width:240px;line-height:1.3">{{ s.subtitle }}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="cell-main">{{ s.storeName }}</div>
-                    <div class="cell-sub">/stores/{{ s.storeSlug }}</div>
-                  </td>
-                  <td>
-                    <div class="cell-flex">
-                      <kc-badge [value]="s.targetType === 'PRODUCT' ? 'product' : 'store'"></kc-badge>
-                      <a [href]="s.targetUrl" target="_blank" class="cell-sub" style="color:var(--brand);text-decoration:underline">
-                        {{ s.targetUrl }}
-                      </a>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="cell-main">{{ s.campaignTitle || 'Custom Date Booking' }}</div>
-                    <span class="theme-pill-tag" [attr.data-theme]="s.theme">{{ s.theme }}</span>
-                  </td>
-                  <td>
-                    <div class="cell-main">{{ s.days }} days</div>
-                    <div class="cell-sub">{{ dstr(s.startDate) }} → {{ dstr(s.endDate) }}</div>
-                  </td>
-                  <td>
-                    <div class="cell-main">{{ s.totalPrice === 0 ? 'FREE' : money(s.totalPrice) }}</div>
-                    <div class="cell-sub">
-                      @if (s.isPaid || s.totalPrice === 0) {
-                        <span style="color:var(--green);font-weight:700">✓ Paid</span>
-                      } @else {
-                        <span style="color:var(--red);font-weight:700">Unpaid</span>
-                      }
-                    </div>
-                  </td>
-                  <td>
-                    <kc-badge [value]="badgeForStatus(s.status)"></kc-badge>
-                    @if (s.rejectionReason) {
-                      <div class="cell-sub" style="color:var(--red);font-size:11px">Reason: {{ s.rejectionReason }}</div>
-                    }
-                  </td>
-                  <td class="right">
-                    <div class="cell-actions">
-                      @if (s.status === 'PENDING_APPROVAL' || s.status === 'REJECTED') {
-                        <button class="btn btn-sm btn-primary" (click)="approve(s._id)">Approve</button>
-                      }
-                      @if (s.status === 'APPROVED') {
-                        <button class="btn btn-sm" (click)="reject(s._id)">Pause</button>
-                      } @else if (s.status !== 'REJECTED') {
-                        <button class="btn btn-sm" style="color:var(--red)" (click)="reject(s._id)">Reject</button>
-                      }
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        }
-      </div>
-    }
-
-    <!-- ============ TAB 2: SEASONAL CAMPAIGNS ============ -->
-    @if (tab() === 'campaigns') {
+    <!-- ============ SEASONAL CAMPAIGNS ============ -->
       <div class="card">
         @if (campaignsLoading()) {
           <kc-state mode="loading" message="Loading promotional campaigns…"></kc-state>
@@ -211,7 +93,6 @@ import { dstr, money } from '../ui/format';
           </table>
         }
       </div>
-    }
 
     <!-- ============ CREATE EVENT CAMPAIGN MODAL ============ -->
     @if (showCreateCampaign()) {
@@ -288,6 +169,17 @@ import { dstr, money } from '../ui/format';
   `,
   styles: [
     `
+      .hint-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 14px;
+        padding: 9px 14px;
+        border-radius: 10px;
+        background: var(--gray);
+        color: var(--muted);
+        font-size: 12px;
+      }
       .theme-pill-tag {
         display: inline-block;
         padding: 3px 9px;
@@ -373,15 +265,8 @@ import { dstr, money } from '../ui/format';
 export class PromotionsComponent {
   private readonly api = inject(AdminApiService);
 
-  tab = signal<'slides' | 'campaigns'>('slides');
-  slideFilter = signal<string>('ALL');
-
-  slides = signal<any[]>([]);
   campaigns = signal<any[]>([]);
-
-  loading = signal(true);
   campaignsLoading = signal(true);
-  error = signal('');
 
   showCreateCampaign = signal(false);
   newCampTitle = '';
@@ -397,42 +282,13 @@ export class PromotionsComponent {
   money = money;
 
   activeCampaignCount = () => this.campaigns().filter((c) => c.status === 'ACTIVE').length;
-  pendingSlideCount = () => this.slides().filter((s) => s.status === 'PENDING_APPROVAL').length;
-  approvedSlideCount = () => this.slides().filter((s) => s.status === 'APPROVED').length;
-
-  filteredSlides = () => {
-    const f = this.slideFilter();
-    if (f === 'ALL') return this.slides();
-    return this.slides().filter((s) => s.status === f);
-  };
 
   constructor() {
     this.refresh();
   }
 
   refresh() {
-    this.loadSlides();
     this.loadCampaigns();
-  }
-
-  onFilterChange(val: string) {
-    this.slideFilter.set(val);
-    this.loadSlides();
-  }
-
-  loadSlides() {
-    this.loading.set(true);
-    this.error.set('');
-    this.api.getAdminPromotionSlides(this.slideFilter()).subscribe({
-      next: (list) => {
-        this.slides.set(list);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.error.set('Could not load slides from the server.');
-        this.loading.set(false);
-      },
-    });
   }
 
   loadCampaigns() {
@@ -445,22 +301,6 @@ export class PromotionsComponent {
       error: () => {
         this.campaignsLoading.set(false);
       },
-    });
-  }
-
-  approve(slideId: string) {
-    this.api.reviewPromotionSlide(slideId, 'APPROVED').subscribe({
-      next: () => this.loadSlides(),
-      error: () => alert('Could not approve slide.'),
-    });
-  }
-
-  reject(slideId: string) {
-    const reason = prompt('Reason for rejection or pause (shown to seller):', 'Does not meet seasonal guidelines');
-    if (reason === null) return;
-    this.api.reviewPromotionSlide(slideId, 'REJECTED', reason).subscribe({
-      next: () => this.loadSlides(),
-      error: () => alert('Could not reject slide.'),
     });
   }
 
@@ -505,12 +345,5 @@ export class PromotionsComponent {
         },
         error: () => alert('Could not save seasonal campaign.'),
       });
-  }
-
-  badgeForStatus(st: string): string {
-    if (st === 'APPROVED') return 'active';
-    if (st === 'PENDING_APPROVAL') return 'pending';
-    if (st === 'REJECTED') return 'rejected';
-    return 'inactive';
   }
 }

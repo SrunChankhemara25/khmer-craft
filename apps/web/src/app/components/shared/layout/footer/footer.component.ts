@@ -1,18 +1,19 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { IconComponent } from '../../ui/icon/icon.component';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { sellerPortalUrl } from '../../../../core/portal/portal';
 
 @Component({
   selector: 'app-footer',
   standalone: true,
-  imports: [CommonModule, RouterLink, IconComponent],
+  imports: [CommonModule, RouterLink],
   template: `
   <footer class="footer">
     <div class="container footer-grid">
       <div class="footer-brand">
         <div class="logo">
-          <span class="logo-mark"><ui-icon name="leaf" [size]="16" color="#fff"></ui-icon></span>
+          <span class="logo-mark"><img src="logo.svg" alt="" width="34" height="34" /></span>
           KhmerCraft
         </div>
         <p>A Cambodian local-first marketplace for products from independent stores.</p>
@@ -27,16 +28,24 @@ import { IconComponent } from '../../ui/icon/icon.component';
       </div>
       <div class="footer-col">
         <h4>Account</h4>
-        <a routerLink="/login">Sign in</a>
-        <a routerLink="/register">Create account</a>
+        @if (auth.isAuthenticated()) {
+          <a routerLink="/profile">My profile</a>
+        } @else {
+          <a routerLink="/login">Sign in</a>
+          <a routerLink="/register">Create account</a>
+        }
         <a routerLink="/orders">My orders</a>
         <a routerLink="/wishlist">Wishlist</a>
         <a routerLink="/cart">Cart</a>
       </div>
       <div class="footer-col">
         <h4>Sell</h4>
-        <a routerLink="/become-a-seller">Become a Seller</a>
-        <a routerLink="/seller/login">Seller login</a>
+        @if (auth.user()?.role === 'SELLER') {
+          <a [href]="sellerPortal('/seller/dashboard')" target="_blank" rel="noopener">Seller dashboard</a>
+        } @else {
+          <a [href]="sellerPortal('/')" target="_blank" rel="noopener">Become a Seller</a>
+          <a [href]="sellerPortal('/seller/login')" target="_blank" rel="noopener">Seller login</a>
+        }
       </div>
       <div class="footer-col">
         <h4>Assistance</h4>
@@ -62,7 +71,8 @@ import { IconComponent } from '../../ui/icon/icon.component';
       padding-bottom: 30px;
     }
     .footer-brand .logo { font-family: var(--font-heading); font-weight: 600; font-size: 22px; color: #fffaf0; margin-bottom: 10px; display: flex; align-items: center; gap: 9px; }
-    .logo-mark { width: 31px; height: 31px; border-radius: 9px 9px 14px 9px; background: var(--color-accent); display: flex; align-items: center; justify-content: center; }
+    .logo-mark { width: 32px; height: 32px; display: flex; flex-shrink: 0; }
+    .logo-mark img { width: 100%; height: 100%; display: block; }
     .footer-brand p { font-size: 13px; color: rgba(255,250,240,.65); line-height: 1.55; max-width: 300px; }
     .footer-col h4 { font-family: var(--font-body); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 12px; color: #d9bd8b; }
     .footer-col a { display: block; font-size: 13px; color: rgba(255,250,240,.65); margin-bottom: 8px; }
@@ -94,4 +104,9 @@ import { IconComponent } from '../../ui/icon/icon.component';
     }
   `]
 })
-export class FooterComponent {}
+export class FooterComponent {
+  /** The seller portal is its own site, opened in its own tab. */
+  protected readonly sellerPortal = sellerPortalUrl;
+
+  protected readonly auth = inject(AuthService);
+}

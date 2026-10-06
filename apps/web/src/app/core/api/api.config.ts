@@ -31,8 +31,10 @@ const resolveBase = (): string => {
     return override.replace(/\/+$/, '');
   }
 
+  // The seller portal (seller.localhost) talks to the same API as the
+  // marketplace, so both sites share one session.
   const { protocol, hostname } = globalThis.location;
-  return `${protocol}//${hostname}:${API_PORT}`;
+  return `${protocol}//${hostname.replace(/^seller\./, '')}:${API_PORT}`;
 };
 
 export const API_BASE = resolveBase();

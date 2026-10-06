@@ -65,7 +65,7 @@ import { AuthLayout } from '../../../../components/shared/authentication/auth-la
 
       <p class="auth-switch">
         Not selling yet?
-        <a routerLink="/become-a-seller">Become a seller</a>
+        <a routerLink="/">Become a seller</a>
       </p>
       <a class="admin-link" routerLink="/login">Buyer sign in</a>
     </app-auth-layout>
