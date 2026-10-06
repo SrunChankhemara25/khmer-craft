@@ -14,13 +14,15 @@ import { assertEnv, env } from './config/env';
  * Walking up also covers both layouts this file runs in: src/ under ts-node,
  * and dist/src/ after a build.
  */
-const findEnvFile = () => {
+const findEnvDir = () => {
   let directory = __dirname;
 
   while (true) {
-    const candidate = path.join(directory, '.env.local');
-    if (fs.existsSync(candidate)) {
-      return candidate;
+    if (
+      fs.existsSync(path.join(directory, '.env')) ||
+      fs.existsSync(path.join(directory, '.env.local'))
+    ) {
+      return directory;
     }
 
     const parent = path.dirname(directory);
@@ -31,15 +33,24 @@ const findEnvFile = () => {
   }
 };
 
-const envFile = findEnvFile();
-if (!envFile) {
+const envDir = findEnvDir();
+if (!envDir) {
   console.error(
-    'Configuration error: no .env.local found. Copy apps/api/.env.example to apps/api/.env.local.',
+    'Configuration error: neither .env nor .env.local found. Copy apps/api/.env.example to apps/api/.env.',
   );
   process.exit(1);
 }
 
-dotenv.config({ path: envFile });
+// Load .env first, then let .env.local override if present
+const defaultEnvPath = path.join(envDir, '.env');
+const localEnvPath = path.join(envDir, '.env.local');
+
+if (fs.existsSync(defaultEnvPath)) {
+  dotenv.config({ path: defaultEnvPath });
+}
+if (fs.existsSync(localEnvPath)) {
+  dotenv.config({ path: localEnvPath, override: true });
+}
 
 // Fail fast: a missing JWT_SECRET must stop the process here, not surface as a
 // confusing 500 on the first login attempt.
