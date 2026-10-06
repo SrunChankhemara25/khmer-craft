@@ -27,13 +27,13 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
   {
     value: 'COD',
     label: 'Cash on delivery',
-    hint: 'Pay the courier when your order arrives.',
+    hint: 'Pay the courier on arrival',
     icon: 'banknote',
   },
   {
     value: 'ABA_PAYWAY',
-    label: 'ABA PayWay',
-    hint: 'Scan an ABA KHQR code with your banking app — pay before delivery.',
+    label: 'ABA KHQR',
+    hint: 'Scan to pay after placing the order',
     icon: 'credit-card',
   },
 ];
@@ -60,80 +60,60 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
   template: `
     <app-navbar />
 
-    <section class="container checkout">
-      <nav class="crumbs">
-        <a routerLink="/cart">Cart</a> <span>›</span> <span>Checkout</span>
-      </nav>
-
+    <section class="checkout">
       @if (cart.isEmpty()) {
-        <div class="empty card">
-          <ui-icon name="cart" [size]="32" />
+        <div class="empty">
+          <ui-icon name="cart" [size]="28" />
           <h1>Your cart is empty</h1>
           <p>Add something before checking out.</p>
-          <button class="btn btn-primary" routerLink="/products">
-            Browse products
-          </button>
+          <a class="btn btn-primary" routerLink="/products">Browse products</a>
         </div>
       } @else {
-        <h1>Checkout</h1>
+        <header class="head">
+          <a class="back" routerLink="/cart"><ui-icon name="arrow-left" [size]="14" /> Cart</a>
+          <h1>Checkout</h1>
+        </header>
 
         <div class="layout">
           <form class="panel" [formGroup]="form" (ngSubmit)="placeOrder()">
-            <section class="card block">
-              <h2><span class="step">1</span> Delivery information</h2>
-
+            <section>
+              <h2>Delivery</h2>
               <div class="grid">
                 <label>
                   <span>Full name</span>
                   <input formControlName="fullName" autocomplete="name" />
-                  @if (invalid('fullName')) {
-                    <small>Enter the recipient's name.</small>
-                  }
+                  @if (invalid('fullName')) { <small>Enter the recipient's name</small> }
                 </label>
-
                 <label>
                   <span>Phone</span>
-                  <input formControlName="phone" autocomplete="tel" placeholder="012 345 678" />
-                  @if (invalid('phone')) {
-                    <small>Enter a contact number for the courier.</small>
-                  }
+                  <input formControlName="phone" autocomplete="tel" inputmode="tel" placeholder="012 345 678" />
+                  @if (invalid('phone')) { <small>Enter a number the courier can call</small> }
                 </label>
-
                 <label>
                   <span>Province</span>
                   <input formControlName="province" placeholder="Phnom Penh" />
-                  @if (invalid('province')) {
-                    <small>Required.</small>
-                  }
+                  @if (invalid('province')) { <small>Required</small> }
                 </label>
-
                 <label>
                   <span>City / district</span>
                   <input formControlName="city" placeholder="Chamkarmon" />
-                  @if (invalid('city')) {
-                    <small>Required.</small>
-                  }
+                  @if (invalid('city')) { <small>Required</small> }
                 </label>
-
                 <label class="wide">
                   <span>Address</span>
-                  <input formControlName="address" placeholder="House 12, Street 240" />
-                  @if (invalid('address')) {
-                    <small>Enter a street address.</small>
-                  }
+                  <input formControlName="address" autocomplete="street-address" placeholder="House 12, Street 240" />
+                  @if (invalid('address')) { <small>Enter a street address</small> }
                 </label>
-
                 <label class="wide">
-                  <span>Delivery note <em>Optional</em></span>
+                  <span>Note for the courier <em>optional</em></span>
                   <input formControlName="note" placeholder="Landmark, gate code, best time to call" />
                 </label>
               </div>
             </section>
 
-            <section class="card block">
-              <h2><span class="step">2</span> Payment method</h2>
-
-              <div class="payments">
+            <section>
+              <h2>Payment</h2>
+              <div class="payments" role="radiogroup" aria-label="Payment method">
                 @for (option of paymentOptions; track option.value) {
                   <label class="payment" [class.selected]="method() === option.value">
                     <input
@@ -143,77 +123,51 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
                       [checked]="method() === option.value"
                       (change)="method.set(option.value)"
                     />
-                    <ui-icon [name]="option.icon" [size]="18" />
-                    <div>
+                    <span class="radio" aria-hidden="true"></span>
+                    <span class="payment-text">
                       <strong>{{ option.label }}</strong>
                       <small>{{ option.hint }}</small>
-                    </div>
+                    </span>
                   </label>
                 }
               </div>
-
-              @if (method() === 'ABA_PAYWAY') {
-                <p class="sandbox-note">
-                  <ui-icon name="info" [size]="13" />
-                  Next you'll get an ABA KHQR code to scan. Your order is
-                  confirmed as paid only once ABA confirms the transaction.
-                </p>
-              }
             </section>
           </form>
 
-          <aside class="summary card">
-            <h2>Order summary</h2>
+          <aside class="summary">
+            <h2>Summary</h2>
 
-            <div class="shipments">
+            <div class="items">
               @for (group of shipmentGroups(); track group.storeId) {
-                <section class="shipment">
-                  <header><ui-icon name="store" [size]="13" /> {{ group.sellerName }} <span>Separate delivery</span></header>
-                  <div class="lines">
-                    @for (line of group.lines; track line.product.id) {
-                      <div class="line">
-                        <span class="qty">{{ line.quantity }}×</span>
-                        <span class="name">{{ line.product.name }}</span>
-                        <span class="amount">\${{ line.lineTotal.toFixed(2) }}</span>
-                      </div>
-                    }
+                @if (shipmentGroups().length > 1) { <p class="store">{{ group.sellerName }}</p> }
+                @for (line of group.lines; track line.product.id) {
+                  <div class="line">
+                    <span class="name">{{ line.product.name }} <em>× {{ line.quantity }}</em></span>
+                    <span>\${{ line.lineTotal.toFixed(2) }}</span>
                   </div>
-                </section>
+                }
               }
             </div>
 
-            <div class="row">
-              <span>Subtotal</span><span>\${{ cart.subtotal().toFixed(2) }}</span>
-            </div>
+            <div class="row"><span>Subtotal</span><span>\${{ cart.subtotal().toFixed(2) }}</span></div>
             <div class="row">
               <span>Delivery</span>
-              @if (cart.shipping() === 0) {
-                <span class="free">Free</span>
-              } @else {
-                <span>\${{ cart.shipping().toFixed(2) }}</span>
-              }
+              <span>{{ cart.shipping() === 0 ? 'Free' : '$' + cart.shipping().toFixed(2) }}</span>
             </div>
-            <div class="row total">
-              <span>Total</span><span>\${{ cart.total().toFixed(2) }}</span>
-            </div>
+            <div class="row total"><span>Total</span><span>\${{ cart.total().toFixed(2) }}</span></div>
 
-            @if (error(); as message) {
-              <p class="error" role="alert">
-                <ui-icon name="alert-circle" [size]="14" /> {{ message }}
-              </p>
+            @if (shipmentGroups().length > 1) {
+              <p class="fine">Items from {{ shipmentGroups().length }} stores arrive in separate deliveries.</p>
             }
 
-            <button
-              class="btn btn-primary btn-block btn-lg"
-              (click)="placeOrder()"
-              [disabled]="submitting()"
-            >
-              {{ submitting() ? 'Placing order…' : 'Place order' }}
-            </button>
+            @if (error(); as message) {
+              <p class="error" role="alert">{{ message }}</p>
+            }
 
-            <p class="fine">
-              Totals are calculated by KhmerCraft when the order is placed.
-            </p>
+            <button class="btn btn-primary btn-block btn-lg" (click)="placeOrder()" [disabled]="submitting()">
+              {{ submitting() ? 'Placing order…' : (method() === 'ABA_PAYWAY' ? 'Continue to payment' : 'Place order') }}
+            </button>
+            <p class="fine center"><ui-icon name="lock" [size]="11" /> Secure checkout</p>
           </aside>
         </div>
       }
@@ -224,56 +178,46 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
   styles: [
     `
       .checkout {
-        padding: 26px 32px 60px;
+        width: min(100%, 1040px);
+        margin: 0 auto;
+        padding: 28px 20px 72px;
       }
-      .crumbs {
-        display: flex;
-        gap: 8px;
-        font-size: 12.5px;
+      .head {
+        margin-bottom: 24px;
+      }
+      .back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
         color: var(--color-muted);
-        margin-bottom: 16px;
       }
-      .crumbs a:hover {
+      .back:hover {
         color: var(--color-accent);
       }
       h1 {
-        font-size: 26px;
-        margin-bottom: 20px;
+        font-size: 28px;
+        margin-top: 6px;
+      }
+      h2 {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 14px;
       }
       .layout {
         display: grid;
         grid-template-columns: 1fr 340px;
-        gap: 24px;
+        gap: 40px;
         align-items: start;
       }
       .panel {
         display: grid;
-        gap: 16px;
-      }
-      .block {
-        padding: 20px 22px 22px;
-      }
-      .block h2 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 16px;
-        margin-bottom: 16px;
-      }
-      .step {
-        width: 22px;
-        height: 22px;
-        display: grid;
-        place-items: center;
-        border-radius: 50%;
-        background: var(--color-accent);
-        color: #fff;
-        font-size: 12px;
+        gap: 32px;
       }
       .grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 14px;
+        gap: 14px 16px;
       }
       .wide {
         grid-column: 1 / -1;
@@ -281,152 +225,183 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
       label {
         display: grid;
         gap: 6px;
-        font-size: 13px;
-        font-weight: 600;
+      }
+      label > span {
+        font-size: 12.5px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
       }
       label em {
         color: var(--color-muted);
         font-style: normal;
         font-weight: 400;
       }
-      input[type='text'],
-      input:not([type]) {
-        width: 100%;
-      }
       .grid input {
-        height: 42px;
-        padding: 0 12px;
-        border: 1px solid var(--color-border-strong);
-        border-radius: var(--radius-sm);
+        width: 100%;
+        height: 44px;
+        padding: 0 14px;
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        background: var(--color-surface, #fff);
         font-size: 14px;
+        transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+      }
+      .grid input:focus {
+        outline: none;
+        border-color: var(--color-accent);
+        box-shadow: var(--shadow-focus);
       }
       label small {
         color: var(--color-danger);
-        font-size: 11.5px;
-        font-weight: 600;
+        font-size: 12px;
       }
       .payments {
         display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 10px;
       }
       .payment {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 13px 15px;
-        border: 1px solid var(--color-border-strong);
-        border-radius: var(--radius-sm);
+        padding: 14px 16px;
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
         cursor: pointer;
-        font-weight: 500;
+        transition: border-color var(--dur-fast), background var(--dur-fast);
+      }
+      .payment:hover {
+        border-color: var(--color-border-strong);
       }
       .payment.selected {
         border-color: var(--color-accent);
         background: var(--color-accent-soft);
       }
-      .payment div {
-        display: flex;
-        flex-direction: column;
+      .payment input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .payment:focus-within {
+        box-shadow: var(--shadow-focus);
+      }
+      .radio {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        border: 1.5px solid var(--color-border-strong);
+      }
+      .payment.selected .radio {
+        border: 5px solid var(--color-accent);
+      }
+      .payment-text {
+        display: grid;
+        gap: 2px;
       }
       .payment strong {
         font-size: 14px;
+        font-weight: 600;
       }
       .payment small {
         color: var(--color-muted);
         font-size: 12px;
-        font-weight: 400;
-      }
-      .sandbox-note {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        margin-top: 12px;
-        color: var(--color-muted);
-        font-size: 12px;
       }
       .summary {
-        padding: 20px 22px;
+        position: sticky;
+        top: 96px;
+        padding: 22px;
+        border-radius: 16px;
+        background: var(--color-bg-alt);
         display: flex;
         flex-direction: column;
-        gap: 11px;
-        position: sticky;
-        top: 100px;
+        gap: 10px;
       }
       .summary h2 {
-        font-size: 16px;
+        margin-bottom: 4px;
       }
-      .lines {
+      .items {
         display: grid;
-        gap: 7px;
+        gap: 8px;
         padding-bottom: 12px;
+        margin-bottom: 2px;
         border-bottom: 1px solid var(--color-border);
       }
-      .shipments { display: grid; gap: 11px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); }
-      .shipment { display: grid; gap: 6px; }
-      .shipment header { align-items: center; color: var(--color-text); display: flex; font-size: 11.5px; font-weight: 700; gap: 6px; }
-      .shipment header span { color: var(--color-muted); font-size: 9.5px; font-weight: 500; margin-left: auto; }
-      .shipment .lines { border: 0; padding: 0 0 0 19px; }
-      .line {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        gap: 8px;
-        font-size: 13px;
-        color: var(--color-text-secondary);
-      }
-      .line .qty {
+      .store {
+        font-size: 11.5px;
         color: var(--color-muted);
+        margin-top: 4px;
+      }
+      .line,
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 13.5px;
+        color: var(--color-text-secondary);
       }
       .line .name {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 13.5px;
-        color: var(--color-text-secondary);
-      }
-      .free {
-        color: var(--color-success);
-        font-weight: 650;
+      .line em {
+        font-style: normal;
+        color: var(--color-muted);
       }
       .row.total {
-        color: var(--color-text);
-        font-weight: 700;
-        font-size: 18px;
-        border-top: 1px solid var(--color-border);
+        margin-top: 4px;
         padding-top: 12px;
+        border-top: 1px solid var(--color-border);
+        color: var(--color-text);
+        font-size: 17px;
+        font-weight: 650;
       }
       .error {
-        display: flex;
-        align-items: center;
-        gap: 7px;
         color: var(--color-danger);
-        font-size: 12.5px;
-        font-weight: 600;
+        font-size: 13px;
+      }
+      .btn-block {
+        width: 100%;
+        margin-top: 6px;
+        justify-content: center;
       }
       .fine {
         color: var(--color-muted);
-        font-size: 11.5px;
-        text-align: center;
+        font-size: 12px;
+      }
+      .fine.center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
       }
       .empty {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 12px;
-        padding: 60px 32px;
+        gap: 10px;
+        padding: 80px 24px;
         text-align: center;
         color: var(--color-muted);
+      }
+      .empty h1 {
+        font-size: 22px;
+        color: var(--color-text);
       }
       @media (max-width: 900px) {
         .layout {
           grid-template-columns: 1fr;
+          gap: 28px;
         }
         .summary {
           position: static;
         }
-        .grid {
+      }
+      @media (max-width: 560px) {
+        .grid,
+        .payments {
           grid-template-columns: 1fr;
         }
       }

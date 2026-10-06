@@ -7,6 +7,8 @@ export const ADMIN_ROUTES: Routes = [{
     { path: 'dashboard',     loadComponent: () => import('./pages/dashboard.component').then(c => c.DashboardComponent) },
     { path: 'buyers',        loadComponent: () => import('./pages/buyers.component').then(c => c.BuyersComponent) },
     { path: 'sellers',       loadComponent: () => import('./pages/sellers.component').then(c => c.SellersComponent) },
+    { path: 'subscriptions', loadComponent: () => import('./pages/subscriptions.component').then(c => c.SubscriptionsComponent) },
+    { path: 'slides',        loadComponent: () => import('./pages/slides.component').then(c => c.SlidesComponent) },
     { path: 'stores',        loadComponent: () => import('./pages/stores.component').then(c => c.StoresComponent) },
     { path: 'websites',      loadComponent: () => import('./pages/websites.component').then(c => c.WebsitesComponent) },
     { path: 'pos',           loadComponent: () => import('./pages/pos.component').then(c => c.PosComponent) },

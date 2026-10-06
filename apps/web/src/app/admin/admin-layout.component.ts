@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { AdminService } from './admin-data.service';
+import { AdminApiService } from './admin-api.service';
 import { IconComponent } from './ui/icon.component';
 import { ConfirmComponent } from './ui/confirm.component';
 
@@ -11,7 +12,7 @@ import { ConfirmComponent } from './ui/confirm.component';
     <div class="admin">
       @if (sidebarOpen()) { <button class="sidebar-back" aria-label="Close navigation" (click)="sidebarOpen.set(false)"></button> }
       <aside class="sidebar" [class.open]="sidebarOpen()" [class.collapsed]="sidebarCollapsed()">
-        <div class="brand"><span class="logo"><kc-icon name="tag" [size]="14"></kc-icon></span><span class="brand-txt">KhmerCraft</span><small>ADMIN</small></div>
+        <div class="brand"><span class="logo"><img src="logo.svg" alt="" width="28" height="28"/></span><span class="brand-txt">KhmerCraft</span><small>ADMIN</small></div>
         @for (g of nav; track g.label) {
           <div class="nav-group">
             <div class="nav-label-row">
@@ -76,13 +77,14 @@ import { ConfirmComponent } from './ui/confirm.component';
     </div>`,
 })
 export class AdminLayoutComponent {
-  data = inject(AdminService); router = inject(Router);
+  data = inject(AdminService); router = inject(Router); api = inject(AdminApiService);
   private readonly auth = inject(AuthService);
   q = signal('');
   sidebarOpen = signal(false);
   sidebarCollapsed = signal(false);
   logoutOpen = signal(false);
   constructor() {
+    this.api.refreshBadges();
     try { this.sidebarCollapsed.set(localStorage.getItem('khmercraft.admin.sidebar') === '1'); } catch { /* browser storage is optional */ }
   }
   toggleSidebar() {
@@ -92,19 +94,23 @@ export class AdminLayoutComponent {
   }
   nav = [
     { label: 'Overview', items: [{ path: '/admin/dashboard', icon: 'grid', label: 'Dashboard' }] },
-    { label: 'User Management', items: [{ path: '/admin/buyers', icon: 'users', label: 'Buyers' }, { path: '/admin/sellers', icon: 'store', label: 'Sellers' }] },
+    { label: 'User Management', items: [{ path: '/admin/buyers', icon: 'users', label: 'Buyers' }, { path: '/admin/sellers', icon: 'store', label: 'Sellers' }, { path: '/admin/subscriptions', icon: 'receipt', label: 'Subscriptions' }] },
     { label: 'Marketplace', items: [{ path: '/admin/products', icon: 'box', label: 'Products' }, { path: '/admin/categories', icon: 'tag', label: 'Categories' }, { path: '/admin/reviews', icon: 'star', label: 'Reviews' }] },
     { label: 'Channels', items: [{ path: '/admin/stores', icon: 'store', label: 'Stores' }, { path: '/admin/websites', icon: 'globe', label: 'Storefront Websites' }, { path: '/admin/pos', icon: 'terminal', label: 'POS Operations' }] },
     { label: 'Finance', items: [{ path: '/admin/payments', icon: 'card', label: 'Payments' }, { path: '/admin/transactions', icon: 'swap', label: 'Transactions' }, { path: '/admin/payouts', icon: 'wallet', label: 'Seller Payouts' }] },
-    { label: 'Commercial', items: [{ path: '/admin/promotions', icon: 'megaphone', label: 'Promotions & Ads' }, { path: '/admin/analytics', icon: 'chart', label: 'Analytics' }] },
+    { label: 'Commercial', items: [{ path: '/admin/slides', icon: 'image', label: 'Homepage Slides' }, { path: '/admin/promotions', icon: 'megaphone', label: 'Seasonal Campaigns' }, { path: '/admin/analytics', icon: 'chart', label: 'Analytics' }] },
     { label: 'Monitoring', items: [{ path: '/admin/reports', icon: 'flag', label: 'Reports' }, { path: '/admin/complaints', icon: 'message', label: 'Complaints' }, { path: '/admin/activity-logs', icon: 'pulse', label: 'Activity Logs' }] },
     { label: 'System', items: [{ path: '/admin/notifications', icon: 'bell', label: 'Notifications' }, { path: '/admin/settings', icon: 'sliders', label: 'Settings' }] },
   ];
   count(path: string): number | null {
     const d = this.data;
+    // Live counts from the API where they exist; null (not signed in as
+    // ADMIN) shows no badge rather than a made-up number.
     const m: Record<string, number> = {
-      '/admin/sellers': d.sellers().filter(s => s.status === 'pending').length,
-      '/admin/products': d.products().filter(p => p.status === 'pending').length,
+      '/admin/sellers': this.api.badgeApps() ?? 0,
+      '/admin/slides': this.api.badgeSlides() ?? 0,
+      '/admin/payouts': this.api.badgePayouts() ?? 0,
+      '/admin/products': this.api.badgeDrafts() ?? 0,
       '/admin/reports': d.reports().filter(r => r.status === 'open').length,
       '/admin/complaints': d.complaints().filter(c => c.status === 'open').length,
     };

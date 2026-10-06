@@ -31,111 +31,36 @@ import { PaymentPoller } from '../core/payments/payment-poller';
   template: `
     <app-navbar />
 
-    <section class="container pay">
-      <nav class="crumbs">
-        <a routerLink="/cart">Cart</a> <span>›</span>
-        <a routerLink="/checkout">Checkout</a> <span>›</span>
-        <span>Payment</span>
-      </nav>
-
+    <section class="pay">
       @if (poller.loading()) {
-        <div class="card state">
-          <ui-icon name="loader" [size]="26" />
-          <p>Asking ABA for a payment QR…</p>
+        <div class="state">
+          <ui-icon name="loader" [size]="22" />
+          <p>Preparing your payment QR…</p>
         </div>
       } @else if (poller.fatal(); as message) {
-        <div class="card state error">
-          <ui-icon name="alert-circle" [size]="26" />
-          <h1>Payment could not be started</h1>
+        <div class="state">
+          <ui-icon name="alert-circle" [size]="22" color="var(--color-danger)" />
+          <h1>Payment couldn't start</h1>
           <p>{{ message }}</p>
           <div class="actions">
-            <button class="btn btn-primary" (click)="poller.start()">
-              Try again
-            </button>
-            <a class="btn btn-ghost" routerLink="/orders">View my orders</a>
+            <button class="btn btn-primary" (click)="poller.start()">Try again</button>
+            <a class="btn btn-ghost" routerLink="/orders">My orders</a>
           </div>
         </div>
       } @else if (poller.session(); as qr) {
-        <h1>Pay with ABA</h1>
-        <p class="lede">
-          Order {{ qr.orderNumber }} ·
-          <strong>\${{ qr.amount.toFixed(2) }}</strong> {{ qr.currency }}
-        </p>
-
-        <div class="layout">
-          <app-payway-qr
-            [qr]="qr"
-            [now]="poller.now()"
-            [label]="'order ' + qr.orderNumber"
-            (renew)="poller.start()"
-          />
-
-          <aside class="card status-card">
-            <h2>Payment status</h2>
-
-            <div class="status" [class.waiting]="!poller.expired()">
-              <ui-icon
-                [name]="poller.expired() ? 'clock' : 'loader'"
-                [size]="18"
-                [color]="
-                  poller.expired() ? 'var(--color-muted)' : 'var(--color-accent)'
-                "
-              />
-              <div>
-                <strong>
-                  {{
-                    poller.expired()
-                      ? 'Expired, not paid'
-                      : 'Waiting for your payment'
-                  }}
-                </strong>
-                <small>
-                  {{
-                    poller.expired()
-                      ? 'No payment reached ABA before this QR expired. Your order is still unpaid.'
-                      : 'Checking with ABA every few seconds.'
-                  }}
-                </small>
-              </div>
-            </div>
-
-            @if (poller.checkError(); as message) {
-              <p class="warn" role="status">
-                <ui-icon name="alert-circle" [size]="13" /> {{ message }}
-              </p>
-            }
-
-            <button
-              class="btn btn-outline btn-block"
-              (click)="poller.checkNow()"
-              [disabled]="poller.checking()"
-            >
-              {{
-                poller.checking()
-                  ? 'Checking with ABA…'
-                  : "I've paid — check now"
-              }}
-            </button>
-
-            <ol class="how">
-              <li>Open ABA Mobile, or any KHQR-capable banking app.</li>
-              <li>Scan this code and confirm the payment.</li>
-              <li>
-                This page confirms with ABA on its own — no need to tell us.
-              </li>
-            </ol>
-
-            <p class="fine">
-              <ui-icon name="lock" [size]="12" />
-              KhmerCraft never sees your card or banking details. Your order is
-              marked paid only after ABA confirms the transaction.
-            </p>
-
-            <a class="leave" routerLink="/orders">
-              Pay later — go to my orders
-            </a>
-          </aside>
-        </div>
+        <app-payway-qr
+          [qr]="qr"
+          [now]="poller.now()"
+          eyebrow="Pay KhmerCraft"
+          [caption]="'Order ' + qr.orderNumber"
+          [label]="'order ' + qr.orderNumber"
+          expiredNote="Nothing was charged and your order is still saved. Get a new QR to pay."
+          [checking]="poller.checking()"
+          [checkError]="poller.checkError()"
+          (renew)="poller.start()"
+          (check)="poller.checkNow()"
+        />
+        <a class="later" routerLink="/orders">Pay later</a>
       }
     </section>
 
@@ -144,125 +69,39 @@ import { PaymentPoller } from '../core/payments/payment-poller';
   styles: [
     `
       .pay {
-        padding: 26px 32px 60px;
-      }
-      .crumbs {
-        display: flex;
-        gap: 8px;
-        font-size: 12.5px;
-        color: var(--color-muted);
-        margin-bottom: 16px;
-      }
-      .crumbs a:hover {
-        color: var(--color-accent);
-      }
-      h1 {
-        font-size: 26px;
-        margin-bottom: 6px;
-      }
-      .lede {
-        color: var(--color-muted);
-        font-size: 14px;
-        margin-bottom: 20px;
-      }
-      .lede strong {
-        color: var(--color-accent);
-        font-size: 17px;
-      }
-      .state {
+        min-height: 70vh;
+        padding: clamp(28px, 6vh, 64px) 20px 64px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 12px;
-        padding: 60px 32px;
+        background: var(--color-bg-alt);
+      }
+      .state {
+        width: min(100%, 400px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 48px 24px;
         text-align: center;
         color: var(--color-muted);
       }
       .state h1 {
-        font-size: 20px;
+        font-size: 19px;
+        color: var(--color-text);
       }
-      .state.error ui-icon {
-        color: var(--color-danger);
-      }
-      .state .actions {
+      .actions {
         display: flex;
         gap: 10px;
-        margin-top: 8px;
+        margin-top: 6px;
       }
-      .layout {
-        display: grid;
-        grid-template-columns: 340px 1fr;
-        gap: 24px;
-        align-items: start;
-      }
-      .status-card {
-        padding: 22px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-      }
-      .status-card h2 {
-        font-size: 16px;
-      }
-      .status {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 14px;
-        border: 1px solid var(--color-border-strong);
-        border-radius: var(--radius-sm);
-      }
-      .status div {
-        display: flex;
-        flex-direction: column;
-      }
-      .status strong {
-        font-size: 14px;
-      }
-      .status small {
-        color: var(--color-muted);
-        font-size: 12px;
-      }
-      .status.waiting {
-        background: var(--color-accent-soft);
-        border-color: var(--color-accent);
-      }
-      .warn {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        color: var(--color-muted);
-        font-size: 12px;
-      }
-      .how {
-        display: grid;
-        gap: 7px;
-        padding-left: 18px;
-        color: var(--color-text-secondary);
+      .later {
+        margin-top: 18px;
         font-size: 13px;
-      }
-      .fine {
-        display: flex;
-        align-items: flex-start;
-        gap: 7px;
         color: var(--color-muted);
-        font-size: 11.5px;
-        line-height: 1.5;
-        border-top: 1px solid var(--color-border);
-        padding-top: 13px;
       }
-      .leave {
-        color: var(--color-muted);
-        font-size: 12.5px;
-        text-align: center;
-      }
-      .leave:hover {
+      .later:hover {
         color: var(--color-accent);
-      }
-      @media (max-width: 860px) {
-        .layout {
-          grid-template-columns: 1fr;
-        }
       }
     `,
   ],

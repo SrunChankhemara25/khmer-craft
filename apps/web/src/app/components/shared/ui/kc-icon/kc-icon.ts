@@ -245,6 +245,40 @@ import { Component, input } from '@angular/core';
           <circle cx="12" cy="12" r="10" />
           <polyline points="12 6 12 12 16 14" />
         }
+        @case ('x') {
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        }
+        @case ('refresh') {
+          <path d="M21 12a9 9 0 0 1-15.5 6.2L3 16" />
+          <path d="M3 12a9 9 0 0 1 15.5-6.2L21 8" />
+          <path d="M21 3v5h-5" />
+          <path d="M3 21v-5h5" />
+        }
+        @case ('loader') {
+          <path d="M12 2v4" />
+          <path d="M12 18v4" />
+          <path d="m4.9 4.9 2.8 2.8" />
+          <path d="m16.3 16.3 2.8 2.8" />
+          <path d="M2 12h4" />
+          <path d="M18 12h4" />
+        }
+        @case ('qrcode') {
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <path d="M14 14h3v3h-3z" />
+          <path d="M20 14v.01" />
+          <path d="M17 20h4v-3" />
+        }
+        @case ('bank') {
+          <path d="M3 10 12 4l9 6" />
+          <path d="M5 10v8" />
+          <path d="M9.5 10v8" />
+          <path d="M14.5 10v8" />
+          <path d="M19 10v8" />
+          <path d="M3 21h18" />
+        }
       }
     </svg>
   `,

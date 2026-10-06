@@ -16,6 +16,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { CartService } from '../../../../core/cart/cart.service';
 import { FlyToCartService } from '../../../../core/cart/fly-to-cart.service';
 import { WishlistService } from '../../../../core/wishlist/wishlist.service';
+import { isSellerPortalHost, marketplaceUrl, sellerPortalUrl } from '../../../../core/portal/portal';
 import { IconComponent } from '../../ui/icon/icon.component';
 import { CategoryMenuComponent } from '../category-menu/category-menu.component';
 import { SearchOverlayComponent } from '../../../user/search/search-overlay/search-overlay.component';
@@ -42,10 +43,11 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
           @if (sellerArea()) {
             <a routerLink="/seller/dashboard">Seller dashboard</a>
             <a routerLink="/help">Seller support</a>
+            <a [href]="marketplaceHome">Marketplace</a>
           } @else {
             <a routerLink="/orders">Track order</a>
             <a routerLink="/help">Support</a>
-            <a href="/become-a-seller" target="_blank" rel="noopener">Seller portal</a>
+            <a [href]="sellerPortalHome" target="_blank" rel="noopener">Seller portal <ui-icon name="external-link" [size]="11" /></a>
           }
         </div>
       </div>
@@ -53,10 +55,8 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
 
     <header class="navbar" [class.scrolled]="scrolled()" [class.nav-hidden]="hidden()">
       <div class="navbar-inner container">
-        <a [routerLink]="sellerArea() ? '/become-a-seller' : '/'" class="logo" [attr.aria-label]="sellerArea() ? 'KhmerCraft Seller home' : 'KhmerCraft home'">
-          <span class="logo-mark"
-            ><ui-icon name="leaf" [size]="16" color="#fff"
-          /></span>
+        <a routerLink="/" class="logo" [attr.aria-label]="sellerArea() ? 'KhmerCraft Seller home' : 'KhmerCraft home'">
+          <span class="logo-mark"><img src="logo.svg" alt="" width="34" height="34" /></span>
           KhmerCraft
           @if (sellerArea()) { <small class="seller-logo-label">Seller</small> }
         </a>
@@ -178,14 +178,14 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
                        replacement, and the shopping links below stay. -->
                   @if (isSeller()) {
                     <p class="account-section">Your store</p>
-                    <a routerLink="/seller/dashboard" role="menuitem" (click)="accountOpen.set(false)">
+                    <a [href]="sellerLink('/seller/dashboard')" [attr.target]="onSellerPortal ? null : '_blank'" rel="noopener" role="menuitem" (click)="accountOpen.set(false)">
                       <ui-icon name="grid" [size]="16" /> Seller dashboard
                     </a>
-                    <a routerLink="/seller/orders" role="menuitem" (click)="accountOpen.set(false)">
+                    <a [href]="sellerLink('/seller/orders')" [attr.target]="onSellerPortal ? null : '_blank'" rel="noopener" role="menuitem" (click)="accountOpen.set(false)">
                       <ui-icon name="package" [size]="16" /> Incoming orders
                     </a>
                     @if (myStore(); as store) {
-                      <a [routerLink]="['/stores', store.id]" role="menuitem" (click)="accountOpen.set(false)">
+                      <a [href]="marketplaceLink('/stores/' + store.id)" [attr.target]="onSellerPortal ? '_blank' : null" rel="noopener" role="menuitem" (click)="accountOpen.set(false)">
                         <ui-icon name="store" [size]="16" /> View my store
                         <span class="hint">as shoppers see it</span>
                       </a>
@@ -253,15 +253,15 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
               <a routerLink="/seller/orders" [class.on]="isPath('/seller/orders')">
                 Incoming orders
               </a>
-              <a routerLink="/become-a-seller" [class.on]="isPath('/become-a-seller')">
+              <a routerLink="/guide" [class.on]="isPath('/guide')">
                 Selling guide
               </a>
             } @else {
-              <a routerLink="/become-a-seller" [class.on]="isPath('/become-a-seller')">
+              <a routerLink="/" [class.on]="isPath('/')">
                 Why sell with us
               </a>
             }
-            <a class="back-to-shop" routerLink="/">
+            <a class="back-to-shop" [href]="marketplaceHome" target="_blank" rel="noopener">
               <ui-icon name="arrow-left" [size]="13" /> Back to shopping
             </a>
           </div>
@@ -459,13 +459,11 @@ import { CartDrawerComponent } from '../../cart/cart-drawer.component';
       }
       .logo-mark {
         width: 34px;
-        height: 30px;
-        border-radius: 11px 11px 17px 11px;
-        background: var(--color-accent);
+        height: 34px;
         display: flex;
-        align-items: center;
-        justify-content: center;
+        flex-shrink: 0;
       }
+      .logo-mark img { width: 100%; height: 100%; display: block; }
       .nav-actions {
         display: flex;
         align-items: center;
@@ -1016,9 +1014,21 @@ export class NavbarComponent implements AfterViewInit {
    * use for a basket. Derived from the URL so no page has to declare it.
    */
   protected readonly sellerArea = computed(() => {
+    if (this.onSellerPortal) return true;
     const path = this.url().split('?')[0];
     return path.startsWith('/seller') || path.startsWith('/become-a-seller');
   });
+
+  /** Marketplace and seller portal are separate sites; see core/portal/portal.ts. */
+  protected readonly onSellerPortal = isSellerPortalHost();
+  protected readonly sellerPortalHome = sellerPortalUrl('/');
+  protected readonly marketplaceHome = marketplaceUrl('/');
+  protected sellerLink(path: string): string {
+    return this.onSellerPortal ? path : sellerPortalUrl(path);
+  }
+  protected marketplaceLink(path: string): string {
+    return this.onSellerPortal ? marketplaceUrl(path) : path;
+  }
 
   /** Signed in with a seller (or admin) account. */
   /**

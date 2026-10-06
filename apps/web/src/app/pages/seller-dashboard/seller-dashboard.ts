@@ -11,13 +11,14 @@ import { productShareUrl, storeShareUrl } from '../../core/share/share-links';
 import { StoreCategoriesManagerComponent } from '../../features/seller/store-categories/store-categories-manager.component';
 import { WarehousesManagerComponent } from '../../features/seller/warehouses/warehouses-manager.component';
 import { SellerBillingComponent } from '../seller-billing.component';
-import { SellerService, Warehouse, StoreCollectionDTO } from '../../core/api/seller.service';
+import { PayoutMethod, PayoutSettings, PosKhqrSettings, SellerPayoutRecord, SellerPayoutSummary, SellerService, Warehouse, StoreCollectionDTO } from '../../core/api/seller.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { CommerceApiService } from '../../core/api/commerce-api.service';
 import { CatalogService } from '../../core/catalog/catalog.service';
 import { OrderStatus } from '../../core/api/api.models';
 import { cartErrorMessage } from '../../core/cart/cart.service';
 import { SELLER_CATEGORY_OPTIONS, SELLER_LOCATION_OPTIONS } from '../../core/data/seller-form-options.data';
+import { marketplaceUrl } from '../../core/portal/portal';
 
 export type DashboardView =
   | 'dashboard'
@@ -261,7 +262,44 @@ interface DashboardMetric {
     .avatar {
       align-items: center; background: var(--brand-700); border-radius: 50%; color: #fff;
       display: flex; flex: none; font-size: 13px; font-weight: 700; height: 34px; justify-content: center; width: 34px;
+      overflow: hidden;
     }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ======================= store cover & profile picture ======================= */
+    .side-store { position: relative; margin: 10px 0 4px; height: 64px; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #2b7a57, #134a33); }
+    .side-store > img { width: 100%; height: 100%; object-fit: cover; opacity: .85; }
+    .side-store-logo { position: absolute; left: 10px; bottom: 8px; width: 38px; height: 38px; display: grid; place-items: center; overflow: hidden; color: var(--brand-700); background: #fff; border: 2px solid #fff; border-radius: 50%; font-size: 14px; font-weight: 800; box-shadow: 0 4px 10px rgba(0,0,0,.25); }
+    .side-store-logo img { width: 100%; height: 100%; object-fit: cover; }
+
+    .store-hero { margin-bottom: 20px; overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: 18px; }
+    .store-hero-cover { position: relative; height: 180px; background: linear-gradient(120deg, #e3efe8, #cfe2d6 55%, #f0e6d6); }
+    .store-hero-cover img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    .store-hero-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink-500); font-size: 13px; font-weight: 600; }
+    .store-hero-body { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 16px; padding: 0 22px 18px; }
+    .store-hero-logo { width: 92px; height: 92px; margin-top: -46px; flex: none; display: grid; place-items: center; overflow: hidden; color: #fff; background: var(--brand-700); border: 4px solid #fff; border-radius: 50%; font-size: 30px; font-weight: 800; box-shadow: 0 8px 20px rgba(20, 60, 40, .18); }
+    .store-hero-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .store-hero-info { flex: 1; min-width: 200px; padding-bottom: 2px; }
+    .store-hero-info h2 { margin: 0; color: var(--ink-900); font-family: var(--font-heading, Georgia, serif); font-size: 22px; }
+    .store-hero-info p { margin: 4px 0 0; color: var(--ink-500); font-size: 13px; }
+    .store-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .brand-editor { margin-bottom: 16px; padding: 18px; }
+    .brand-editor-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+    .brand-editor-head h2 { margin: 0; font-size: 15px; }
+    .brand-editor-head p { margin: 4px 0 0; color: var(--ink-500); font-size: 12.5px; }
+    .brand-cover { position: relative; height: 200px; overflow: hidden; background: linear-gradient(120deg, #e3efe8, #cfe2d6 55%, #f0e6d6); border: 1px dashed var(--line); border-radius: 14px; }
+    .brand-cover img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    .brand-cover .btn { position: absolute; right: 12px; bottom: 12px; background: rgba(255,255,255,.94); }
+    .brand-logo-row { display: flex; align-items: center; gap: 16px; padding: 0 16px; }
+    .brand-logo { position: relative; width: 104px; height: 104px; margin-top: -52px; flex: none; display: grid; place-items: center; overflow: hidden; color: #fff; background: var(--brand-700); border: 4px solid #fff; border-radius: 50%; font-size: 34px; font-weight: 800; box-shadow: 0 8px 20px rgba(20, 60, 40, .18); }
+    .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .brand-logo-row > div { padding-top: 12px; }
+    .brand-logo-row strong { display: block; color: var(--ink-900); font-size: 14px; }
+    .brand-logo-row span { display: block; margin: 3px 0 8px; color: var(--ink-500); font-size: 12px; }
+    .brand-note { margin: 14px 0 0; color: var(--ink-500); font-size: 12px; }
+    .brand-note.error { color: #b42318; font-weight: 600; }
+    .brand-note.pending { color: #8a5a10; font-weight: 600; }
 
     /* ============================ page frame ============================ */
     .page { margin: 0 auto; max-width: 1360px; padding: 22px 22px 64px; width: 100%; }
@@ -348,6 +386,51 @@ interface DashboardMetric {
     .status.shipped, .shipped { background: var(--info-bg); color: var(--info); }
     .status.delivered, .delivered, .status.completed, .paid { background: var(--ok-bg); color: var(--ok); }
     .status.cancelled, .cancelled, .out-of-stock { background: var(--danger-bg); color: var(--danger); }
+    /* ---- Payouts (minimal) ---- */
+    .payouts-min { max-width: 760px; }
+    .pm-error { color: var(--danger); background: var(--danger-bg); font-size: 13px; padding: 10px 12px; border-radius: 10px; margin: 0 0 14px; }
+    .pm-hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 24px; border-radius: 16px; background: var(--canvas, #f6f3ec); margin-bottom: 14px; }
+    .pm-label { display: block; font-size: 12.5px; color: var(--ink-500, #777); }
+    .pm-amount { display: block; font-size: 38px; font-weight: 650; letter-spacing: -0.03em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+    .pm-sub { display: block; font-size: 13px; color: var(--ink-600, #555); margin-top: 2px; }
+    .pm-stats { display: flex; gap: 26px; margin: 0; }
+    .pm-stats dt { font-size: 12px; color: var(--ink-500, #777); }
+    .pm-stats dd { margin: 2px 0 0; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .pm-card { border: 1px solid var(--line, #e7e1d6); border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; background: #fff; }
+    .pm-card.pm-flush { padding: 0; overflow: hidden; }
+    .pm-h2 { font-size: 15px; margin: 0 0 14px; }
+    .pm-account { display: flex; align-items: center; gap: 12px; }
+    .pm-account-text { flex: 1; min-width: 0; display: grid; }
+    .pm-account-text strong { font-size: 14px; font-weight: 600; }
+    .pm-account-text span { font-size: 12.5px; color: var(--ink-500, #777); }
+    .pm-pill { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); white-space: nowrap; }
+    .pm-pill.ok { background: var(--ok-bg); color: var(--ok); }
+    .pm-pill.bad { background: var(--danger-bg); color: var(--danger); }
+    .pm-link { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; color: var(--ink-700, #333); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line, #ccc); cursor: pointer; white-space: nowrap; }
+    .pm-link:hover { color: var(--brand-700, #8e3021); }
+    .pm-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .pm-form label { display: grid; gap: 5px; font-size: 12.5px; color: var(--ink-600, #555); }
+    .pm-khqr { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+    .pm-khqr img { width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--line, #e7e1d6); }
+    .pm-upload { position: relative; overflow: hidden; }
+    .pm-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .pm-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .pm-fine { font-size: 12px; color: var(--ink-500, #777); margin: 10px 0 0; }
+    .pm-tabs { display: flex; gap: 4px; padding: 6px; border-bottom: 1px solid var(--line, #e7e1d6); }
+    .pm-tabs button { border: 0; background: none; padding: 8px 12px; border-radius: 8px; font: inherit; font-size: 13px; color: var(--ink-500, #777); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .pm-tabs button.active { background: var(--canvas, #f6f3ec); color: var(--ink-900, #111); font-weight: 600; }
+    .pm-count { font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--line, #e7e1d6); }
+    .pm-row { display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid var(--line, #eee8dd); }
+    .pm-row:last-child { border-bottom: 0; }
+    .pm-row-main { flex: 1; min-width: 0; display: grid; }
+    .pm-row-main strong { font-size: 14.5px; font-variant-numeric: tabular-nums; }
+    .pm-row-main span { font-size: 12.5px; color: var(--ink-500, #777); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pm-empty { margin: 0; padding: 22px 20px; font-size: 13px; color: var(--ink-500, #777); }
+    .pm-how { font-size: 13px; color: var(--ink-600, #555); padding: 4px 2px; }
+    .pm-how summary { cursor: pointer; color: var(--ink-700, #333); font-weight: 500; }
+    .pm-how ul { margin: 10px 0 0; padding-left: 18px; display: grid; gap: 6px; line-height: 1.5; }
+    @media (max-width: 640px) { .pm-hero { padding: 20px; } .pm-stats { gap: 18px; } .pm-amount { font-size: 32px; } }
+
     .in-stock { background: var(--ok-bg); color: var(--ok); }
     .low-stock { background: var(--warn-bg); color: var(--warn); }
 
@@ -591,6 +674,12 @@ interface DashboardMetric {
           <h1 class="logo">KhmerCraft</h1>
           <p class="portal-label">Seller Portal</p>
           <div class="store-control">
+            <div class="side-store">
+              @if (storeProfile().bannerUrl) { <img [src]="storeProfile().bannerUrl" alt="" /> }
+              <span class="side-store-logo">
+                @if (storeProfile().logoUrl) { <img [src]="storeProfile().logoUrl" alt="" /> } @else { {{ storeInitials() }} }
+              </span>
+            </div>
             <label for="active-store">Working in</label>
             <select id="active-store" [ngModel]="myStoreId()" (ngModelChange)="switchStore($event)">
               @for (store of stores(); track store.id || store._id) {
@@ -765,7 +854,7 @@ interface DashboardMetric {
                 <span>{{ currentPlanBadge() }} Seller</span>
               </div>
               <div class="avatar">
-                {{ (storeProfile().storeName || 'Y').substring(0, 1).toUpperCase() }}
+                @if (storeProfile().logoUrl) { <img [src]="storeProfile().logoUrl" alt="" /> } @else { {{ storeInitials() }} }
               </div>
             </div>
           </div>
@@ -784,6 +873,30 @@ interface DashboardMetric {
                 <button class="btn btn-ghost" type="button" (click)="setView('pos')"><kc-icon name="clipboard" [size]="14" /> Open POS</button>
               </div>
             </div>
+
+            <!-- The store as buyers see it: cover image and profile picture. -->
+            <section class="store-hero">
+              <div class="store-hero-cover">
+                @if (storeProfile().bannerUrl) {
+                  <img [src]="storeProfile().bannerUrl" alt="Store cover" />
+                } @else {
+                  <span class="store-hero-empty"><kc-icon name="image" [size]="16" /> Add a cover image so buyers recognise your store</span>
+                }
+              </div>
+              <div class="store-hero-body">
+                <div class="store-hero-logo">
+                  @if (storeProfile().logoUrl) { <img [src]="storeProfile().logoUrl" alt="Store profile picture" /> } @else { {{ storeInitials() }} }
+                </div>
+                <div class="store-hero-info">
+                  <h2>{{ storeProfile().storeName || 'Your store' }}</h2>
+                  <p>{{ storeProfile().storeTagline || ((activeStore()?.category || 'Your store') + (storeProfile().location ? ' · ' + storeProfile().location : '')) }} · {{ currentPlanBadge() }} plan</p>
+                </div>
+                <div class="store-hero-actions">
+                  <button class="btn btn-ghost" type="button" (click)="setView('profile')"><kc-icon name="image" [size]="14" /> Edit cover &amp; picture</button>
+                  <a class="btn btn-primary" [href]="activeStorefrontUrl()" target="_blank" rel="noopener"><kc-icon name="external" [size]="14" /> View store</a>
+                </div>
+              </div>
+            </section>
 
             <section class="metrics">
               @for (metric of dashboardMetrics(); track metric.label) {
@@ -1428,23 +1541,50 @@ interface DashboardMetric {
                         <span style="font-size:11px;font-weight:700;color:#e11d48;">\${{ posTotal().toFixed(2) }} USD</span>
                       </div>
 
-                      @if (!posKhqrSession()) {
-                        <p style="font-size:11.5px;color:var(--ink-600);margin:0 0 10px;line-height:1.4;">
-                          Generate a dynamic Bakong QR code. The customer can scan with ABA Mobile, Bakong, ACLEDA, or any Cambodian banking app.
+                      @if (!posKhqrSession() && khqrNeedsSetup()) {
+                        <!-- First-time setup: where KHQR payments should land -->
+                        <p style="font-size:11.5px;color:var(--ink-600);margin:0 0 8px;line-height:1.4;">
+                          Add your <strong>Bakong account ID</strong> once (find it in your ABA / ACLEDA / Wing app under "Bakong ID" or "KHQR"). Customers then pay straight into that account.
                         </p>
-                        <button 
-                          type="button" 
-                          class="btn btn-primary" 
-                          style="width:100%;background:#e11d48;border-color:#e11d48;padding:8px;font-size:12.5px;" 
+                        <input class="dash-input" placeholder="yourname@aba" [ngModel]="khqrForm().bakongAccountId" (ngModelChange)="khqrForm.set({...khqrForm(), bakongAccountId: $event})" />
+                        <input class="dash-input" style="margin-top:6px;" maxlength="25" placeholder="Name shown to customers" [ngModel]="khqrForm().merchantName" (ngModelChange)="khqrForm.set({...khqrForm(), merchantName: $event})" />
+                        <button type="button" class="btn btn-primary" style="width:100%;margin-top:8px;background:#e11d48;border-color:#e11d48;padding:8px;font-size:12.5px;"
+                          [disabled]="savingKhqr() || !khqrForm().bakongAccountId.trim()" (click)="saveKhqrSettings()">
+                          {{ savingKhqr() ? 'Saving…' : 'Save & turn on KHQR' }}
+                        </button>
+                      } @else if (!posKhqrSession()) {
+                        <p style="font-size:11.5px;color:var(--ink-600);margin:0 0 10px;line-height:1.4;">
+                          Shows a KHQR with the amount already filled in. The customer scans it with ABA, ACLEDA, Wing, Bakong or any Cambodian banking app.
+                          @if (khqrSettings()?.configured) { <br/><span style="color:var(--ink-500);">Pays into <strong>{{ khqrSettings()!.bakongAccountId }}</strong> · <button type="button" style="border:0;background:none;padding:0;color:#e11d48;text-decoration:underline;cursor:pointer;font-size:11px;"(click)="posSubArea.set('settings')">change</button></span> }
+                        </p>
+                        <button
+                          type="button"
+                          class="btn btn-primary"
+                          style="width:100%;background:#e11d48;border-color:#e11d48;padding:8px;font-size:12.5px;"
                           [disabled]="posCart().length === 0 || generatingKhqr()"
                           (click)="generatePosKhqr()"
                         >
                           @if (generatingKhqr()) {
                             <kc-icon name="loader" [size]="14" /> Generating KHQR...
                           } @else {
-                            <kc-icon name="qrcode" [size]="14" /> Generate Bakong QR (\${{ posTotal().toFixed(2) }})
+                            <kc-icon name="qrcode" [size]="14" /> Show KHQR for cart (\${{ posTotal().toFixed(2) }})
                           }
                         </button>
+
+                        <!-- Quick charge: any amount, no products -->
+                        <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #fecdd3;">
+                          <label style="font-size:11px;color:var(--ink-500);display:block;margin-bottom:3px;">Or charge a custom amount (USD)</label>
+                          <div style="display:flex;gap:6px;">
+                            <input class="dash-input" style="flex:1;" type="number" min="0.01" step="0.01" placeholder="0.00"
+                              [ngModel]="quickKhqrAmount()" (ngModelChange)="quickKhqrAmount.set($event === '' || $event === null ? null : +$event)"
+                              (keydown.enter)="generateQuickKhqr()" />
+                            <button type="button" class="btn btn-outline btn-sm" style="white-space:nowrap;"
+                              [disabled]="!quickKhqrAmount() || quickKhqrAmount()! <= 0 || generatingKhqr()" (click)="generateQuickKhqr()">
+                              <kc-icon name="qrcode" [size]="12" /> Show QR
+                            </button>
+                          </div>
+                          <small style="font-size:10.5px;color:var(--ink-500);">For a deposit or a payment outside the cart. Not added to your sales records.</small>
+                        </div>
                       } @else {
                         <!-- QR Display Active -->
                         <div style="background:#fff;border:1px solid #fda4af;border-radius:var(--r-sm);padding:10px;text-align:center;">
@@ -1469,7 +1609,9 @@ interface DashboardMetric {
 
                           <!-- Live Status Polling Indicator -->
                           <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11.5px;">
-                            @if (checkingKhqrPayment()) {
+                            @if (posKhqrSession()!.mode === 'BAKONG' && !posKhqrPaid()) {
+                              <span style="color:var(--ink-700);font-weight:500;">Check your bank app for the payment, then confirm.</span>
+                            } @else if (checkingKhqrPayment()) {
                               <kc-icon name="loader" [size]="13" />
                               <span style="color:#e11d48;font-weight:600;">Verifying with ABA PayWay...</span>
                             } @else if (posKhqrPaid()) {
@@ -1482,15 +1624,21 @@ interface DashboardMetric {
 
                           <!-- Action buttons for Cashier -->
                           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;">
-                            <button 
-                              type="button" 
-                              class="btn btn-outline btn-sm" 
+                            @if (posKhqrSession()!.mode === 'PAYWAY') {
+                            <button
+                              type="button"
+                              class="btn btn-outline btn-sm"
                               style="font-size:11px;padding:5px;"
                               [disabled]="checkingKhqrPayment() || posKhqrPaid()"
                               (click)="checkPosKhqrPayment(true)"
                             >
                               <kc-icon name="refresh" [size]="12" /> Check Status
                             </button>
+                            } @else {
+                            <button type="button" class="btn btn-outline btn-sm" style="font-size:11px;padding:5px;" (click)="cancelPosKhqr()">
+                              <kc-icon name="x" [size]="12" /> Cancel QR
+                            </button>
+                            }
                             <button 
                               type="button" 
                               class="btn btn-outline btn-sm" 
@@ -1506,18 +1654,20 @@ interface DashboardMetric {
                               type="button" 
                               class="btn btn-ghost btn-sm" 
                               style="flex:1;font-size:10.5px;color:var(--ink-500);padding:4px;"
-                              (click)="generatePosKhqr()"
+                              (click)="posKhqrSession()!.quick ? generateQuickKhqr(posKhqrSession()!.amount) : generatePosKhqr()"
                             >
                               <kc-icon name="refresh" [size]="11" /> Refresh QR
                             </button>
-                            <button 
-                              type="button" 
-                              class="btn btn-ghost btn-sm" 
+                            @if (posKhqrSession()!.mode === 'PAYWAY') {
+                            <button
+                              type="button"
+                              class="btn btn-ghost btn-sm"
                               style="flex:1;font-size:10.5px;color:#1d4ed8;padding:4px;font-weight:600;"
                               (click)="simulatePosKhqrPayment()"
                             >
-                              ⚡ Simulate Scan
+                              ⚡ Simulate Scan (sandbox)
                             </button>
+                            }
                           </div>
                         </div>
                       }
@@ -1553,15 +1703,18 @@ interface DashboardMetric {
                         {{ generatingKhqr() ? 'Generating Bakong QR...' : ('Generate Bakong QR · $' + posTotal().toFixed(2)) }}
                       </button>
                     } @else {
-                      <button 
-                        class="btn btn-primary" 
-                        type="button" 
-                        style="width:100%;margin-top:14px;padding:11px;font-size:13.5px;background:#059669;border-color:#059669;" 
-                        [disabled]="posCart().length === 0 || posProcessingOrder() || checkingKhqrPayment()"
+                      <button
+                        class="btn btn-primary"
+                        type="button"
+                        style="width:100%;margin-top:14px;padding:11px;font-size:13.5px;background:#059669;border-color:#059669;"
+                        [disabled]="(!posKhqrSession()!.quick && posCart().length === 0) || posProcessingOrder() || checkingKhqrPayment()"
                         (click)="confirmKhqrPaidAndComplete()"
                       >
-                        {{ posProcessingOrder() ? 'Processing Sale...' : ('Confirm Paid & Complete Sale · $' + posTotal().toFixed(2)) }}
+                        {{ posProcessingOrder() ? 'Processing Sale...' : posKhqrSession()!.quick ? ('Payment received · $' + posKhqrSession()!.amount.toFixed(2)) : ('Confirm Paid & Complete Sale · $' + posTotal().toFixed(2)) }}
                       </button>
+                    }
+                    @if (posKhqrNotice()) {
+                      <div style="color:var(--success);background:var(--brand-50);font-size:11.5px;margin-top:10px;padding:8px;border-radius:var(--r-sm);">{{ posKhqrNotice() }}</div>
                     }
                   }
                 </div>
@@ -2208,6 +2361,20 @@ interface DashboardMetric {
                   </div>
                 </div>
 
+                <div class="field-group" style="margin-top:14px;padding:12px;border:1px solid #fecdd3;border-radius:var(--r-md);">
+                  <label>KHQR — your Bakong account</label>
+                  <small class="muted" style="display:block;margin-bottom:6px;">In-store KHQR payments go straight into this account. Find your Bakong ID in your ABA, ACLEDA or Wing app (it looks like <strong>name&#64;aba</strong>).</small>
+                  <input class="dash-input" placeholder="yourname@aba" [ngModel]="khqrForm().bakongAccountId" (ngModelChange)="khqrForm.set({...khqrForm(), bakongAccountId: $event})" />
+                  <div style="display:grid;grid-template-columns:2fr 1fr;gap:6px;margin-top:6px;">
+                    <input class="dash-input" maxlength="25" placeholder="Name shown to customers" [ngModel]="khqrForm().merchantName" (ngModelChange)="khqrForm.set({...khqrForm(), merchantName: $event})" />
+                    <input class="dash-input" maxlength="15" placeholder="City" [ngModel]="khqrForm().city" (ngModelChange)="khqrForm.set({...khqrForm(), city: $event})" />
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+                    <button class="btn btn-outline btn-sm" type="button" [disabled]="savingKhqr()" (click)="saveKhqrSettings()">{{ savingKhqr() ? 'Saving…' : 'Save KHQR account' }}</button>
+                    @if (khqrSettings()?.configured) { <span style="font-size:12px;color:var(--success);">✓ KHQR is on</span> }
+                  </div>
+                </div>
+
                 <div style="margin-top:20px;">
                   <button class="btn btn-primary" type="button" (click)="savePosSettings()">Save POS Settings</button>
                 </div>
@@ -2466,7 +2633,7 @@ interface DashboardMetric {
                 </div>
                 <div class="field-group">
                   <label>Marketplace Domain</label>
-                  <input class="dash-input" [value]="'https://khmercraft.com' + activeStorefrontUrl()" readonly style="background:var(--canvas)" />
+                  <input class="dash-input" [value]="activeStorefrontUrl()" readonly style="background:var(--canvas)" />
                 </div>
                 <div class="field-group" style="margin-top:12px;">
                   <label>Standalone Custom Domain</label>
@@ -2501,47 +2668,161 @@ interface DashboardMetric {
 
         <!-- ======================= 13. FINANCE / SALES & PAYOUTS ======================= -->
         @else if (view() === 'sales') {
-          <main class="page">
+          <main class="page payouts-min">
             <div class="page-header">
               <div>
-                <h1>Sales &amp; Payouts</h1>
-                <p class="muted">Gross revenue, platform fees, seller earnings, and payout schedule.</p>
+                <h1>Payouts</h1>
+                <p class="muted">Your earnings from online orders, paid to your bank.</p>
               </div>
+              <button class="btn btn-ghost btn-sm" type="button" (click)="loadPayouts()"><kc-icon name="refresh" [size]="13" /> Refresh</button>
             </div>
 
-            <section class="metrics">
-              @for (metric of payoutMetrics(); track metric.label) {
-                <article class="metric" [class.warn]="metric.warn" [class.gold]="metric.gold">
-                  <div class="metric-icon"><kc-icon [name]="metric.icon" [size]="18" /></div>
-                  <span class="metric-label">{{ metric.label }}</span>
-                  <strong>{{ metric.value }}</strong>
-                  @if (metric.note) { <span class="metric-note">{{ metric.note }}</span> }
-                </article>
-              }
-            </section>
+            @if (payoutError()) {
+              <p class="pm-error">{{ payoutError() }}</p>
+            }
 
-            <article class="table-card">
-              <div class="payout-head">
-                <h2>Payout History &amp; Settlements</h2>
-              </div>
-              <table>
-                <thead>
-                  <tr><th>Order ID</th><th>Date</th><th>Gross Total</th><th>Commission (10%)</th><th>Net Earning</th><th>Payout Status</th></tr>
-                </thead>
-                <tbody>
-                  @for (row of payouts(); track row.id) {
-                    <tr>
-                      <td class="order-id">{{ row.id }}</td>
-                      <td>{{ row.date }}</td>
-                      <td>{{ row.total }}</td>
-                      <td style="color:var(--warn)">{{ row.commission }}</td>
-                      <td><strong>{{ row.earning }}</strong></td>
-                      <td><span class="status delivered">{{ row.status }}</span></td>
-                    </tr>
+            @if (payoutSummary(); as ps) {
+              <!-- Balance -->
+              <section class="pm-hero">
+                <div>
+                  <span class="pm-label">{{ ps.balance.available < 0 ? 'You owe (cash-order commission)' : 'Ready to pay out' }}</span>
+                  <strong class="pm-amount">{{ ps.balance.available < 0 ? '-' : '' }}\${{ abs(ps.balance.available).toFixed(2) }}</strong>
+                  <span class="pm-sub">
+                    @if (!ps.account) { Add a payout account to get paid }
+                    @else if (ps.account.status !== 'VERIFIED') { Paid once your account is verified }
+                    @else { Next payout {{ ps.settings.nextPayoutDate | date: 'EEEE, MMM d' }} }
+                  </span>
+                </div>
+                <dl class="pm-stats">
+                  <div><dt>On hold</dt><dd>\${{ ps.balance.onHold.toFixed(2) }}</dd></div>
+                  <div><dt>Awaiting delivery</dt><dd>\${{ ps.balance.pendingDelivery.toFixed(2) }}</dd></div>
+                  <div><dt>Paid to you</dt><dd>\${{ ps.balance.paidOut.toFixed(2) }}</dd></div>
+                </dl>
+              </section>
+
+              <!-- Payout account -->
+              <section class="pm-card">
+                @if (ps.account && !editingPayoutAccount()) {
+                  <div class="pm-account">
+                    <kc-icon name="bank" [size]="18" />
+                    <div class="pm-account-text">
+                      <strong>{{ payoutMethodLabel(ps.account.method, ps.account.bankName) }} · {{ ps.account.accountNumber }}</strong>
+                      <span>{{ ps.account.accountName }}</span>
+                    </div>
+                    <span class="pm-pill" [class.ok]="ps.account.status === 'VERIFIED'" [class.bad]="ps.account.status === 'REJECTED'">
+                      {{ ps.account.status === 'VERIFIED' ? 'Verified' : ps.account.status === 'REJECTED' ? 'Needs changes' : 'Being verified' }}
+                    </span>
+                    <button class="pm-link" type="button" (click)="startEditPayoutAccount()">Change</button>
+                  </div>
+                  @if (ps.account.status === 'REJECTED' && ps.account.rejectionReason) {
+                    <p class="pm-error" style="margin:12px 0 0">{{ ps.account.rejectionReason }}</p>
                   }
-                </tbody>
-              </table>
-            </article>
+                } @else {
+                  <h2 class="pm-h2">{{ ps.account ? 'Change payout account' : 'Where should we send your money?' }}</h2>
+                  <div class="pm-form">
+                    <label>
+                      <span>Bank</span>
+                      <select class="dash-select" [ngModel]="payoutForm().method" (ngModelChange)="payoutForm.set({...payoutForm(), method: $event})">
+                        <option value="ABA">ABA Bank</option>
+                        <option value="ACLEDA">ACLEDA Bank</option>
+                        <option value="WING">Wing Bank</option>
+                        <option value="OTHER_BANK">Other bank</option>
+                      </select>
+                    </label>
+                    @if (payoutForm().method === 'OTHER_BANK') {
+                      <label>
+                        <span>Bank name</span>
+                        <input class="dash-input" maxlength="80" placeholder="e.g. Canadia Bank" [ngModel]="payoutForm().bankName" (ngModelChange)="payoutForm.set({...payoutForm(), bankName: $event})" />
+                      </label>
+                    }
+                    <label>
+                      <span>Account name</span>
+                      <input class="dash-input" maxlength="120" placeholder="As shown by your bank" [ngModel]="payoutForm().accountName" (ngModelChange)="payoutForm.set({...payoutForm(), accountName: $event})" />
+                    </label>
+                    <label>
+                      <span>Account number</span>
+                      <input class="dash-input" inputmode="numeric" maxlength="40" placeholder="000 000 000" [ngModel]="payoutForm().accountNumber" (ngModelChange)="payoutForm.set({...payoutForm(), accountNumber: $event})" />
+                    </label>
+                  </div>
+                  <div class="pm-khqr">
+                    @if (payoutForm().khqrImage) {
+                      <img [src]="payoutForm().khqrImage" alt="Your KHQR" />
+                      <button class="pm-link" type="button" (click)="payoutForm.set({...payoutForm(), khqrImage: null})">Remove KHQR</button>
+                    } @else {
+                      <label class="pm-link pm-upload">
+                        + Add your KHQR image (optional)
+                        <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onPayoutKhqrFile($event)" />
+                      </label>
+                    }
+                  </div>
+                  <div class="pm-actions">
+                    <button class="btn btn-primary" type="button" [disabled]="savingPayoutAccount() || !payoutForm().accountName.trim() || !payoutForm().accountNumber.trim()" (click)="savePayoutAccount()">
+                      {{ savingPayoutAccount() ? 'Saving…' : 'Save account' }}
+                    </button>
+                    @if (ps.account) { <button class="btn btn-ghost" type="button" (click)="editingPayoutAccount.set(false)">Cancel</button> }
+                  </div>
+                  <p class="pm-fine">KhmerCraft checks every new or changed account before sending money to it.</p>
+                }
+              </section>
+
+              <!-- History / waiting orders -->
+              <section class="pm-card pm-flush">
+                <div class="pm-tabs" role="tablist">
+                  <button type="button" role="tab" [class.active]="payoutTab() === 'history'" (click)="payoutTab.set('history')">Payouts</button>
+                  <button type="button" role="tab" [class.active]="payoutTab() === 'orders'" (click)="payoutTab.set('orders')">
+                    Waiting orders @if (ps.lines.length) { <span class="pm-count">{{ ps.lines.length }}</span> }
+                  </button>
+                </div>
+
+                @if (payoutTab() === 'history') {
+                  @if (!ps.payouts.length) {
+                    <p class="pm-empty">No payouts yet.</p>
+                  } @else {
+                    @for (po of ps.payouts; track po.id) {
+                      <div class="pm-row">
+                        <div class="pm-row-main">
+                          <strong>\${{ po.amount.toFixed(2) }}</strong>
+                          <span>{{ (po.paidAt || po.createdAt) | date: 'MMM d, y' }} · {{ po.orderCount }} order{{ po.orderCount === 1 ? '' : 's' }} · \${{ po.commissionTotal.toFixed(2) }} fee</span>
+                        </div>
+                        <span class="pm-pill" [class.ok]="po.status === 'PAID'" [class.bad]="po.status === 'CANCELLED'">
+                          {{ po.status === 'PAID' ? 'Paid' : po.status === 'PENDING' ? 'Processing' : 'Cancelled' }}
+                        </span>
+                        @if (po.hasProof) { <button class="pm-link" type="button" (click)="openPayoutReceipt(po.id)">Receipt</button> }
+                      </div>
+                    }
+                  }
+                } @else {
+                  @if (!ps.lines.length) {
+                    <p class="pm-empty">Nothing waiting. Delivered orders show here until they're paid out.</p>
+                  } @else {
+                    @for (l of ps.lines; track l.orderId) {
+                      <div class="pm-row">
+                        <div class="pm-row-main">
+                          <strong>{{ l.net < 0 ? '-' : '' }}\${{ abs(l.net).toFixed(2) }}</strong>
+                          <span>{{ l.orderNumber }} · {{ l.collectedBy === 'SELLER' ? 'Cash on delivery (fee only)' : 'Online' }} · \${{ (l.gross - l.refunded).toFixed(2) }} sale</span>
+                        </div>
+                        <span class="pm-pill" [class.ok]="l.status === 'AVAILABLE'">
+                          {{ l.status === 'AVAILABLE' ? 'Ready' : 'Until ' + (l.releasesAt | date: 'MMM d') }}
+                        </span>
+                      </div>
+                    }
+                  }
+                }
+              </section>
+
+              <details class="pm-how">
+                <summary>How payouts work</summary>
+                <ul>
+                  <li>KhmerCraft keeps {{ ps.settings.commissionRate }}% of each product sale.</li>
+                  <li>Online payments: we collect the money and send you the rest.</li>
+                  <li>Cash on delivery: you keep the cash; the {{ ps.settings.commissionRate }}% comes off your next payout.</li>
+                  <li>Money is released {{ ps.settings.holdDays }} days after delivery and paid {{ scheduleLabel(ps.settings) }} from \${{ ps.settings.minimumPayout.toFixed(2) }}.</li>
+                  <li>In-store POS sales are yours directly and aren't included.</li>
+                </ul>
+              </details>
+            } @else if (!payoutError()) {
+              <p class="muted">Loading…</p>
+            }
           </main>
         }
 
@@ -2806,6 +3087,35 @@ interface DashboardMetric {
                 {{ savingProfile() ? 'Saving...' : 'Save Profile Changes' }}
               </button>
             </div>
+
+            <article class="form-card brand-editor">
+              <input #coverInput type="file" hidden accept="image/jpeg,image/png,image/webp" (change)="changeStoreImage($event, 'bannerUrl')" />
+              <input #logoInput type="file" hidden accept="image/jpeg,image/png,image/webp" (change)="changeStoreImage($event, 'logoUrl')" />
+              <div class="brand-editor-head">
+                <div>
+                  <h2>Cover image &amp; profile picture</h2>
+                  <p>These appear at the top of your storefront. A wide photo works best for the cover; a square logo for the picture.</p>
+                </div>
+              </div>
+              <div class="brand-cover">
+                @if (storeProfile().bannerUrl) { <img [src]="storeProfile().bannerUrl" alt="Store cover" /> }
+                @else { <span class="store-hero-empty"><kc-icon name="image" [size]="16" /> No cover image yet</span> }
+                <button class="btn btn-ghost" type="button" (click)="coverInput.click()"><kc-icon name="upload-cloud" [size]="14" /> {{ storeProfile().bannerUrl ? 'Change cover' : 'Upload cover' }}</button>
+              </div>
+              <div class="brand-logo-row">
+                <div class="brand-logo">
+                  @if (storeProfile().logoUrl) { <img [src]="storeProfile().logoUrl" alt="Store profile picture" /> } @else { {{ storeInitials() }} }
+                </div>
+                <div>
+                  <strong>Profile picture</strong>
+                  <span>JPG, PNG or WebP, up to 10 MB.</span>
+                  <button class="btn btn-ghost" type="button" (click)="logoInput.click()"><kc-icon name="upload-cloud" [size]="14" /> {{ storeProfile().logoUrl ? 'Change picture' : 'Upload picture' }}</button>
+                </div>
+              </div>
+              @if (storeImageError()) { <p class="brand-note error">{{ storeImageError() }}</p> }
+              @else if (storeImageLoading()) { <p class="brand-note">Preparing your image…</p> }
+              @else if (storeImagesDirty()) { <p class="brand-note pending">New image ready — click “Save Profile Changes” to publish it.</p> }
+            </article>
 
             <div class="two-cols">
               <article class="form-card" style="padding:18px;">
@@ -3776,17 +4086,20 @@ interface DashboardMetric {
           <div style="padding:22px;background:#fff;">
             <div style="display:inline-block;padding:12px;background:#fff;border:2px solid #fecdd3;border-radius:12px;box-shadow:0 4px 12px rgba(225,29,72,0.1);">
               <img 
-                [src]="qr.qrImage" 
-                alt="Bakong KHQR" 
-                style="width:230px;height:230px;display:block;margin:0 auto;image-rendering:pixelated;" 
+                [src]="qr.qrImage"
+                alt="Bakong KHQR"
+                style="width:min(280px,70vw);height:min(280px,70vw);display:block;margin:0 auto;image-rendering:pixelated;" 
               />
             </div>
 
             <div style="margin-top:14px;">
               <span style="font-size:12px;color:var(--ink-500);display:block;text-transform:uppercase;letter-spacing:0.5px;">Total Amount Due</span>
-              <div style="font-size:26px;font-weight:800;color:#e11d48;margin:2px 0;">
+              <div style="font-size:34px;font-weight:800;color:#e11d48;margin:2px 0;">
                 \${{ qr.amount.toFixed(2) }} <span style="font-size:14px;color:var(--ink-600);font-weight:600;">USD</span>
               </div>
+              @if (qr.mode === 'BAKONG') {
+                <div style="font-size:12.5px;color:var(--ink-700);">Pay to <strong>{{ qr.merchantName }}</strong> · {{ qr.payTo }}</div>
+              }
               <div style="font-size:11px;color:var(--ink-400);font-family:monospace;">
                 Ref: {{ qr.tranId }}
               </div>
@@ -3807,14 +4120,45 @@ interface DashboardMetric {
               </button>
               <button 
                 type="button" 
-                class="btn btn-primary" 
-                style="flex:1;background:#059669;border-color:#059669;" 
+                class="btn btn-primary"
+                style="flex:1;background:#059669;border-color:#059669;"
+                [disabled]="posProcessingOrder()"
                 (click)="confirmKhqrPaidAndComplete()"
               >
-                Confirm Paid
+                Payment received
               </button>
             </div>
+            @if (qr.mode === 'BAKONG') {
+              <p style="font-size:11px;color:var(--ink-500);margin:10px 0 0;line-height:1.4;">
+                Cashier: confirm only after your banking app shows \${{ qr.amount.toFixed(2) }} received.
+              </p>
+            }
           </div>
+        </section>
+      </div>
+    }
+
+    <!-- Payout receipt -->
+    @if (payoutReceipt(); as rc) {
+      <div class="backdrop" (click)="payoutReceipt.set(null)">
+        <section class="modal" (click)="$event.stopPropagation()" style="max-width:560px;">
+          <header class="modal-head">
+            <h2>Payout {{ rc.payoutNumber }}</h2>
+            <button type="button" class="close" (click)="payoutReceipt.set(null)">×</button>
+          </header>
+          <div style="padding:4px 0 8px;font-size:13px;">
+            <div style="display:flex;justify-content:space-between;"><span class="muted">Amount</span><strong>\${{ rc.amount.toFixed(2) }}</strong></div>
+            <div style="display:flex;justify-content:space-between;"><span class="muted">Sent to</span><span>{{ payoutMethodLabel(rc.account.method, rc.account.bankName) }} · {{ rc.account.accountNumber }}</span></div>
+            @if (rc.reference) { <div style="display:flex;justify-content:space-between;"><span class="muted">Bank reference</span><span style="font-family:monospace;">{{ rc.reference }}</span></div> }
+            @if (rc.paidAt) { <div style="display:flex;justify-content:space-between;"><span class="muted">Paid on</span><span>{{ rc.paidAt | date: 'medium' }}</span></div> }
+          </div>
+          @if (rc.proofUrl) {
+            @if (rc.proofUrl.startsWith('data:application/pdf')) {
+              <a class="btn btn-outline" [href]="rc.proofUrl" [download]="rc.payoutNumber + '.pdf'">Download receipt (PDF)</a>
+            } @else {
+              <img [src]="rc.proofUrl" alt="Transfer receipt" style="width:100%;border-radius:8px;border:1px solid var(--line);" />
+            }
+          }
         </section>
       </div>
     }
@@ -3970,9 +4314,7 @@ export class SellerDashboardPage implements OnInit {
   protected readonly orders = signal<SellerOrder[]>([]);
   protected readonly lowStock = signal<any[]>([]);
   protected readonly products = signal<any[]>([]);
-  protected readonly payoutMetrics = signal<DashboardMetric[]>([]);
-  protected readonly payouts = signal<any[]>([]);
-  protected readonly notifications = signal<any[]>([]);
+protected readonly notifications = signal<any[]>([]);
 
   // Products
   protected readonly filteredProducts = computed(() => {
@@ -4053,6 +4395,27 @@ export class SellerDashboardPage implements OnInit {
   protected readonly checkingKhqrPayment = signal(false);
   protected readonly posKhqrPaid = signal(false);
   protected readonly showPosCustomerQrModal = signal(false);
+  protected readonly khqrSettings = signal<PosKhqrSettings | null>(null);
+  // Payouts
+  protected readonly payoutSummary = signal<SellerPayoutSummary | null>(null);
+  protected readonly payoutError = signal('');
+  protected readonly editingPayoutAccount = signal(false);
+  protected readonly savingPayoutAccount = signal(false);
+  protected readonly payoutForm = signal<{ method: PayoutMethod; bankName: string; accountName: string; accountNumber: string; phone: string; khqrImage: string | null }>({
+    method: 'ABA', bankName: '', accountName: '', accountNumber: '', phone: '', khqrImage: null,
+  });
+  protected readonly payoutTab = signal<'history' | 'orders'>('history');
+  protected readonly payoutReceipt = signal<(SellerPayoutRecord & { proofUrl: string | null }) | null>(null);
+  protected readonly abs = Math.abs;
+  protected readonly khqrForm = signal({ bakongAccountId: '', merchantName: '', city: '' });
+  protected readonly savingKhqr = signal(false);
+  protected readonly quickKhqrAmount = signal<number | null>(null);
+  protected readonly posKhqrNotice = signal('');
+  /** Needs the one-time Bakong setup: no account saved and no PayWay fallback. */
+  protected readonly khqrNeedsSetup = computed(() => {
+    const k = this.khqrSettings();
+    return !!k && !k.configured && !k.paywayAvailable;
+  });
   private posKhqrPollTimer: any = null;
   protected readonly posOrders = signal<any[]>([]);
   protected readonly posShiftsList = signal<any[]>([]);
@@ -4225,8 +4588,18 @@ export class SellerDashboardPage implements OnInit {
 
   // Storefront & Profile
   protected readonly storeProfile = signal<any>({
-    storeName: '', storeDescription: '', storeTagline: '', announcement: '', theme: 'FOREST', location: '', phoneNumber: '', slug: ''
+    storeName: '', storeDescription: '', storeTagline: '', announcement: '', theme: 'FOREST', location: '', phoneNumber: '', slug: '', logoUrl: '', bannerUrl: ''
   });
+  protected readonly storeInitials = computed(() => {
+    const name = String(this.storeProfile().storeName || '').trim();
+    if (!name) return 'S';
+    return name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
+  });
+  /** Which store images were picked but not saved yet — only those are uploaded. */
+  private readonly changedImages = signal<{ logoUrl: boolean; bannerUrl: boolean }>({ logoUrl: false, bannerUrl: false });
+  protected readonly storeImagesDirty = computed(() => this.changedImages().logoUrl || this.changedImages().bannerUrl);
+  protected readonly storeImageError = signal('');
+  protected readonly storeImageLoading = signal(false);
   protected readonly savingProfile = signal(false);
   protected readonly storefrontThemes = [
     { value: 'FOREST', label: 'Forest', color: '#275643' },
@@ -4279,16 +4652,7 @@ export class SellerDashboardPage implements OnInit {
           if (typeof localStorage !== 'undefined') {
             localStorage.setItem('khmercraft_active_store_id', storeId);
           }
-          this.storeProfile.set({
-            storeName: selected.storeName || '',
-            storeDescription: selected.storeDescription || '',
-            storeTagline: selected.storeTagline || '',
-            announcement: selected.announcement || '',
-            theme: selected.theme || 'FOREST',
-            location: selected.location || '',
-            phoneNumber: selected.phoneNumber || '',
-            slug: selected.slug || selected.id || (selected as any)._id,
-          });
+          this.storeProfile.set(this.profileFor(selected));
           if (onLoaded) onLoaded(storeId);
         }
       },
@@ -4296,9 +4660,65 @@ export class SellerDashboardPage implements OnInit {
     });
   }
 
+  /** The editable profile of one store, as loaded from the server. */
+  private profileFor(store: any) {
+    this.changedImages.set({ logoUrl: false, bannerUrl: false });
+    this.storeImageError.set('');
+    return {
+      storeName: store.storeName || '',
+      storeDescription: store.storeDescription || '',
+      storeTagline: store.storeTagline || '',
+      announcement: store.announcement || '',
+      theme: store.theme || 'FOREST',
+      location: store.location || '',
+      phoneNumber: store.phoneNumber || '',
+      slug: store.slug || store.id || store._id,
+      logoUrl: store.logoUrl || '',
+      bannerUrl: store.bannerUrl || '',
+    };
+  }
+
+  /** Resizes a picked photo in the browser and previews it until the profile is saved. */
+  async changeStoreImage(event: Event, field: 'logoUrl' | 'bannerUrl') {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.storeImageError.set('');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      this.storeImageError.set('Choose a JPG, PNG or WebP image smaller than 10 MB.');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    this.storeImageLoading.set(true);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const scale = Math.min(1, (field === 'logoUrl' ? 512 : 1600) / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Image processing unavailable');
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      this.storeProfile.set({ ...this.storeProfile(), [field]: canvas.toDataURL('image/jpeg', 0.85) });
+      this.changedImages.set({ ...this.changedImages(), [field]: true });
+    } catch {
+      this.storeImageError.set('This image could not be opened. Please choose another.');
+    } finally {
+      URL.revokeObjectURL(url);
+      this.storeImageLoading.set(false);
+    }
+  }
+
   switchStore(storeId: string) {
     if (!storeId || storeId === this.myStoreId()) return;
     this.myStoreId.set(storeId);
+    const next = this.stores().find((store) => (store.id ?? store._id) === storeId);
+    if (next) this.storeProfile.set(this.profileFor(next));
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('khmercraft_active_store_id', storeId);
     }
@@ -4324,7 +4744,8 @@ export class SellerDashboardPage implements OnInit {
     else if (v === 'promotions') this.loadPromotions(storeId);
     else if (v === 'advertisements') this.loadAdvertisements(storeId);
     else if (v === 'collections') this.loadCollections(storeId);
-    else if (v === 'sales' || v === 'payments' || v === 'transactions') this.loadFinance(storeId);
+    else if (v === 'sales') { this.loadPayouts(storeId); this.loadFinance(storeId); }
+    else if (v === 'payments' || v === 'transactions') this.loadFinance(storeId);
     else if (v === 'analytics') this.loadAnalytics(storeId);
     else if (v === 'support') this.loadSupportCases(storeId);
     else if (v === 'notifications') this.loadNotifications(storeId);
@@ -4362,11 +4783,6 @@ export class SellerDashboardPage implements OnInit {
           { label: 'Completed (30d)', value: data.metrics.completed30d.toString(), icon: 'check' },
           { label: 'In Transit', value: data.metrics.inTransit.toString(), icon: 'truck' },
         ]);
-        this.payoutMetrics.set([
-          { label: 'Total Sales', value: `$${data.metrics.revenueMtd.toFixed(2)}`, note: 'Current cycle', icon: 'chart' },
-          { label: 'Platform Fee (10%)', value: `$${(data.metrics.revenueMtd * 0.1).toFixed(2)}`, note: 'Marketplace commission', icon: 'percent', warn: true },
-          { label: 'Net Seller Earnings', value: `$${(data.metrics.revenueMtd * 0.9).toFixed(2)}`, note: 'Ready for payout', icon: 'wallet', gold: true },
-        ]);
 
         const mappedOrders: SellerOrder[] = data.orders.map((o: any) => ({
           id: o.orderNumber || o.id,
@@ -4395,17 +4811,7 @@ export class SellerDashboardPage implements OnInit {
         this.orders.set(mappedOrders);
         this.dashboardOrders.set(mappedOrders.slice(0, 5));
 
-        this.payouts.set(
-          data.orders.filter((o: any) => o.orderStatus === 'DELIVERED').map((o: any) => ({
-            id: o.orderNumber || o.id,
-            date: new Date(o.createdAt).toLocaleDateString(),
-            total: `$${o.myTotal.toFixed(2)}`,
-            commission: `-$${(o.myTotal * 0.1).toFixed(2)}`,
-            earning: `$${(o.myTotal * 0.9).toFixed(2)}`,
-            status: 'SETTLED',
-          }))
-        );
-      },
+},
       error: (err) => console.error('Failed to load orders', err),
     });
 
@@ -4703,7 +5109,44 @@ export class SellerDashboardPage implements OnInit {
     else if (area === 'discounts') this.loadPromotions(storeId);
   }
 
+  loadKhqrSettings(storeId: string) {
+    this.sellerService.getPosKhqrSettings(storeId).subscribe({
+      next: (k) => {
+        this.khqrSettings.set(k);
+        this.khqrForm.set({ bakongAccountId: k.bakongAccountId, merchantName: k.merchantName, city: k.city });
+      },
+      error: () => this.khqrSettings.set(null),
+    });
+  }
+
+  saveKhqrSettings() {
+    const storeId = this.myStoreId();
+    const form = this.khqrForm();
+    if (!storeId) return;
+    this.savingKhqr.set(true);
+    this.posOrderError.set('');
+    this.sellerService
+      .updatePosKhqrSettings(storeId, {
+        bakongAccountId: form.bakongAccountId.trim(),
+        merchantName: form.merchantName.trim() || (this.storeProfile().storeName || 'KhmerCraft Seller').slice(0, 25),
+        city: form.city.trim() || undefined,
+      })
+      .subscribe({
+        next: (k) => {
+          this.savingKhqr.set(false);
+          this.khqrSettings.set(k);
+          this.khqrForm.set({ bakongAccountId: k.bakongAccountId, merchantName: k.merchantName, city: k.city });
+        },
+        error: (err: any) => {
+          this.savingKhqr.set(false);
+          const details = err.error?.error?.details;
+          this.posOrderError.set(details?.bakongAccountId?.[0] || err.error?.error?.message || 'Could not save the KHQR account');
+        },
+      });
+  }
+
   loadPosData(storeId: string) {
+    this.loadKhqrSettings(storeId);
     this.loadPosRegisters(storeId);
     this.sellerService.getPosCurrentShift(storeId, this.activeRegisterId() || undefined).subscribe({
       next: (shift) => this.posShift.set(shift),
@@ -4922,17 +5365,48 @@ export class SellerDashboardPage implements OnInit {
       customerPhone: this.posAssignedCustomer()?.phone,
     };
 
+    this.requestKhqr(storeId, payload, false);
+  }
+
+  /** Charge any amount by KHQR without ringing up products (not recorded as a sale). */
+  generateQuickKhqr(amount = this.quickKhqrAmount()) {
+    const storeId = this.myStoreId();
+    if (!storeId || !amount || amount <= 0) return;
+    this.generatingKhqr.set(true);
+    this.posOrderError.set('');
+    this.posKhqrPaid.set(false);
+    this.stopPosKhqrPolling();
+    this.requestKhqr(storeId, { amount: Math.round(amount * 100) / 100 }, true);
+  }
+
+  private requestKhqr(storeId: string, payload: { amount: number; items?: any[]; customerName?: string; customerPhone?: string }, quick: boolean) {
+    this.posKhqrNotice.set('');
     this.sellerService.generatePosKhqr(storeId, payload).subscribe({
       next: (session: any) => {
         this.generatingKhqr.set(false);
-        this.posKhqrSession.set(session);
-        this.startPosKhqrPolling();
+        this.posKhqrSession.set({ ...session, quick });
+        // Customer-facing screen opens straight away so they can scan.
+        this.showPosCustomerQrModal.set(true);
+        // Only a PayWay transaction can be checked; a direct Bakong QR is
+        // confirmed by the cashier from their own banking app.
+        if (session.mode !== 'BAKONG') this.startPosKhqrPolling();
       },
       error: (err: any) => {
         this.generatingKhqr.set(false);
-        this.posOrderError.set(err.error?.message || err.message || 'Failed to generate Bakong KHQR code');
+        const apiError = err.error?.error;
+        if (apiError?.code === 'KHQR_NOT_SET_UP') {
+          this.khqrSettings.update((k) => (k ? { ...k, configured: false, paywayAvailable: false } : { bakongAccountId: '', merchantName: '', city: '', configured: false, paywayAvailable: false }));
+        }
+        this.posOrderError.set(apiError?.message || err.message || 'Failed to generate Bakong KHQR code');
       },
     });
+  }
+
+  cancelPosKhqr() {
+    this.stopPosKhqrPolling();
+    this.posKhqrSession.set(null);
+    this.posKhqrPaid.set(false);
+    this.showPosCustomerQrModal.set(false);
   }
 
   startPosKhqrPolling() {
@@ -5005,6 +5479,12 @@ export class SellerDashboardPage implements OnInit {
   confirmKhqrPaidAndComplete() {
     const session = this.posKhqrSession();
     this.showPosCustomerQrModal.set(false);
+    if (session?.quick) {
+      this.cancelPosKhqr();
+      this.quickKhqrAmount.set(null);
+      this.posKhqrNotice.set(`KHQR payment of $${session.amount.toFixed(2)} confirmed (ref ${session.tranId}).`);
+      return;
+    }
     this.submitPosOrder(session?.tranId);
   }
 
@@ -5549,9 +6029,10 @@ export class SellerDashboardPage implements OnInit {
   }
 
   // ---------------------- Storefront & Profile ----------------------
+  /** Storefronts are buyer pages, so they live on the marketplace origin. */
   activeStorefrontUrl(): string {
     const s = this.activeStore();
-    return s ? `/stores/${s.slug || s.id || (s as any)._id}` : '/stores';
+    return marketplaceUrl(s ? `/stores/${s.slug || s.id || (s as any)._id}` : '/stores');
   }
 
   saveStoreProfile() {
@@ -5570,8 +6051,9 @@ export class SellerDashboardPage implements OnInit {
     if (p.location !== undefined) payload.location = p.location;
     if (p.phoneNumber !== undefined) payload.phoneNumber = p.phoneNumber;
     if (p.appearance) payload.appearance = p.appearance;
-    if (p.logoUrl) payload.logoUrl = p.logoUrl;
-    if (p.bannerUrl) payload.bannerUrl = p.bannerUrl;
+    // Only newly picked images: re-sending a saved one would re-compress it on every save.
+    if (this.changedImages().logoUrl && p.logoUrl) payload.logoUrl = p.logoUrl;
+    if (this.changedImages().bannerUrl && p.bannerUrl) payload.bannerUrl = p.bannerUrl;
     if (Array.isArray(p.featuredProductIds)) {
       payload.featuredProductIds = p.featuredProductIds.filter((id: string) => /^[a-f\d]{24}$/i.test(id));
     }
@@ -5590,6 +6072,87 @@ export class SellerDashboardPage implements OnInit {
         alert('Failed to save profile: ' + (err.error?.message || err.message));
       },
     });
+  }
+
+  // ---------------------- Payouts ----------------------
+  loadPayouts(storeId = this.myStoreId()) {
+    if (!storeId) return;
+    this.payoutError.set('');
+    this.sellerService.getPayoutSummary(storeId).subscribe({
+      next: (summary) => {
+        this.payoutSummary.set(summary);
+        // No account yet: open the form straight away.
+        this.editingPayoutAccount.set(!summary.account);
+        if (!summary.account) this.payoutForm.set({ method: 'ABA', bankName: '', accountName: '', accountNumber: '', phone: '', khqrImage: null });
+      },
+      error: (err: any) => this.payoutError.set(err.error?.error?.message || 'Could not load your payouts.'),
+    });
+  }
+
+  startEditPayoutAccount() {
+    const a = this.payoutSummary()?.account;
+    this.payoutForm.set({
+      method: a?.method ?? 'ABA',
+      bankName: a?.bankName ?? '',
+      accountName: a?.accountName ?? '',
+      accountNumber: a?.accountNumber ?? '',
+      phone: a?.phone ?? '',
+      khqrImage: a?.khqrImage ?? null,
+    });
+    this.editingPayoutAccount.set(true);
+  }
+
+  onPayoutKhqrFile(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (file.size > 3.5 * 1024 * 1024) { this.payoutError.set('That image is larger than 3.5 MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => this.payoutForm.set({ ...this.payoutForm(), khqrImage: String(reader.result) });
+    reader.readAsDataURL(file);
+  }
+
+  savePayoutAccount() {
+    const storeId = this.myStoreId();
+    if (!storeId) return;
+    const f = this.payoutForm();
+    this.savingPayoutAccount.set(true);
+    this.payoutError.set('');
+    this.sellerService
+      .savePayoutAccount(storeId, {
+        method: f.method,
+        bankName: f.method === 'OTHER_BANK' ? f.bankName.trim() : undefined,
+        accountName: f.accountName.trim(),
+        accountNumber: f.accountNumber.trim(),
+        phone: f.phone.trim() || undefined,
+        khqrImage: f.khqrImage,
+      })
+      .subscribe({
+        next: () => { this.savingPayoutAccount.set(false); this.editingPayoutAccount.set(false); this.loadPayouts(storeId); },
+        error: (err: any) => {
+          this.savingPayoutAccount.set(false);
+          const details = err.error?.error?.details as Record<string, string[]> | undefined;
+          const first = details ? Object.values(details)[0]?.[0] : undefined;
+          this.payoutError.set(first || err.error?.error?.message || 'Could not save the payout account.');
+        },
+      });
+  }
+
+  openPayoutReceipt(payoutId: string) {
+    this.sellerService.getPayout(payoutId).subscribe({
+      next: (p) => this.payoutReceipt.set(p),
+      error: () => this.payoutError.set('Could not open that receipt.'),
+    });
+  }
+
+  payoutMethodLabel(method: PayoutMethod, bankName?: string | null) {
+    return method === 'OTHER_BANK' ? (bankName || 'Bank') : ({ ABA: 'ABA Bank', ACLEDA: 'ACLEDA Bank', WING: 'Wing Bank' } as Record<string, string>)[method];
+  }
+
+  scheduleLabel(settings: PayoutSettings) {
+    const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][settings.payoutWeekday];
+    return settings.payoutSchedule === 'MONTHLY' ? `on the first ${day} of each month` : settings.payoutSchedule === 'BIWEEKLY' ? `every other ${day}` : `every ${day}`;
   }
 
   // ---------------------- Finance & Analytics ----------------------
