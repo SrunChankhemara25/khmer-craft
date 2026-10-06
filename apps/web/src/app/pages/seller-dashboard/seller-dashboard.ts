@@ -267,17 +267,12 @@ interface DashboardMetric {
     .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
     /* ======================= store cover & profile picture ======================= */
-    .side-store { position: relative; margin: 10px 0 4px; height: 64px; border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #2b7a57, #134a33); }
-    .side-store > img { width: 100%; height: 100%; object-fit: cover; opacity: .85; }
-    .side-store-logo { position: absolute; left: 10px; bottom: 8px; width: 38px; height: 38px; display: grid; place-items: center; overflow: hidden; color: var(--brand-700); background: #fff; border: 2px solid #fff; border-radius: 50%; font-size: 14px; font-weight: 800; box-shadow: 0 4px 10px rgba(0,0,0,.25); }
-    .side-store-logo img { width: 100%; height: 100%; object-fit: cover; }
-
     .store-hero { margin-bottom: 20px; overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: 18px; }
     .store-hero-cover { position: relative; height: 180px; background: linear-gradient(120deg, #e3efe8, #cfe2d6 55%, #f0e6d6); }
     .store-hero-cover img { width: 100%; height: 100%; display: block; object-fit: cover; }
     .store-hero-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--ink-500); font-size: 13px; font-weight: 600; }
     .store-hero-body { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 16px; padding: 0 22px 18px; }
-    .store-hero-logo { width: 92px; height: 92px; margin-top: -46px; flex: none; display: grid; place-items: center; overflow: hidden; color: #fff; background: var(--brand-700); border: 4px solid #fff; border-radius: 50%; font-size: 30px; font-weight: 800; box-shadow: 0 8px 20px rgba(20, 60, 40, .18); }
+    .store-hero-logo { position: relative; z-index: 2; width: 92px; height: 92px; margin-top: -46px; flex: none; display: grid; place-items: center; overflow: hidden; color: #fff; background: var(--brand-700); border: 4px solid #fff; border-radius: 50%; font-size: 30px; font-weight: 800; box-shadow: 0 8px 20px rgba(20, 60, 40, .18); }
     .store-hero-logo img { width: 100%; height: 100%; object-fit: cover; }
     .store-hero-info { flex: 1; min-width: 200px; padding-bottom: 2px; }
     .store-hero-info h2 { margin: 0; color: var(--ink-900); font-family: var(--font-heading, Georgia, serif); font-size: 22px; }
@@ -292,7 +287,7 @@ interface DashboardMetric {
     .brand-cover img { width: 100%; height: 100%; display: block; object-fit: cover; }
     .brand-cover .btn { position: absolute; right: 12px; bottom: 12px; background: rgba(255,255,255,.94); }
     .brand-logo-row { display: flex; align-items: center; gap: 16px; padding: 0 16px; }
-    .brand-logo { position: relative; width: 104px; height: 104px; margin-top: -52px; flex: none; display: grid; place-items: center; overflow: hidden; color: #fff; background: var(--brand-700); border: 4px solid #fff; border-radius: 50%; font-size: 34px; font-weight: 800; box-shadow: 0 8px 20px rgba(20, 60, 40, .18); }
+    .brand-logo { position: relative; z-index: 2; width: 104px; height: 104px; margin-top: -52px; flex: none; display: grid; place-items: center; overflow: hidden; color: #fff; background: var(--brand-700); border: 4px solid #fff; border-radius: 50%; font-size: 34px; font-weight: 800; box-shadow: 0 8px 20px rgba(20, 60, 40, .18); }
     .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
     .brand-logo-row > div { padding-top: 12px; }
     .brand-logo-row strong { display: block; color: var(--ink-900); font-size: 14px; }
@@ -674,12 +669,6 @@ interface DashboardMetric {
           <h1 class="logo">KhmerCraft</h1>
           <p class="portal-label">Seller Portal</p>
           <div class="store-control">
-            <div class="side-store">
-              @if (storeProfile().bannerUrl) { <img [src]="storeProfile().bannerUrl" alt="" /> }
-              <span class="side-store-logo">
-                @if (storeProfile().logoUrl) { <img [src]="storeProfile().logoUrl" alt="" /> } @else { {{ storeInitials() }} }
-              </span>
-            </div>
             <label for="active-store">Working in</label>
             <select id="active-store" [ngModel]="myStoreId()" (ngModelChange)="switchStore($event)">
               @for (store of stores(); track store.id || store._id) {
