@@ -4337,6 +4337,7 @@ export class SellerDashboardPage implements OnInit {
           id: p.id || p._id,
           name: p.name,
           category: p.category,
+          subcategory: p.subcategory ?? null,
           price: p.price,
           stock: p.stock ?? 10,
           status: p.status || 'ACTIVE',
