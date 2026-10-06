@@ -27,6 +27,8 @@ export interface Product {
   compareAtPrice?: number;
   categorySlug: string;
   categoryName: string;
+  /** The category exactly as the seller typed it (categoryName is the marketplace's grouping). Share links use this. */
+  sellerCategory?: string;
   /** Second level, e.g. "Bowls & Plates". Null until a seller sets one. */
   subcategory: string | null;
   subcategorySlug: string | null;

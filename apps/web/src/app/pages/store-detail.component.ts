@@ -216,10 +216,10 @@ const sortProducts = (products: Product[], sort: ProductSort): Product[] => {
             </div>
           }
 
-          @if (activeSub(); as sub) {
+          @if (activeSellerCategory(); as shared) {
             <p class="sub-filter">
-              Showing <strong>{{ sub }}</strong>
-              <button type="button" (click)="activeSub.set(null)" aria-label="Show everything in this category">Show all ✕</button>
+              Showing <strong>{{ activeSub() ? shared + ' › ' + activeSub() : shared }}</strong>
+              <button type="button" (click)="clearSharedFilter()" aria-label="Show everything in this store">Show all ✕</button>
             </p>
           }
 
@@ -476,7 +476,12 @@ export class StoreDetailComponent {
   protected readonly isDomainMode = signal<boolean>(isStoreDomainActive());
   private readonly hostSlug = detectStoreSlugFromHost();
   protected readonly activeCategory = signal<string | null>(null);
-  /** Narrower than a category tab; set from a shared link, e.g. "T-shirts". */
+  /**
+   * Set from a shared link, e.g. ?category=Pottery&sub=Plates. These use the
+   * seller's own wording (what the link preview and the Share window show),
+   * which is finer than the marketplace-wide category tabs above.
+   */
+  protected readonly activeSellerCategory = signal<string | null>(null);
   protected readonly activeSub = signal<string | null>(null);
   protected readonly activeSection = signal<'products' | 'about' | 'reviews'>('products');
   protected readonly storeCollections = signal<StoreCollectionDTO[]>([]);
@@ -505,6 +510,10 @@ export class StoreDetailComponent {
     const category = this.activeCategory();
     if (category) {
       scoped = scoped.filter((product) => product.categoryName === category);
+    }
+    const shared = this.activeSellerCategory();
+    if (shared) {
+      scoped = scoped.filter((product) => product.sellerCategory?.toLowerCase() === shared.toLowerCase());
     }
     const sub = this.activeSub();
     if (sub) {
@@ -567,14 +576,16 @@ export class StoreDetailComponent {
     };
     effect(() => {
       if (!wanted.category || wanted.applied) return;
-      const match = this.categories().find((name) => name.toLowerCase() === wanted.category!.toLowerCase());
+      const match = this.products().find(
+        (product) => product.sellerCategory?.toLowerCase() === wanted.category!.toLowerCase(),
+      )?.sellerCategory;
       if (!match) return;
       wanted.applied = true;
-      this.activeCategory.set(match);
+      this.activeSellerCategory.set(match);
       const sub = wanted.sub
         ? this.products().find(
             (product) =>
-              product.categoryName === match &&
+              product.sellerCategory === match &&
               product.subcategory?.toLowerCase() === wanted.sub!.toLowerCase(),
           )?.subcategory
         : null;
@@ -649,6 +660,11 @@ export class StoreDetailComponent {
 
   protected selectCategory(category: string | null): void {
     this.activeCategory.set(category);
+    this.clearSharedFilter();
+  }
+
+  protected clearSharedFilter(): void {
+    this.activeSellerCategory.set(null);
     this.activeSub.set(null);
   }
 

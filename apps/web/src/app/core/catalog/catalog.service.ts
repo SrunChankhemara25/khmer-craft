@@ -394,6 +394,7 @@ const toProduct = (api: ApiProduct): Product => {
     price: api.price,
     compareAtPrice: api.compareAtPrice ?? undefined,
     ...classification,
+    sellerCategory: api.category,
     subcategory,
     subcategorySlug: subcategory ? subcategorySlug(subcategory) : null,
     sellerName: api.sellerName,
