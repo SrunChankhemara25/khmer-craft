@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import {
   FormControl,
   FormGroup,
@@ -21,6 +21,18 @@ interface PaymentOption {
   label: string;
   hint: string;
   icon: string;
+}
+
+export interface SavedDeliveryLocation {
+  id: string;
+  label: string;
+  fullName: string;
+  phone: string;
+  province: string;
+  city: string;
+  address: string;
+  note?: string;
+  updatedAt: number;
 }
 
 const PAYMENT_OPTIONS: PaymentOption[] = [
@@ -78,6 +90,41 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
           <form class="panel" [formGroup]="form" (ngSubmit)="placeOrder()">
             <section>
               <h2>Delivery</h2>
+
+              @if (savedLocations().length > 0) {
+                <div class="saved-locations-box">
+                  <div class="saved-locations-header">
+                    <span><ui-icon name="map-pin" [size]="14" /> Saved Delivery Locations</span>
+                    <button type="button" class="btn-new-loc" [class.active]="selectedLocationId() === 'NEW'" (click)="startNewLocation()">
+                      + Enter New Address
+                    </button>
+                  </div>
+                  <div class="location-cards-grid">
+                    @for (loc of savedLocations(); track loc.id) {
+                      <div
+                        class="location-card"
+                        [class.selected]="selectedLocationId() === loc.id"
+                        (click)="selectLocation(loc)"
+                      >
+                        <div class="loc-card-top">
+                          <span class="loc-tag">{{ loc.label || 'Saved Location' }}</span>
+                          <button
+                            type="button"
+                            class="btn-delete-loc"
+                            (click)="removeSavedLocation(loc.id, $event)"
+                            title="Remove saved location"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <strong class="loc-name">{{ loc.fullName }} · {{ loc.phone }}</strong>
+                        <p class="loc-address">{{ loc.address }}, {{ loc.city }}, {{ loc.province }}</p>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
               <div class="grid">
                 <label>
                   <span>Full name</span>
@@ -108,6 +155,45 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
                   <span>Note for the courier <em>optional</em></span>
                   <input formControlName="note" placeholder="Landmark, gate code, best time to call" />
                 </label>
+                <div class="wide save-location-control">
+                  <label class="save-checkbox-label">
+                    <input
+                      type="checkbox"
+                      [checked]="saveLocationForLater()"
+                      (change)="saveLocationForLater.set(!saveLocationForLater())"
+                    />
+                    <span><strong>Save this delivery location for later</strong> (auto-fills future checkouts)</span>
+                  </label>
+                  @if (saveLocationForLater()) {
+                    <div class="loc-tags-selector">
+                      <span class="tags-hint">Label as:</span>
+                      <button
+                        type="button"
+                        class="tag-pill"
+                        [class.selected]="locationLabel() === 'Home'"
+                        (click)="locationLabel.set('Home')"
+                      >
+                        🏠 Home
+                      </button>
+                      <button
+                        type="button"
+                        class="tag-pill"
+                        [class.selected]="locationLabel() === 'Work'"
+                        (click)="locationLabel.set('Work')"
+                      >
+                        💼 Work
+                      </button>
+                      <button
+                        type="button"
+                        class="tag-pill"
+                        [class.selected]="locationLabel() === 'Other'"
+                        (click)="locationLabel.set('Other')"
+                      >
+                        📍 Other
+                      </button>
+                    </div>
+                  }
+                </div>
               </div>
             </section>
 
@@ -203,6 +289,157 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
         font-size: 15px;
         font-weight: 600;
         margin-bottom: 14px;
+      }
+      .saved-locations-box {
+        margin-bottom: 20px;
+        padding: 14px 16px;
+        background: var(--color-surface, #fff);
+        border: 1px solid var(--color-border);
+        border-radius: 14px;
+      }
+      .saved-locations-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 13px;
+        font-weight: 650;
+        color: var(--color-text-secondary);
+      }
+      .saved-locations-header span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .btn-new-loc {
+        background: none;
+        border: none;
+        color: var(--color-accent);
+        font-size: 12.5px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+      }
+      .btn-new-loc:hover {
+        background: var(--color-accent-soft);
+      }
+      .location-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .location-card {
+        padding: 10px 12px;
+        border: 1.5px solid var(--color-border);
+        border-radius: 10px;
+        background: #fff;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .location-card:hover {
+        border-color: var(--color-border-strong);
+      }
+      .location-card.selected {
+        border-color: var(--color-accent);
+        background: var(--color-accent-soft, #f4faf6);
+        box-shadow: 0 0 0 1px var(--color-accent);
+      }
+      .loc-card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .loc-tag {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--color-accent);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .btn-delete-loc {
+        background: none;
+        border: none;
+        color: var(--color-muted);
+        font-size: 16px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 4px;
+        border-radius: 4px;
+      }
+      .btn-delete-loc:hover {
+        color: var(--color-danger, #e11d48);
+      }
+      .loc-name {
+        display: block;
+        font-size: 12.5px;
+        margin-top: 5px;
+        color: var(--color-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .loc-address {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--color-text-secondary);
+        line-height: 1.35;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .save-location-control {
+        margin-top: 4px;
+        padding: 12px 14px;
+        background: var(--color-bg-alt, #f9fafb);
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+      }
+      .save-checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--color-text);
+        cursor: pointer;
+        user-select: none;
+      }
+      .save-checkbox-label input[type='checkbox'] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--color-accent);
+        cursor: pointer;
+      }
+      .loc-tags-selector {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px dashed var(--color-border);
+      }
+      .tags-hint {
+        font-size: 12px;
+        color: var(--color-muted);
+      }
+      .tag-pill {
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 14px;
+        border: 1px solid var(--color-border);
+        background: #fff;
+        color: var(--color-text);
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .tag-pill:hover {
+        border-color: var(--color-accent);
+      }
+      .tag-pill.selected {
+        border-color: var(--color-accent);
+        background: var(--color-accent);
+        color: #fff;
       }
       .layout {
         display: grid;
@@ -432,43 +669,142 @@ export class CheckoutComponent {
     return [...groups.values()];
   });
 
-  private getCachedAddress() {
-    if (typeof localStorage === 'undefined') return null;
+  protected readonly savedLocations = signal<SavedDeliveryLocation[]>([]);
+  protected readonly selectedLocationId = signal<string | null>(null);
+  protected readonly saveLocationForLater = signal<boolean>(true);
+  protected readonly locationLabel = signal<string>('Home');
+
+  private initSavedLocations(): void {
+    if (typeof localStorage === 'undefined') return;
     try {
-      const raw = localStorage.getItem('khmercraft_delivery_address');
-      return raw ? JSON.parse(raw) : null;
+      const raw = localStorage.getItem('khmercraft_saved_locations');
+      if (raw) {
+        const parsed = JSON.parse(raw) as SavedDeliveryLocation[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.savedLocations.set(parsed);
+          this.selectedLocationId.set(parsed[0].id);
+          this.locationLabel.set(parsed[0].label || 'Home');
+          return;
+        }
+      }
+      const oldRaw = localStorage.getItem('khmercraft_delivery_address');
+      if (oldRaw) {
+        const oldAddr = JSON.parse(oldRaw);
+        if (oldAddr && oldAddr.address) {
+          const migrated: SavedDeliveryLocation = {
+            id: 'loc_default',
+            label: 'Home',
+            fullName: oldAddr.fullName || '',
+            phone: oldAddr.phone || '',
+            province: oldAddr.province || '',
+            city: oldAddr.city || '',
+            address: oldAddr.address || '',
+            updatedAt: Date.now(),
+          };
+          this.savedLocations.set([migrated]);
+          this.selectedLocationId.set('loc_default');
+          this.locationLabel.set('Home');
+          localStorage.setItem('khmercraft_saved_locations', JSON.stringify([migrated]));
+        }
+      }
     } catch {
-      return null;
+      // ignore parsing error
     }
   }
 
-  protected readonly form = (() => {
-    const cached = this.getCachedAddress();
-    const user = this.auth.user();
-    return new FormGroup({
-      fullName: new FormControl(cached?.fullName || user?.name || '', {
-        nonNullable: true,
-        validators: [Validators.required, Validators.minLength(2)],
-      }),
-      phone: new FormControl(cached?.phone || user?.phone || '', {
-        nonNullable: true,
-        validators: [Validators.required, Validators.minLength(6)],
-      }),
-      province: new FormControl(cached?.province || '', {
-        nonNullable: true,
-        validators: [Validators.required, Validators.minLength(2)],
-      }),
-      city: new FormControl(cached?.city || '', {
-        nonNullable: true,
-        validators: [Validators.required, Validators.minLength(2)],
-      }),
-      address: new FormControl(cached?.address || '', {
-        nonNullable: true,
-        validators: [Validators.required, Validators.minLength(4)],
-      }),
-      note: new FormControl('', { nonNullable: true }),
+  protected readonly form = new FormGroup({
+    fullName: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(2)],
+    }),
+    phone: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(6)],
+    }),
+    province: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(2)],
+    }),
+    city: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(2)],
+    }),
+    address: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(4)],
+    }),
+    note: new FormControl('', { nonNullable: true }),
+  });
+
+  constructor() {
+    this.initSavedLocations();
+    const activeSaved = this.savedLocations().find((l) => l.id === this.selectedLocationId());
+    if (activeSaved) {
+      this.form.patchValue({
+        fullName: activeSaved.fullName,
+        phone: activeSaved.phone,
+        province: activeSaved.province,
+        city: activeSaved.city,
+        address: activeSaved.address,
+        note: activeSaved.note || '',
+      });
+    }
+
+    effect(() => {
+      const u = this.auth.user();
+      if (!u) return;
+      if (!this.form.get('fullName')?.value) {
+        this.form.patchValue({ fullName: u.name });
+      }
+      if (!this.form.get('phone')?.value && u.phone) {
+        this.form.patchValue({ phone: u.phone });
+      }
     });
-  })();
+  }
+
+  protected selectLocation(loc: SavedDeliveryLocation): void {
+    this.selectedLocationId.set(loc.id);
+    this.locationLabel.set(loc.label || 'Home');
+    this.form.patchValue({
+      fullName: loc.fullName,
+      phone: loc.phone,
+      province: loc.province,
+      city: loc.city,
+      address: loc.address,
+      note: loc.note || '',
+    });
+  }
+
+  protected startNewLocation(): void {
+    this.selectedLocationId.set('NEW');
+    this.locationLabel.set('Other');
+    const u = this.auth.user();
+    this.form.patchValue({
+      fullName: u?.name || this.form.get('fullName')?.value || '',
+      phone: u?.phone || this.form.get('phone')?.value || '',
+      province: '',
+      city: '',
+      address: '',
+      note: '',
+    });
+    this.saveLocationForLater.set(true);
+  }
+
+  protected removeSavedLocation(id: string, event: Event): void {
+    event.stopPropagation();
+    const updated = this.savedLocations().filter((loc) => loc.id !== id);
+    this.savedLocations.set(updated);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('khmercraft_saved_locations', JSON.stringify(updated));
+    }
+    if (this.selectedLocationId() === id) {
+      if (updated.length > 0) {
+        this.selectLocation(updated[0]);
+      } else {
+        this.startNewLocation();
+      }
+    }
+  }
 
   protected invalid(field: string): boolean {
     const control = this.form.get(field);
@@ -487,9 +823,29 @@ export class CheckoutComponent {
     this.submitting.set(true);
     const { note, ...rest } = this.form.getRawValue();
 
-    // Cache the delivery address so the customer never has to re-type it
-    if (typeof localStorage !== 'undefined') {
+    // Save/update delivery location if selected
+    if (this.saveLocationForLater() && typeof localStorage !== 'undefined') {
       try {
+        const currentList = this.savedLocations();
+        const existingId = this.selectedLocationId();
+        const targetId = existingId && existingId !== 'NEW' ? existingId : `loc_${Date.now()}`;
+
+        const locToSave: SavedDeliveryLocation = {
+          id: targetId,
+          label: this.locationLabel() || 'Home',
+          fullName: rest.fullName,
+          phone: rest.phone,
+          province: rest.province,
+          city: rest.city,
+          address: rest.address,
+          note: note?.trim() || undefined,
+          updatedAt: Date.now(),
+        };
+
+        const updated = [locToSave, ...currentList.filter((l) => l.id !== targetId)];
+        this.savedLocations.set(updated);
+        this.selectedLocationId.set(targetId);
+        localStorage.setItem('khmercraft_saved_locations', JSON.stringify(updated));
         localStorage.setItem(
           'khmercraft_delivery_address',
           JSON.stringify({
@@ -501,7 +857,7 @@ export class CheckoutComponent {
           }),
         );
       } catch (err) {
-        console.warn('Failed to cache delivery address:', err);
+        console.warn('Failed to save delivery location:', err);
       }
     }
 
