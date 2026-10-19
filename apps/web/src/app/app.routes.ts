@@ -94,15 +94,15 @@ const sellerWorkspace: Routes = onPortal('seller', [
     title: 'Seller dashboard | KhmerCraft Seller',
   },
   {
-    // Plan & billing: what the store is on, when it lapses, and the KHQR to
-    // renew it with.
+    // Plan & billing is a view inside the seller dashboard now. Old links —
+    // and the payment page returning after a renewal — still land there.
     path: 'seller/billing',
-    canActivate: [sellerGuard],
-    loadComponent: () =>
-      import('./pages/seller-billing.component').then(
-        (m) => m.SellerBillingComponent,
-      ),
-    title: 'Plan & billing | KhmerCraft Seller',
+    redirectTo: ({ queryParams }) => {
+      const params = new URLSearchParams({ view: 'billing' });
+      if (queryParams['store']) params.set('storeId', queryParams['store']);
+      if (queryParams['paid']) params.set('paid', queryParams['paid']);
+      return `/seller/dashboard?${params.toString()}`;
+    },
   },
   {
     // Guarded by buyerGuard, not sellerGuard: a seller who has only ever been

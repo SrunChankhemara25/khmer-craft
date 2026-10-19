@@ -34,7 +34,13 @@ const resolveBase = (): string => {
   // The seller portal (seller.localhost) talks to the same API as the
   // marketplace, so both sites share one session.
   const { protocol, hostname } = globalThis.location;
-  return `${protocol}//${hostname.replace(/^seller\./, '')}:${API_PORT}`;
+  const host = hostname.replace(/^seller\./, '');
+
+  // A public deployment uses one gateway origin for the Angular app and the
+  // Express API. Keeping requests same-origin makes a shared deployment work
+  // without asking visitors to reach an inaccessible `:3001` port.
+  const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  return isLocal ? `${protocol}//${host}:${API_PORT}` : globalThis.location.origin;
 };
 
 export const API_BASE = resolveBase();
