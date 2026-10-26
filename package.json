@@ -1,0 +1,13 @@
+{
+  "name": "khmer-craft",
+  "version": "1.0.0",
+  "description": "KhmerCraft — multi-vendor marketplace for Cambodian handicrafts",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "cd apps/web && ng serve",
+    "dev:api": "cd apps/api && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
