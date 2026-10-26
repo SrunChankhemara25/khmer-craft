@@ -34,22 +34,25 @@ const findEnvDir = () => {
 };
 
 const envDir = findEnvDir();
-if (!envDir) {
-  console.error(
-    'Configuration error: neither .env nor .env.local found. Copy apps/api/.env.example to apps/api/.env.',
-  );
-  process.exit(1);
-}
 
-// Load .env first, then let .env.local override if present
-const defaultEnvPath = path.join(envDir, '.env');
-const localEnvPath = path.join(envDir, '.env.local');
+// A deployed container has no .env file at all — the platform (Render, Fly,
+// Docker `--env-file`, Kubernetes) injects the configuration as real
+// environment variables. Treating a missing file as fatal made the image
+// exit on boot with a message telling the operator to create a file that
+// deliberately is not there. An env file is a convenience for local
+// development, so its absence is only a problem if the configuration is
+// genuinely incomplete — which assertEnv() below is what actually checks.
+if (envDir) {
+  // Load .env first, then let .env.local override if present
+  const defaultEnvPath = path.join(envDir, '.env');
+  const localEnvPath = path.join(envDir, '.env.local');
 
-if (fs.existsSync(defaultEnvPath)) {
-  dotenv.config({ path: defaultEnvPath });
-}
-if (fs.existsSync(localEnvPath)) {
-  dotenv.config({ path: localEnvPath, override: true });
+  if (fs.existsSync(defaultEnvPath)) {
+    dotenv.config({ path: defaultEnvPath });
+  }
+  if (fs.existsSync(localEnvPath)) {
+    dotenv.config({ path: localEnvPath, override: true });
+  }
 }
 
 // Fail fast: a missing JWT_SECRET must stop the process here, not surface as a

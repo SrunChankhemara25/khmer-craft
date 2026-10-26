@@ -1,0 +1,111 @@
+# Render Blueprint — a public, always-reachable deployment of KhmerCraft.
+#
+# Three services, because the app is two sites built from one Angular bundle
+# (see apps/web/src/app/core/portal/portal.ts): the marketplace and the seller
+# portal must sit on two *different* origins, or the portal boundary guard
+# bounces every route in a loop. Locally those origins are `localhost:4200`
+# and `seller.localhost:4200`; here they are two static sites.
+#
+# The static sites never sleep, so the UI is always instant. Only the API is a
+# web service, so a cold start costs ~50s on the first request after 15 idle
+# minutes — and only that first request.
+#
+# Secrets (sync: false) are typed into the Render dashboard, never committed.
+
+services:
+  # ---------------------------------------------------------------- API
+  - type: web
+    name: khmercraft-api
+    runtime: docker
+    plan: free
+    region: singapore          # closest Render region to Cambodia
+    rootDir: apps/api
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: TRUST_PROXY
+        value: "true"           # Render terminates TLS in front of the app
+      - key: WEB_URL
+        fromService: { type: web, name: khmercraft-web, property: host }
+      # Both storefront origins must be allowed, or the seller portal's
+      # requests are blocked by CORS.
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: API_PUBLIC_URL
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN_SECONDS
+        value: "900"
+      - key: REFRESH_TOKEN_EXPIRES_IN_DAYS
+        value: "30"
+      - key: RESET_TOKEN_EXPIRES_IN_MINUTES
+        value: "30"
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # PayWay stays on the sandbox base URL. Production billing is an
+      # explicit opt-in, never a default.
+      - key: PAYWAY_BASE_URL
+        value: https://checkout-sandbox.payway.com.kh
+      - key: PAYWAY_MERCHANT_ID
+        sync: false
+      - key: PAYWAY_API_KEY
+        sync: false
+      - key: PAYWAY_CALLBACK_URL
+        sync: false
+
+  # -------------------------------------------------------- Marketplace
+  - type: web
+    name: khmercraft-web
+    runtime: static
+    rootDir: apps/web
+    buildCommand: npm ci && npm run build:deploy
+    staticPublishPath: ./dist/web/browser
+    envVars:
+      - key: KC_API_URL
+        sync: false
+      - key: KC_MARKETPLACE_URL
+        sync: false
+      - key: KC_SELLER_PORTAL_URL
+        sync: false
+    routes:
+      # Angular is a single-page app: every unmatched path is the app itself,
+      # not a 404, or a deep link like /stores/:id breaks on reload.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # ------------------------------------------------------ Seller portal
+  # The same bundle, same build, different origin — that is the only thing
+  # that distinguishes the two sites at runtime.
+  - type: web
+    name: khmercraft-seller
+    runtime: static
+    rootDir: apps/web
+    buildCommand: npm ci && npm run build:deploy
+    staticPublishPath: ./dist/web/browser
+    envVars:
+      - key: KC_API_URL
+        sync: false
+      - key: KC_MARKETPLACE_URL
+        sync: false
+      - key: KC_SELLER_PORTAL_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
