@@ -1,0 +1,15 @@
+{
+  "installCommand": "npm ci && cd apps/api && npm ci && cd ../web && npm ci",
+  "buildCommand": "cd apps/web && npm run build:deploy",
+  "outputDirectory": "apps/web/dist/web/browser",
+  "functions": {
+    "api/[...path].ts": {
+      "runtime": "nodejs22.x",
+      "includeFiles": "apps/api/**"
+    }
+  },
+  "rewrites": [
+    { "source": "/auth/:path*", "destination": "/api/auth/:path*" },
+    { "source": "/:path*", "destination": "/index.html" }
+  ]
+}
