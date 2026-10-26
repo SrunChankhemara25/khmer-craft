@@ -241,6 +241,20 @@ export class SellerOnboardingPage implements OnInit {
   protected onCategoryInput(value: string): void {
     this.categoryQuery.set(value);
     this.categoryMenuOpen.set(true);
+
+    // Commit an exact match as soon as it is typed. onCategoryBlur does this
+    // too, but behind a 120ms timeout that lets the dropdown take a click —
+    // and Continue fires inside that window, so typing a valid category and
+    // pressing Continue used to fail validation on the first press and only
+    // work on the second.
+    const match = this.categories.find(
+      (category) => category.toLowerCase() === value.trim().toLowerCase(),
+    );
+    if (match) {
+      this.form.category = match;
+      this.errors.update(({ category, ...rest }) => rest);
+      this.saveDraft();
+    }
   }
 
   protected selectCategory(value: string): void {
@@ -357,6 +371,13 @@ export class SellerOnboardingPage implements OnInit {
       }));
 
       if (typeof localStorage !== 'undefined') localStorage.removeItem(this.draftKey);
+
+      // Creating the first store promotes BUYER -> SELLER, which kills the
+      // token this request was made with. Swap in the replacement the server
+      // sent back BEFORE refreshing the session, or /me 401s, the session is
+      // cleared, and the next guarded route throws the new seller out to the
+      // login page — mid-payment, with a store they can no longer see.
+      this.auth.adoptAccessToken(store.accessToken);
       await firstValueFrom(this.auth.refreshCurrentUser());
 
       // A paid plan is not granted by choosing it — the server creates every

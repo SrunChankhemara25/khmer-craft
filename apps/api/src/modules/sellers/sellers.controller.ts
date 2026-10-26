@@ -94,16 +94,30 @@ export const create = async (request: Request, response: Response) => {
     request.body as CreateStoreInput,
   );
 
+  // Opening a store promotes BUYER -> SELLER, and `authenticate` rejects any
+  // token whose `role` claim no longer matches the account. So the very token
+  // that authorised this request is dead the moment it succeeds, and the
+  // caller must be handed a fresh one or it gets a 401 on its next call —
+  // which, mid-onboarding, logged the new seller out while they were paying.
+  //
+  // The cookie alone is not enough: the web app authenticates with a bearer
+  // token it keeps in localStorage, so the replacement has to come back in
+  // the body too.
+  let accessToken: string | undefined;
   if (roleChanged) {
     const user = request.auth!.user;
-    const token = signAccessToken(String(user._id), 'SELLER', user.token_version);
-    response.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+    accessToken = signAccessToken(String(user._id), 'SELLER', user.token_version);
+    response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
   }
 
   // `pendingPlan` rides alongside the store's own fields rather than nesting
   // it, so every existing caller that reads the store straight off the body
   // keeps working. Null unless a paid plan was chosen and still owes payment.
-  response.status(201).json({ ...store, pendingPlan });
+  response.status(201).json({
+    ...store,
+    pendingPlan,
+    ...(accessToken ? { accessToken } : {}),
+  });
 };
 
 export const getProfile = async (request: Request, response: Response) => {

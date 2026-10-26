@@ -288,8 +288,16 @@ export class SellerService {
     return this.http.get<SellerStore[]>(`${API_URL}/sellers/my-stores`);
   }
 
+  /**
+   * `accessToken` is present only when this call promoted the account from
+   * BUYER to SELLER — the old bearer token dies with the role change, so the
+   * caller must adopt the replacement (see AuthService.adoptAccessToken).
+   */
   createStore(data: CreateStorePayload) {
-    return this.http.post<SellerStore>(`${API_URL}/sellers/my-stores`, data);
+    return this.http.post<SellerStore & { pendingPlan?: string | null; accessToken?: string }>(
+      `${API_URL}/sellers/my-stores`,
+      data,
+    );
   }
 
   getStoreOrders(storeId: string) {

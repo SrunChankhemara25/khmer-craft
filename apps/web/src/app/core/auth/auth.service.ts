@@ -197,6 +197,24 @@ export class AuthService {
     this.setUser(updated);
   }
 
+  /**
+   * Adopt a session the server reissued mid-request.
+   *
+   * Opening a store promotes BUYER -> SELLER, which invalidates the bearer
+   * token that authorised the call (the API re-checks the role claim on every
+   * request). The create-store response hands back a replacement; without
+   * swapping it in, the next call 401s, `loadCurrentUser` clears the session,
+   * and the brand-new seller is bounced to the login page mid-payment.
+   */
+  adoptAccessToken(token: string | undefined | null): void {
+    if (!token || typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    } catch (e) {
+      console.warn('Unable to persist the reissued session token:', e);
+    }
+  }
+
   private setUser(user: AuthUser) {
     this.userState.set(user);
     this.checkedState.set(true);
