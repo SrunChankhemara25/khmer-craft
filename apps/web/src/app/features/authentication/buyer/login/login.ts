@@ -9,6 +9,32 @@ import { IconComponent } from '../../../../components/shared/ui/icon/icon.compon
 
 type LoginRole = UserRole;
 
+/**
+ * The `/seller/*` routes a BUYER is allowed to reach.
+ *
+ * Opening a store starts from a buyer account — `onboardingGuard` lets any
+ * non-seller through, and the plan payment and store-ready screens are both
+ * behind `buyerGuard`. Without this list the rule below treated every
+ * `/seller/*` returnUrl as off-limits to a buyer and dropped them on the home
+ * page, which silently killed the entire create-a-store flow: click "Start
+ * selling" -> sign in -> land on the marketplace, with no store and no
+ * explanation.
+ */
+const BUYER_REACHABLE_SELLER_ROUTES = [
+  '/seller/onboarding',
+  '/seller/plan/pay',
+  '/seller/store-ready',
+];
+
+const isBuyerReachable = (returnUrl: string): boolean => {
+  // Compare on the path alone so a query string (`?plan=STANDARD`, the
+  // `?store=` the payment screen comes back with) still matches.
+  const path = returnUrl.split(/[?#]/)[0];
+  return BUYER_REACHABLE_SELLER_ROUTES.some(
+    (allowed) => path === allowed || path.startsWith(`${allowed}/`),
+  );
+};
+
 const ROLE_CONTENT: Record<
   LoginRole,
   {
@@ -101,6 +127,17 @@ export class Login {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly content = computed(() => ROLE_CONTENT['BUYER']);
+
+  /**
+   * Carried onto the sign-in / create-account cross-link so switching between
+   * the two pages does not lose where the visitor was originally headed.
+   * Without it, "Start selling" -> sign in -> "Create a buyer account" ends on
+   * the marketplace home page instead of back in store onboarding.
+   */
+  protected readonly switchParams = computed(() => {
+    const returnUrl = this.route.snapshot?.queryParamMap.get('returnUrl');
+    return returnUrl?.startsWith('/') ? { returnUrl } : {};
+  });
   protected readonly passwordVisible = signal(false);
   protected readonly loading = signal(false);
   protected readonly submitted = signal(false);
@@ -140,7 +177,7 @@ export class Login {
       // If user is a BUYER, ensure returnUrl does not send them to seller/admin or auth pages
       if (
         role === 'BUYER' &&
-        (returnUrl.startsWith('/seller') ||
+        ((returnUrl.startsWith('/seller') && !isBuyerReachable(returnUrl)) ||
           returnUrl.startsWith('/admin') ||
           returnUrl.startsWith('/login') ||
           returnUrl.startsWith('/register'))

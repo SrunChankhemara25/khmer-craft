@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -88,6 +88,17 @@ export class Register {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
+  /**
+   * Carried onto the sign-in / create-account cross-link so switching between
+   * the two pages does not lose where the visitor was originally headed.
+   * Without it, "Start selling" -> sign in -> "Create a buyer account" ends on
+   * the marketplace home page instead of back in store onboarding.
+   */
+  protected readonly switchParams = computed(() => {
+    const returnUrl = this.route.snapshot?.queryParamMap.get('returnUrl');
+    return returnUrl?.startsWith('/') ? { returnUrl } : {};
+  });
 
   protected readonly loading = signal(false);
   protected readonly submitted = signal(false);
