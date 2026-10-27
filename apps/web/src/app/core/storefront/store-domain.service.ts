@@ -30,8 +30,12 @@ export function detectStoreSlugFromHost(hostname?: string, search?: string): str
     'www.khmercraft.local',
   ];
 
-  // If on primary root domain, check query parameter fallback (convenient for local dev & testing)
-  if (primaryRoots.includes(host)) {
+  // Vercel project domains such as `khmer-craft.vercel.app` and preview
+  // URLs are marketplace origins, not store subdomains.
+  const isVercelProjectHost = host === 'vercel.app' || host.endsWith('.vercel.app');
+
+  // If on a primary root domain, check query parameter fallback (convenient for local dev & testing)
+  if (primaryRoots.includes(host) || isVercelProjectHost) {
     if (query) {
       const params = new URLSearchParams(query);
       const storeParam = params.get('store');
